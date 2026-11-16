@@ -9,8 +9,9 @@ local SoundService = game:GetService("SoundService")
 local Player = Players.LocalPlayer
 local shared = ReplicatedStorage:WaitForChild("League")
 local Board = require(shared.Board)
+local Edition = require(shared.EventCards)
 local Rules = require(shared.Rules)
-local Game = Rules.withBoard(Board)
+local Game = Rules.withBoard(Board, Edition)
 local Pawn = require(script.Parent.Pawn)
 local Arena = require(script.Parent.Arena)
 local UI = require(script.Parent.Components)
@@ -48,7 +49,6 @@ local tagline = UI.label(mark, "", 9, {font = BOLD, color = colors.mint, ellipsi
 tagline.Size, tagline.Position = UDim2.new(1, -60, 0, 15), UDim2.fromOffset(54, 27)
 
 local scores = UI.box(root, "Scoreboard")
-local scoreLayout = UI.stack(scores, 6, true)
 local panel = UI.box(root, "MatchPanel", colors.panel, 15)
 UI.stroke(panel, colors.outline)
 local topLine = UI.box(panel, "KickoffLine", colors.mint, 1)
@@ -132,7 +132,7 @@ local function drawDialog()
 		local topics = {
 			{"1. Pick either route", "Each move shows two destinations. Crossing Kickoff pays 140 CR."},
 			{"2. Collect a league", "Sign free clubs. Rivals pay you at their gates. Own all three in one league to double those fees."},
-			{"3. Beat the final whistle", "After 8 rounds, cash + club and stadium value + league bonuses decide the winner. Everyone plays to the end."},
+			{"3. Beat the final whistle", "After 8 rounds, cash, clubs, stadiums, leagues and cups decide the winner. Everyone plays to the end."},
 		}
 		for _, topic in topics do
 			local card = UI.box(dialogBody, topic[1], colors.surface, 9)
@@ -209,7 +209,6 @@ local function arrange()
 	clubsButton.Position = UDim2.new(1, if desktop then -104 else -62, 0, 11)
 	scores.Position = UDim2.fromOffset(12, 67)
 	scores.Size = UDim2.new(1, if portrait then -24 else -panelWidth - 33, 0, 58)
-	scoreLayout.Padding = UDim.new(0, if size.X < 500 then 4 else 6)
 end
 
 local function spendText(s: any, seat: any, index: number): (string, Color3)
@@ -220,6 +219,8 @@ local function spendText(s: any, seat: any, index: number): (string, Color3)
 		return t("RIVAL GATE · −%d CR", snapshot.gates[index]), colors.pink
 	elseif tile.kind == "tactics" then
 		return t("TACTICS CARD"), hex(0xEB9DF7)
+	elseif tile.kind == "matchday" then
+		return t("CUP CHANCE"), GOLD
 	elseif tile.kind == "kickoff" then
 		return t("%+d CR · KICKOFF", Board.kickoffCash), colors.mint
 	end
@@ -241,9 +242,14 @@ local function storyCard(s: any)
 	if last.kind == "start" then
 		UI.label(card, t("The transfer window is open."), 14)
 	elseif last.card > 0 then
-		local info = Board.cards[last.card]
+		local info = Edition.cards[last.card]
 		UI.label(card, (if russian then info.ru else info.title) .. string.format("  /  %+d CR", last.amount), 14, {font = BOLD, color = if last.amount < 0 then colors.pink else GOLD})
 		UI.label(card, t("%s drew a card", name) .. " · " .. (if russian then info.ruBody else info.body), 12, {color = colors.muted})
+	elseif last.kind == "goal" or last.kind == "save" or last.kind == "offside" or last.kind == "safe" then
+		local outcome = ({goal = "Goal! Cup awarded", save = "Saved by the keeper", offside = "Offside · goal disallowed", safe = "Safe play"})[last.kind]
+		UI.label(card, t(outcome) .. string.format("  /  %+d CR", last.amount), 14,
+			{font = BOLD, color = if last.amount < 0 then colors.pink else GOLD})
+		UI.label(card, name, 12, {color = colors.muted})
 	else
 		local title = t(tile.name)
 		if last.kind == "league" then title = if russian then Board.leagues[tile.league].ru else Board.leagues[tile.league].name end
@@ -268,17 +274,21 @@ end
 local function scorecards(s: any)
 	for _, child in scores:GetChildren() do if child:IsA("Frame") then child:Destroy() end end
 	if not s then return end
-	local gap = if root.AbsoluteSize.X < 500 then 4 else 6
+	local width = root.AbsoluteSize.X
+	local gap = if width < 500 then 4 else 6
+	local columns = if #s.seats > 4 and width < 1050 then 3 else #s.seats
 	for i, seat in s.seats do
 		local color = hex(Board.figures[seat.figure].color)
 		local frame = UI.box(scores, "Seat" .. i, colors.background, 8)
-		frame.Size = UDim2.new(1 / #s.seats, -gap, 1, -5)
-		frame.LayoutOrder = i
+		frame.Size = UDim2.new(1 / columns, -gap, 0, 50)
+		frame.Position = UDim2.new(((i - 1) % columns) / columns, 0, 0, math.floor((i - 1) / columns) * 55)
 		UI.stroke(frame, if s.active == i and s.phase ~= "final" then color else colors.outline)
 		UI.pad(frame, 7, 5)
 		UI.stack(frame, 1)
 		UI.label(frame, sessionName(seat.id) .. (if seat.bot then " · " .. t("BOT") else ""), 11, {color = color, font = BOLD, ellipsis = true})
-		UI.label(frame, tostring(seat.cash) .. " CR", 15, {font = BOLD, ellipsis = true})
+		local cash = tostring(seat.cash)
+		if seat.trophies > 0 then cash ..= " · " .. t("%d cups", seat.trophies) else cash ..= " CR" end
+		UI.label(frame, cash, 13, {font = BOLD, ellipsis = true})
 	end
 end
 
@@ -293,7 +303,7 @@ local function lobbyPanel(data: any)
 		footer(0)
 		return
 	end
-	title("Choose your footballer", "All figures play by the same rules.")
+	title("Choose your figure", "All figures play by the same rules.")
 	local figure = Board.figures[selected]
 	local figureColor = hex(figure.color)
 	local feature = UI.box(body, "FootballerCard", colors.surface, 12)
@@ -324,7 +334,8 @@ local function lobbyPanel(data: any)
 		local b = UI.button(row, "Figure" .. i, candidate.number, 43, if available then function() send("figure", i) end else nil,
 			if i == selected then hex(candidate.color) else colors.surface,
 			if i == selected then colors.ink elseif available then hex(candidate.color) else colors.muted)
-		b.Position, b.Size = UDim2.new((i - 1) / 4, if i == 1 then 0 else 3, 0, 0), UDim2.new(0.25, -4, 0, 43)
+		local count = #Board.figures
+		b.Position, b.Size = UDim2.new((i - 1) / count, 0, 0, 0), UDim2.new(1 / count, -4, 0, 43)
 	end
 	UI.label(body, t("%d online · bots fill empty seats", #data.lobby), 12, {color = colors.muted})
 	footer(48)
@@ -352,6 +363,10 @@ end
 
 local function routePanel(s: any, seat: any)
 	title("Choose a route", "Preview the destination. Then pick your move.")
+	if snapshot.variant == "coach" and s.round == 1 then
+		local tip = UI.label(body, t("Coach tip: a free club pays you when rivals visit."), 13, {color = colors.mint})
+		tip.Name = "CoachHint"
+	end
 	footer(58)
 	for i, route in {{s.short, "short", colors.mint}, {s.long, "long", colors.blue}} do
 		local steps, verb, color = route[1] :: number, route[2] :: string, route[3] :: Color3
@@ -399,6 +414,29 @@ local function contractPanel(s: any, seat: any)
 	skip.Size, skip.Position = UDim2.new(0.33, -4, 0, 50), UDim2.new(0.67, 4, 0, 0)
 end
 
+local function matchdayPanel(s: any)
+	title("Take the shot?", "A goal wins a cup and a cash bonus. A safe play keeps your budget steady.")
+	local odds = UI.box(body, "ShotOdds", colors.surface, 9)
+	odds.AutomaticSize, odds.Size = Enum.AutomaticSize.Y, UDim2.new(1, 0, 0, 0)
+	UI.pad(odds, 10, 8)
+	UI.stack(odds, 4)
+	local weight = 0
+	for _, outcome in Edition.shots do weight += outcome.weight end
+	local titles = {goal = "Goal and cup", save = "Save", offside = "Offside"}
+	for _, outcome in Edition.shots do
+		UI.label(odds, t("%s · %d of %d · %+d CR", t(titles[outcome.result]), outcome.weight, weight, outcome.cash),
+			13, {font = BOLD, color = if outcome.cash < 0 then colors.pink else colors.mint})
+	end
+	UI.label(odds, t("Each cup adds %d CR to the final total.", Edition.trophy_value), 12, {color = GOLD})
+	storyCard(s)
+	footer(52)
+	primary, alternate = function() send("shoot") end, function() send("safe") end
+	local shoot = UI.button(actions, "Shoot", t("Shoot · %d%% goal", math.floor(Game.goalChance * 100 + 0.5)), 52, primary, GOLD, colors.ink)
+	local safe = UI.button(actions, "SafePlay", t("Play safe · +%d CR", Edition.safe_cash), 52, alternate)
+	shoot.Size = UDim2.new(0.5, -4, 0, 52)
+	safe.Size, safe.Position = UDim2.new(0.5, -4, 0, 52), UDim2.new(0.5, 4, 0, 0)
+end
+
 local function finishPanel(s: any)
 	local sharedTitle = s.standings[1].score == s.standings[2].score
 	title(if sharedTitle then "League champions" else "Season champion", if sharedTitle then "Same team value: shared title" else "Season value")
@@ -415,7 +453,9 @@ local function finishPanel(s: any)
 		if winner then UI.stroke(row, GOLD) end
 		local rank = if winner then "01" else string.format("%02d", index)
 		UI.label(row, rank .. "  /  " .. (if seat then sessionName(record.id) else "—"), 17, {font = BLACK, color = if winner then GOLD else colors.text})
-		UI.label(row, t("%d CR value", record.score) .. "  ·  " .. t(if clubs == 0 then "No clubs" else "%d clubs", clubs), 12, {color = colors.muted})
+		local summary = t("%d CR value", record.score) .. "  ·  " .. t(if clubs == 0 then "No clubs" else "%d clubs", clubs)
+		if seat and seat.trophies > 0 then summary ..= "  ·  " .. t("%d cups", seat.trophies) end
+		UI.label(row, summary, 12, {color = colors.muted})
 	end
 	footer(48)
 	primary = function() send("lobby") end
@@ -424,7 +464,7 @@ end
 
 render = function()
 	primary, alternate = nil, nil
-	tagline.Text = t("THE WORLD DRAFT  /  SEASON 01")
+	tagline.Text = if russian then Edition.ru else string.upper(Edition.name)
 	local wide = not portrait and root.AbsoluteSize.X >= 1000
 	rulesButton.Text, clubsButton.Text = if wide then t("Rules") else "?", if portrait then "≡" else t("View clubs")
 	closeButton.Text = t("Close")
@@ -449,7 +489,13 @@ render = function()
 		phase.Text = t("ROUND %d / %d", s.round, Board.rounds)
 		local seat = s.seats[s.active]
 		if seat.id == Player.UserId and not seat.bot then
-			if s.phase == "move" then routePanel(s, seat) else contractPanel(s, seat) end
+			if s.phase == "move" then
+				routePanel(s, seat)
+			elseif s.phase == "matchday" then
+				matchdayPanel(s)
+			else
+				contractPanel(s, seat)
+			end
 		else
 			local watching = true
 			for _, entry in s.seats do if entry.id == Player.UserId and not entry.bot then watching = false end end
@@ -501,6 +547,8 @@ snapshots.OnClientEvent:Connect(function(data)
 			playSound("win")
 		elseif data.match.motion.serial ~= old.match.motion.serial then
 			task.delay(if reduced then 0 else math.min(0.70, data.match.motion.steps * 0.12), function() playSound("land") end)
+		elseif data.match.last.kind == "goal" then
+			playSound("win")
 		elseif data.match.last.kind == "buy" or data.match.last.kind == "league" or data.match.last.kind == "upgrade" then
 			playSound("confirm")
 		end

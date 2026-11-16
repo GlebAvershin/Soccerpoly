@@ -78,10 +78,19 @@ function Pawn.make(figure: number, parent: Instance): Model
 	elseif figure == 3 then
 		piece("Swept fringe", 1.60, 0.43, 1.26, -0.05, 5.35, -0.03, hair, nil, 0.10)
 		piece("Fringe", 0.60, 0.24, 0.29, -0.45, 5.19, 0.51, hair, nil, 0.20)
-	else
+	elseif figure == 4 then
 		piece("Crop", 1.54, 0.23, 1.24, 0, 5.40, -0.04, hair)
 		for i = -2, 2 do piece("Loc", 0.35, 0.39, 0.46, i * 0.27, 5.50, 0.37, hair, Enum.PartType.Ball) end
 		piece("Headband", 1.48, 0.13, 1.23, 0, 5.21, 0.01, kit)
+	elseif def.role == "Coach" then
+		piece("Cap crown", 1.52, 0.48, 1.26, 0, 5.42, 0, trim)
+		piece("Cap brim", 1.22, 0.11, 0.55, 0, 5.26, 0.72, kit)
+		piece("Tactics clipboard", 0.71, 0.92, 0.12, -1.29, 3.14, 0.49, ivory, nil, 0.12)
+		piece("Clipboard clasp", 0.28, 0.17, 0.14, -1.27, 3.5, 0.56, trim)
+	else
+		piece("Swept bun", 1.52, 0.34, 1.23, 0, 5.38, 0, hair)
+		piece("Bun", 0.74, 0.67, 0.63, 0.24, 5.53, -0.46, hair, Enum.PartType.Ball)
+		piece("Referee card", 0.48, 0.67, 0.08, 1.28, 3.02, 0.47, hex(0xFFE46B), nil, -0.15)
 	end
 	disk.Name = "Figure base"
 	model.Parent = parent

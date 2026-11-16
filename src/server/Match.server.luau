@@ -6,8 +6,10 @@ local HttpService = game:GetService("HttpService")
 
 local Shared = ReplicatedStorage:WaitForChild("League")
 local Board = require(Shared.Board)
+local Edition = require(Shared.EventCards)
+local Experiment = require(Shared.Experiment)
 local Rules = require(Shared.Rules)
-local Game = Rules.withBoard(Board)
+local Game = Rules.withBoard(Board, Edition)
 local Telemetry = require(script.Parent.Telemetry)
 local buildWorld = require(script.Parent.World)
 Players.CharacterAutoLoads = false
@@ -17,7 +19,7 @@ local bots = table.freeze({"Atlas", "Vega", "Nova"})
 local MAX_SEATS = #Board.figures
 local ALLOWED = table.freeze({
 	sync = true, start = true, lobby = true, figure = true, short = true, long = true,
-	buy = true, upgrade = true, skip = true,
+	buy = true, upgrade = true, skip = true, shoot = true, safe = true,
 })
 local LOOP_SECONDS, OFFER_SECONDS = 20, 13
 local BOT_MOVE_SECONDS, BOT_OFFER_SECONDS = 1.7, 1.5
@@ -27,7 +29,7 @@ if RunService:IsStudio() then
 	local ok, args = pcall(function() return game:GetService("StudioTestService"):GetTestArgs() end)
 	if ok then studioArgs = args end
 end
-local fast = studioArgs == "WorldDraftSmoke" or studioArgs == "WorldDraftDuo"
+local fast = studioArgs == "WorldDraftSmoke" or studioArgs == "WorldDraftDuo" or studioArgs == "WorldDraftSix"
 local network = Instance.new("Folder")
 network.Name = "WorldDraft"
 local intent = Instance.new("RemoteEvent")
@@ -37,14 +39,14 @@ pushed.Name, pushed.Parent = "Snapshot", network
 
 type LobbySeat = {id: number, order: number, name: string, figure: number}
 type Quota = {tokens: number, time: number}
-type Funnel = {id: string, step: number, joinedAt: number, completed: number}
+type Funnel = {id: string, step: number, joinedAt: number, completed: number, assigned: boolean, moved: boolean}
 local lobby: {[Player]: LobbySeat} = {}
 local quotas: {[Player]: Quota} = {}
 local funnels: {[Player]: Funnel} = {}
 local match: Rules.Match? = nil
 local startedAt, deadline, availableAt = 0, 0, 0
 local entryNumber, version, serial = 0, 0, 0
-local mode = "solo"
+local mode, variant = "solo", "none"
 
 local function seatList(): {LobbySeat}
 	local result = {}
@@ -65,7 +67,12 @@ local function output()
 	end
 	return {
 		version = version, serial = serial, lobby = listed, host = if listed[1] then listed[1].id else 0,
-		match = s, deadline = deadline, availableAt = availableAt, scores = scores, gates = gates,
+		match = if s then {
+			seats = s.seats, clubs = s.clubs, active = s.active, round = s.round, phase = s.phase,
+			short = s.short, long = s.long, last = s.last, motion = s.motion, standings = s.standings,
+		} else nil,
+		deadline = deadline, availableAt = availableAt, scores = scores, gates = gates,
+		variant = variant,
 	}
 end
 
@@ -82,7 +89,7 @@ local function step(player: Player, target: number, label: string)
 	end
 end
 
--- When a watcher moves into one of the four seats, preserve existing selections.
+-- When a watcher takes an open seat, preserve existing selections.
 local function refreshFigures()
 	local listed, used, undecided = seatList(), {}, {}
 	for _, seat in listed do
@@ -107,7 +114,7 @@ local function joined(player: Player)
 	entryNumber += 1
 	lobby[player] = {id = player.UserId, order = entryNumber, name = player.DisplayName, figure = 0}
 	refreshFigures()
-	funnels[player] = {id = HttpService:GenerateGUID(false), step = 0, joinedAt = os.clock(), completed = 0}
+	funnels[player] = {id = HttpService:GenerateGUID(false), step = 0, joinedAt = os.clock(), completed = 0, assigned = false, moved = false}
 	step(player, 1, "Joined")
 	publish()
 end
@@ -151,6 +158,8 @@ local function start()
 		used[seat.figure] = true
 	end
 	mode = if #entries == 1 then "solo" else "social"
+	local enableExperiment = RunService:IsStudio() or workspace:GetAttribute("CoachExperimentEnabled") == true
+	variant = if enableExperiment and mode == "solo" then Experiment.arm(entries[1].id) else "none"
 	for figure = 1, MAX_SEATS do
 		if #entries >= 3 then break end
 		if not used[figure] then
@@ -174,10 +183,16 @@ local function start()
 			local player = Players:GetPlayerByUserId(seat.id)
 			if player then
 				step(player, 2, "Season started")
-				Telemetry.event(player, "SeasonStarted_v1", 1, mode)
-				if funnels[player] and funnels[player].completed > 0 then
-					Telemetry.event(player, "SeasonReplayed_v1", 1, mode)
+				local funnel = funnels[player]
+				if funnel then
+					funnel.moved = false
+					if variant ~= "none" and not funnel.assigned then
+						funnel.assigned = true
+						Telemetry.event(player, "OnboardingAssigned_v1", 1, mode, variant, Experiment.id)
+					end
+					if funnel.completed > 0 then Telemetry.event(player, "SeasonReplayed_v1", 1, mode, variant) end
 				end
+				Telemetry.event(player, "SeasonStarted_v1", 1, mode, variant, Edition.id)
 			end
 		end
 	end
@@ -192,15 +207,24 @@ local function action(s: Rules.Match, verb: string, player: Player?)
 	clockTurn(s, moved)
 	publish()
 	if player then
-		if moved then
-			local funnel = funnels[player]
-			if funnel and funnel.step == 2 then
-				Telemetry.event(player, "FirstRouteSeconds_v1", os.clock() - funnel.joinedAt, mode)
-				step(player, 3, "First route chosen")
-			end
+		local funnel = funnels[player]
+		if moved and funnel and not funnel.moved then
+			funnel.moved = true
+			Telemetry.event(player, "FirstRouteSeconds_v2", os.clock() - startedAt, mode, variant)
+			if funnel.step == 2 then Telemetry.event(player, "FirstRouteSeconds_v1", os.clock() - funnel.joinedAt, mode, variant) end
+			step(player, 3, "First route chosen")
 		end
-		if previousPhase == "offer" and verb == "buy" then Telemetry.event(player, "ClubSigned_v1", 1, mode) end
-		if s.last.kind == "league" then Telemetry.event(player, "LeagueCompleted_v1", 1, mode) end
+		if moved then Telemetry.event(player, "RouteChosen_v1", 1, mode, variant, verb) end
+		if previousPhase == "offer" and verb == "buy" then
+			Telemetry.event(player, "ClubSigned_v1", Board.tiles[seat.position].price, mode, variant)
+		end
+		if previousPhase == "matchday" then
+			Telemetry.event(player, "MatchdayResolved_v1", 1, mode, variant, s.last.kind)
+		end
+		if moved and s.last.card > 0 then
+			Telemetry.event(player, "TacticsDrawn_v1", 1, mode, variant, Edition.cards[s.last.card].id)
+		end
+		if s.last.kind == "league" then Telemetry.event(player, "LeagueCompleted_v1", 1, mode, variant) end
 	end
 	if s.phase == "final" then
 		for _, attendee in s.seats do
@@ -209,7 +233,7 @@ local function action(s: Rules.Match, verb: string, player: Player?)
 				local funnel = funnels[p]
 				if funnel then funnel.completed += 1 end
 				step(p, 4, "Season finished")
-				Telemetry.event(p, "SeasonFinished_v1", math.floor(os.clock() - startedAt), mode)
+				Telemetry.event(p, "SeasonFinished_v1", math.floor(os.clock() - startedAt), mode, variant, Edition.id)
 			end
 		end
 	end
@@ -282,7 +306,9 @@ while task.wait(if fast then 0.05 else 0.16) do
 	local s = match
 	if s and s.phase ~= "final" and workspace:GetServerTimeNow() >= deadline then
 		local seat = s.seats[s.active]
-		local verb = if seat.bot then Game.botAction(s) elseif s.phase == "move" then "short" else "skip"
+		local verb = if seat.bot then Game.botAction(s) elseif s.phase == "move" then "short" elseif s.phase == "matchday" then "safe" else "skip"
+		local p = if seat.bot then nil else Players:GetPlayerByUserId(seat.id)
+		if p then Telemetry.event(p, "TurnTimedOut_v1", 1, mode, variant, s.phase) end
 		action(s, verb, nil)
 	end
 end

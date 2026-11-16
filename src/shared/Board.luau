@@ -26,7 +26,7 @@ Board.tiles = table.freeze({
 	club("Rotterdam Dock", "ROT", "Rotterdam", 2, 215, 74),
 	stop("tactics", "Tactics deck", "TAC"),
 	club("Osaka Kites", "OSA", "Osaka", 3, 225, 78),
-	stop("matchday", "Matchday", "MD", 85),
+	stop("matchday", "Matchday", "MD"),
 	club("Dakar Comets", "DAK", "Dakar", 2, 240, 84),
 	stop("tactics", "Tactics deck", "TAC"),
 	club("Han River FC", "HAN", "Seoul", 3, 245, 86),
@@ -36,7 +36,7 @@ Board.tiles = table.freeze({
 	club("Sydney Suns", "SYD", "Sydney", 3, 270, 98),
 	stop("tactics", "Tactics deck", "TAC"),
 	club("Rio Aurora", "RIO", "Rio de Janeiro", 4, 280, 104),
-	stop("matchday", "Matchday", "MD", 85),
+	stop("matchday", "Matchday", "MD"),
 	club("Cape Strikers", "CPT", "Cape Town", 4, 290, 110),
 	stop("whistle", "Added time", "+", 120),
 })
@@ -53,17 +53,11 @@ Board.figures = table.freeze({
 	table.freeze({name = "Inez Sol", role = "Striker", ru = "Нападающая", number = "09", color = 0xFF9F69, dark = 0x57263B, skin = 0xAC6244, hair = 0x30182C}),
 	table.freeze({name = "Kai Ito", role = "Winger", ru = "Вингер", number = "17", color = 0x6CBFFF, dark = 0x29315A, skin = 0xF4BD93, hair = 0x233653}),
 	table.freeze({name = "Amara Diop", role = "Keeper", ru = "Вратарь", number = "01", color = 0xEBACFF, dark = 0x492A67, skin = 0x885341, hair = 0x221C2C}),
+	table.freeze({name = "Rafa Marin", role = "Coach", ru = "Тренер", number = "CT", color = 0xF4D46B, dark = 0x39453F, skin = 0xCF9269, hair = 0x3B2A27}),
+	table.freeze({name = "Samira Noor", role = "Referee", ru = "Арбитр", number = "RF", color = 0xF588A5, dark = 0x402A49, skin = 0xBD785B, hair = 0x262132}),
 })
 
-Board.cards = table.freeze({
-	table.freeze({title = "Scouting report", ru = "Отчёт скаута", body = "A new partner backs the academy.", ruBody = "Новый партнёр поддержал академию.", amount = 80}),
-	table.freeze({title = "Clean sheet", ru = "Сухой матч", body = "The defence earns a team bonus.", ruBody = "Защита заработала командную премию.", amount = 115}),
-	table.freeze({title = "Derby night", ru = "Вечер дерби", body = "A sold-out derby fills the stands.", ruBody = "На дерби проданы все билеты.", amount = 145}),
-	table.freeze({title = "Pitch repairs", ru = "Ремонт газона", body = "The grounds crew needs new turf.", ruBody = "Стадиону нужно новое покрытие.", amount = -45}),
-	table.freeze({title = "Away support", ru = "Выездная поддержка", body = "Fans turn out on the road.", ruBody = "Болельщики поддержали команду на выезде.", amount = 100}),
-	table.freeze({title = "Travel delay", ru = "Задержка рейса", body = "The squad books another flight.", ruBody = "Команда забронировала другой рейс.", amount = -35}),
-})
-
+Board.maxSeats = #Board.figures
 Board.rounds = 8
 Board.startCash = 700
 Board.kickoffCash = 140

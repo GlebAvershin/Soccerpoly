@@ -150,7 +150,8 @@ local function build()
 		label(sg, string.upper(tile.code), 0.1, 0.28, 0.8, 0.40, if tile.league > 0 then soft else accent, Enum.Font.GothamBlack)
 		local note = if tile.kind == "club" then string.upper(tile.city) .. "  ·  " .. tile.price
 			elseif tile.kind == "kickoff" then "KICKOFF  ·  +140"
-			elseif tile.kind == "tactics" then "TACTICS CARD" else "BONUS  ·  +" .. tile.award
+			elseif tile.kind == "tactics" then "TACTICS CARD"
+			elseif tile.kind == "matchday" then "CUP CHANCE" else "BONUS  ·  +" .. tile.award
 		label(sg, note, 0.07, 0.74, 0.86, 0.13, soft, Enum.Font.GothamMedium)
 		local nextPos = Geometry.cells[i % #Geometry.cells + 1]
 		local arrowPos = p:Lerp(nextPos, 0.5)

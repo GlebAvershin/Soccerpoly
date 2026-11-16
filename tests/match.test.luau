@@ -1,7 +1,8 @@
 --!strict
 local Board = require("../src/shared/Board")
+local Edition = require("../src/shared/EventCards")
 local Rules = require("../src/shared/Rules")
-local Game = Rules.withBoard(Board)
+local Game = Rules.withBoard(Board, Edition)
 local function low(a: number, _b: number): number return a end
 local function start(rng: (number, number) -> number)
 	return Game.new({{id = 10, name = "A", figure = 1}, {id = 20, name = "B", figure = 2}}, rng)
@@ -43,8 +44,37 @@ assert(Game.apply(s, 20, "short", low) and s.seats[2].cash == 0 and s.last.amoun
 s.seats[1].cash = 0
 assert(Game.apply(s, 10, "short", low) and s.phase == "move") -- next owned club offers upgrade only if affordable
 
+-- Matchday action is role- and turn-neutral, and the trophy is worth portfolio value.
+s = start(low)
+s.seats[1].position = 11
+assert(Game.apply(s, 10, "short", low) and s.phase == "matchday")
+assert(not Game.apply(s, 20, "shoot", low))
+assert(not Game.apply(s, 10, "buy", low))
+assert(Game.apply(s, 10, "shoot", low))
+assert(s.last.kind == "goal" and s.seats[1].cash == 840 and s.seats[1].trophies == 1)
+assert(Game.score(s, 10) == 840 + Edition.trophy_value)
+s = start(low)
+s.seats[1].position, s.seats[1].cash = 11, 5
+assert(Game.apply(s, 10, "short", low))
+assert(Game.apply(s, 10, "shoot", function(_a, b) return b end))
+assert(s.last.kind == "offside" and s.last.amount == -5 and s.seats[1].trophies == 0)
+s = start(low)
+s.seats[1].position = 11
+assert(Game.apply(s, 10, "short", low) and Game.apply(s, 10, "safe", low))
+assert(s.last.kind == "safe" and s.seats[1].cash == 700 + Edition.safe_cash)
+s = start(low)
+local seenCards: {[number]: boolean} = {}
+for i = 1, #Edition.cards + 1 do
+	local seat = s.seats[s.active]
+	seat.position = 3
+	assert(Game.apply(s, seat.id, "short", low))
+	assert(s.last.card > 0)
+	if i <= #Edition.cards then assert(not seenCards[s.last.card], "Duplicate card before reshuffle") end
+	seenCards[s.last.card] = true
+end
+
 print("Rule scenarios passed")
-local wins = {0, 0, 0, 0}
+local wins = {0, 0, 0, 0, 0, 0}
 local leagueCount, longest = 0, 0
 for seed = 1, 800 do
 	local x = seed
@@ -52,7 +82,7 @@ for seed = 1, 800 do
 		x = (x * 16807) % 2147483647
 		return a + x % (b - a + 1)
 	end
-	local count = 2 + seed % 3
+	local count = 2 + seed % (Board.maxSeats - 1)
 	local entries: {Rules.Entry} = {}
 	for i = 1, count do table.insert(entries, {id = i, name = tostring(i), figure = i, bot = true}) end
 	local match = Game.new(entries, rng)
@@ -79,3 +109,13 @@ for seed = 1, 800 do
 	assert(not Game.apply(match, match.seats[match.active].id, "short", rng))
 end
 print(string.format("800 seeded seasons passed; max actions: %d, complete sets: %d, first place by seat: %s", longest, leagueCount, table.concat(wins, "/")))
+
+local Experiment = require("../src/shared/Experiment")
+local coach = 0
+for id = 1, 4000 do
+	local arm = Experiment.arm(id)
+	assert(arm == Experiment.arm(id))
+	if arm == "coach" then coach += 1 end
+end
+assert(coach >= 1960 and coach <= 2040, "Experiment bucket skew on sequential IDs")
+print("Stable experiment assignment checked on 4000 IDs")

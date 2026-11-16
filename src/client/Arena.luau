@@ -2,8 +2,9 @@
 local Shared = game:GetService("ReplicatedStorage"):WaitForChild("League")
 local RunService = game:GetService("RunService")
 local Board = require(Shared.Board)
+local Edition = require(Shared.EventCards)
 local Geometry = require(Shared.Geometry)
-local Game = require(Shared.Rules).withBoard(Board)
+local Game = require(Shared.Rules).withBoard(Board, Edition)
 local Pawn = require(script.Parent.Pawn)
 local Arena = {}
 local hex = function(value: number): Color3 return Color3.fromHex(string.format("%06x", value)) end
@@ -55,7 +56,9 @@ function Arena.new(myId: number)
 
 	local function pawnPoint(index: number, figure: number): Vector3
 		local p = Geometry.cells[index]
-		return Vector3.new(p.X + (if figure % 2 == 1 then -1.68 else 1.68), 0.57, p.Z + (if figure <= 2 then 1.38 else -1.38))
+		local col = (figure - 1) % 3
+		local row = math.floor((figure - 1) / 3)
+		return Vector3.new(p.X + (col - 1) * 3.45, 0.57, p.Z + (0.5 - row) * 3.9)
 	end
 
 	local function pose(p: Vector3): CFrame return CFrame.new(p) * CFrame.Angles(0, math.rad(-16), 0) end
@@ -96,9 +99,9 @@ function Arena.new(myId: number)
 			for id, model in models do model:Destroy(); models[id] = nil end
 			animation = nil
 			if #previews == 0 then
-				for i, spot in {{-34, 29}, {-14, 29}, {14, 29}, {34, 29}} do
+				for i in Board.figures do
 					local model = Pawn.make(i, folder)
-					model:PivotTo(pose(Vector3.new(spot[1], 0.58, spot[2])))
+					model:PivotTo(pose(Vector3.new((i - 3.5) * 13, 0.58, 29)))
 					table.insert(previews, model)
 				end
 			end
@@ -123,6 +126,10 @@ function Arena.new(myId: number)
 				model:PivotTo(pose(pawnPoint(seat.position, seat.figure)))
 			end
 			if sameMatch and not reduced and s.motion.serial > motionSerial and s.motion.who == seat.id then
+				if animation and animation.model ~= model then
+					local previous = animation
+					previous.model:PivotTo(pose(pawnPoint(Game.target(previous.from, previous.steps), previous.figure)))
+				end
 				animation = {model = model, start = os.clock(), from = s.motion.from, steps = s.motion.steps, figure = seat.figure}
 				model:PivotTo(pose(pawnPoint(s.motion.from, seat.figure)))
 			end
@@ -133,9 +140,18 @@ function Arena.new(myId: number)
 				local p = Geometry.cells[i]
 				local flag = addMark(markers, "Club ownership", Vector3.new(9.5, 0.13, 0.30))
 				flag.Position, flag.Color = Vector3.new(p.X, 0.58, p.Z + 4.55), colors[club.owner]
-				for level = 1, club.level do
-					local pip = addMark(markers, "Stadium level", Vector3.new(0.75, 0.42, 0.75))
-					pip.Position, pip.Color = Vector3.new(p.X + 6.1, 0.77, p.Z + 4.05 - level), colors[club.owner]
+				if club.level > 0 then
+					local x, z = p.X + 5.8, p.Z + 2.1
+					local green = hex(0x408B73)
+					local field = addMark(markers, "Stadium pitch", Vector3.new(2.6, 0.15, 2.5))
+					field.Position, field.Color, field.Material = Vector3.new(x, 0.62, z), green, Enum.Material.SmoothPlastic
+					local h = 0.35 + club.level * 0.27
+					for _, side in {-1, 1} do
+						local stand = addMark(markers, "Stadium tiers", Vector3.new(0.45, h, 2.5))
+						stand.Position, stand.Color = Vector3.new(x + side * 1.14, 0.67 + h / 2, z), colors[club.owner]
+					end
+					local line = addMark(markers, "Halfway line", Vector3.new(1.7, 0.035, 0.06))
+					line.Position, line.Color = Vector3.new(x, 0.705, z), hex(0xECFFE7)
 				end
 			end
 		end

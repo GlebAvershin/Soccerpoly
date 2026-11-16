@@ -13,10 +13,10 @@ function Telemetry.step(player: Player, session: string, number: number, label: 
 	end)
 end
 
-function Telemetry.event(player: Player, name: string, value: number, mode: string)
+function Telemetry.event(player: Player, name: string, value: number, mode: string, variant: string, detail: string?)
 	if not enabled then return end
 	task.defer(function()
-		local ok, err = pcall(Analytics.LogCustomEvent, Analytics, player, name, value, {CustomField01 = mode})
+		local ok, err = pcall(Analytics.LogCustomEvent, Analytics, player, name, value, {CustomField01 = mode, CustomField02 = variant, CustomField03 = detail or "general"})
 		if not ok then warn("[WorldDraft/Analytics]", err) end
 	end)
 end

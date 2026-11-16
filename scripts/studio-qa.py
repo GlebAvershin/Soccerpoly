@@ -8,14 +8,14 @@ import tempfile
 root = Path(__file__).resolve().parents[1]
 parser = argparse.ArgumentParser()
 parser.add_argument("--rojo", default="rojo")
-parser.add_argument("--players", type=int, choices=[1, 2], default=1)
+parser.add_argument("--players", type=int, choices=[1, 2, 6], default=1)
 parser.add_argument("--device", choices=["portrait", "landscape"])
 parser.add_argument("--launchservices", action="store_true", help="use native macOS app launch instead of direct CLI")
 parser.add_argument("--studio", default="/Applications/RobloxStudio.app/Contents/MacOS/RobloxStudio")
 args = parser.parse_args()
 work = root / ".tools"
 work.mkdir(exist_ok=True)
-mode = "WorldDraftSmoke" if args.players == 1 else "WorldDraftDuo"
+mode = {1: "WorldDraftSmoke", 2: "WorldDraftDuo", 6: "WorldDraftSix"}[args.players]
 with tempfile.TemporaryDirectory(prefix=mode + "-", dir=work) as folder:
     tmp = Path(folder)
     shutil.copytree(root / "src", tmp / "src")
@@ -49,7 +49,7 @@ game:GetService("StarterPlayer").StarterPlayerScripts.Footbolapolia["studio-play
     if args.launchservices:
         cmd = ["open", "-n", "-W", "-a", str(Path(args.studio).parents[2]), "--args"] + cmd[1:]
     try:
-        subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True, timeout=110)
+        subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True, timeout=165 if args.players == 6 else 110)
     finally:
         log = log_file.read_text() if log_file.exists() else ""
         print(log)

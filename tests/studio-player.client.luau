@@ -48,7 +48,7 @@ local ok, failure = pcall(function()
 		end
 	end)
 	intent:FireServer("sync")
-	local lobby = await(function(data) return data.match == nil and #data.lobby == expected end, "full test lobby", 28)
+	local lobby = await(function(data) return data.match == nil and #data.lobby == expected end, "full test lobby", 42)
 	task.wait(0.18)
 	button("StartSeason")
 	assert(hud:FindFirstChild("FootballerPreview", true), "No figure preview")
@@ -61,10 +61,16 @@ local ok, failure = pcall(function()
 		intent:FireServer("start", lobby.version)
 	end
 	local begun = await(function(data) return data.match ~= nil end, "kickoff", 14)
-	assert(#begun.match.seats == 3)
+	local seats = math.max(expected, 3)
+	assert(#begun.match.seats == seats)
 	assert(begun.match.seats[1].id == begun.host)
-	assert(begun.match.seats[3].bot)
-	assert((not begun.match.seats[2].bot) == (expected == 2))
+	local figures = {}
+	for slot, seat in begun.match.seats do
+		assert(seat.bot == (slot > expected), "Unexpected human/bot seat")
+		assert(not figures[seat.figure], "Duplicate figure")
+		figures[seat.figure] = true
+	end
+	assert(begun.match.deck == nil, "Private tactics deck replicated")
 	local own = seatOf(begun.match)
 	assert(own.position == 1 and own.cash == 700)
 	if begun.host == me.UserId then
@@ -95,15 +101,22 @@ local ok, failure = pcall(function()
 		if data.match.phase == "final" then break end
 		steps += 1
 		assert(steps < 20)
-		local verb = if data.match.phase == "move" then "long" elseif data.match.phase == "offer" then "buy" else "upgrade"
+		local verb
+		if data.match.phase == "matchday" then
+			button("Shoot")
+			button("SafePlay")
+			verb = "shoot"
+		else
+			verb = if data.match.phase == "move" then "long" elseif data.match.phase == "offer" then "buy" else "upgrade"
+		end
 		task.wait(math.max(0.04, data.availableAt - workspace:GetServerTimeNow() + 0.07))
 		intent:FireServer(verb, data.version)
 		await(function(newer) return newer.version > data.version end, "action accepted")
 	end
 	local final = last
-	assert(#final.match.standings == 3 and final.match.round == 8)
-	assert(final.match.motion.serial == 24)
-	assert(final.match.standings[1].score >= final.match.standings[3].score)
+	assert(#final.match.standings == seats and final.match.round == 8)
+	assert(final.match.motion.serial == 8 * seats)
+	assert(final.match.standings[1].score >= final.match.standings[seats].score)
 	button("BackToLobby")
 	assert(hud:FindFirstChild("Rank1", true))
 	if final.host == me.UserId then
