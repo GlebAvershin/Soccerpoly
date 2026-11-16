@@ -7,7 +7,6 @@ ROOT = Path(__file__).resolve().parents[1]
 ART = ROOT / "art"
 WHITE, MINT, NAVY = "#fff8e6", "#80e3a8", "#19364d"
 GOLD, TEAL = "#ffbf50", "#23596b"
-PALETTE = ["#ff9754", "#56c7fa", "#bc9aff", "#71dfad"]
 DEFS = """
 <linearGradient id="night" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#e5f6ef"/><stop offset="1" stop-color="#94cfdb"/></linearGradient>
 <linearGradient id="pool" x1="0" y1="1" x2="1" y2="0"><stop stop-color="#4c7890"/><stop offset="1" stop-color="#80b5bc"/></linearGradient>
@@ -79,12 +78,15 @@ def canvas(width, height, vw, vh, elements, title):
 
 
 land = [tuple(map(int, row)) for row in re.findall(r"\{(\d+), (\d+), (\d+)\},", (ROOT / "src/server/MapData.luau").read_text())]
-board = (ROOT / "src/shared/Board.luau").read_text().split("Board.tiles =", 1)[1].split("for _, tile", 1)[0]
+catalog = (ROOT / "src/shared/Board.luau").read_text()
+leagues, board = catalog.split("Board.tiles =", 1)
+palette = ["#" + color for color in re.findall(r"color = 0x([0-9A-Fa-f]{6})", leagues)]
+board = board.split("for _, tile", 1)[0]
 tiles = []
 for row in board.splitlines():
     if m := re.search(r'club\("[^"]+", "([^"]+)", "[^"]+", (\d+), (\d+),', row):
         code, group, price = m.groups()
-        tiles.append((code, PALETTE[int(group) - 1], price))
+        tiles.append((code, palette[int(group) - 1], price))
     elif m := re.search(r'stop\("([^"]+)", "[^"]+", "([^"]+)"', row):
         kind, code = m.groups()
         tiles.append((code, {"kickoff": MINT, "tactics": "#eb9df7", "whistle": "#f78c81"}.get(kind, "#ffd47a"), ""))
@@ -107,8 +109,11 @@ for i in range(93, 444, 21):
 for y, x, length in land:
     top.append(rect(112 + x * 6, 110 + y * 9.6, length * 6 + 0.2, 9.8,
                     ["#77bda0", "#86c198", "#a2cf8c"][y % 3]))
-for x, y, color in [(330, 170, "#ff9754"), (485, 187, "#bc9aff"), (229, 301, "#71dfad"), (345, 254, "#56c7fa")]:
-    top.append(f'<circle cx="{x}" cy="{y}" r="10" fill="{color}" opacity=".24"/><circle cx="{x}" cy="{y}" r="4.7" fill="{color}"/>')
+europe_x = 112 + (9 + 180) * 72 * 6 / 360
+europe_y = 110 + (83 - 48) * 30 * 9.6 / 141
+top.append(f'<circle cx="{europe_x}" cy="{europe_y}" r="9" fill="{GOLD}" opacity=".40"/>'
+           f'<circle cx="{europe_x}" cy="{europe_y}" r="4.7" fill="{GOLD}"/>')
+
 for (col, row), (code, accent, price) in zip(path, tiles):
     x, y = 21 + col * 88, 18 + row * 74
     top += [

@@ -9,39 +9,41 @@ local function stop(kind: string, name: string, code: string, award: number?): T
 end
 
 Board.leagues = table.freeze({
-	table.freeze({name = "Iberia", code = "IBE", color = 0xFF9754, ru = "Иберия"}),
-	table.freeze({name = "Atlantic", code = "ATL", color = 0x56C7FA, ru = "Атлантика"}),
-	table.freeze({name = "Pacific", code = "PAC", color = 0xBC9AFF, ru = "Тихий океан"}),
-	table.freeze({name = "Southern", code = "SUR", color = 0x71DFAD, ru = "Южная лига"}),
+	table.freeze({name = "La Liga", code = "LAL", color = 0xF19D4D, ru = "Ла Лига"}),
+	table.freeze({name = "Premier League", code = "EPL", color = 0x62BAED, ru = "АПЛ"}),
+	table.freeze({name = "Bundesliga", code = "BUN", color = 0xAA8DE3, ru = "Бундеслига"}),
+	table.freeze({name = "Serie A", code = "SEA", color = 0x64BC8A, ru = "Серия А"}),
+	table.freeze({name = "Ligue 1", code = "L1", color = 0xE8889D, ru = "Лига 1"}),
 })
 Board.tiles = table.freeze({
 	stop("kickoff", "Kickoff", "KO"),
-	club("Castilla Crown", "CAS", "Madrid", 1, 160, 55),
-	club("Porto Tide", "POR", "Porto", 1, 180, 62),
+	club("Atlético Madrid", "ATM", "Madrid", 1, 160, 55),
+	club("Olympique de Marseille", "OM", "Marseille", 5, 160, 55),
 	stop("tactics", "Tactics deck", "TAC"),
-	club("London Forge", "LON", "London", 2, 190, 66),
-	stop("broadcast", "TV rights", "TV", 105),
-	club("Sevilla Sol", "SEV", "Seville", 1, 200, 70),
+	club("Liverpool FC", "LIV", "Liverpool", 2, 160, 55),
+	club("Bayer Leverkusen", "B04", "Leverkusen", 3, 160, 55),
+	club("AC Milan", "ACM", "Milan", 4, 160, 55),
 	stop("sponsor", "Sponsor", "SP", 75),
-	club("Rotterdam Dock", "ROT", "Rotterdam", 2, 215, 74),
-	stop("tactics", "Tactics deck", "TAC"),
-	club("Osaka Kites", "OSA", "Osaka", 3, 225, 78),
+	club("FC Barcelona", "FCB", "Barcelona", 1, 215, 75),
+	club("Manchester City", "MCI", "Manchester", 2, 215, 75),
+	club("Borussia Dortmund", "BVB", "Dortmund", 3, 215, 75),
 	stop("matchday", "Matchday", "MD"),
-	club("Dakar Comets", "DAK", "Dakar", 2, 240, 84),
+	club("Inter Milan", "INT", "Milan", 4, 215, 75),
 	stop("tactics", "Tactics deck", "TAC"),
-	club("Han River FC", "HAN", "Seoul", 3, 245, 86),
-	stop("sponsor", "Sponsor", "SP", 75),
-	club("Lima Condors", "LIM", "Lima", 4, 255, 92),
+	club("AS Monaco", "ASM", "Monaco", 5, 215, 75),
+	club("Manchester United", "MUN", "Manchester", 2, 270, 98),
+	club("Juventus", "JUV", "Turin", 4, 270, 98),
 	stop("broadcast", "TV rights", "TV", 105),
-	club("Sydney Suns", "SYD", "Sydney", 3, 270, 98),
+	club("Bayern Munich", "BAY", "Munich", 3, 270, 98),
 	stop("tactics", "Tactics deck", "TAC"),
-	club("Rio Aurora", "RIO", "Rio de Janeiro", 4, 280, 104),
+	club("Paris Saint-Germain", "PSG", "Paris", 5, 270, 98),
 	stop("matchday", "Matchday", "MD"),
-	club("Cape Strikers", "CPT", "Cape Town", 4, 290, 110),
+	club("Real Madrid", "RMA", "Madrid", 1, 270, 98),
 	stop("whistle", "Added time", "+", 120),
 })
 for _, tile in Board.tiles do table.freeze(tile) end
-local members: {{number}} = {{}, {}, {}, {}}
+local members: {{number}} = {}
+for league in Board.leagues do members[league] = {} end
 for i, tile in Board.tiles do
 	if tile.league > 0 then table.insert(members[tile.league], i) end
 end

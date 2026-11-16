@@ -1,4 +1,5 @@
 --!strict
+local Board = require(script.Parent.Board)
 local Style = {}
 
 function Style.hex(value: number): Color3
@@ -17,7 +18,6 @@ Style.tileWidth = 15.9
 Style.tileDepth = 9.95
 Style.tileTop = 0.69
 
-Style.leagues = table.freeze({0xF19D4D, 0x62BAED, 0xAA8DE3, 0x64BC8A})
 Style.stops = table.freeze({
 	kickoff = 0x6FCD91, tactics = 0xAC91E6, broadcast = 0x75BBEA,
 	sponsor = 0xF5C46F, matchday = 0x5FC7AE, whistle = 0xEE8B74,
@@ -29,7 +29,7 @@ Style.shortStop = table.freeze({
 Style.sign = table.freeze({kickoff = "»", tactics = "?", broadcast = "TV", sponsor = "+", matchday = "★", whistle = "+T"})
 
 function Style.accent(kind: string, league: number): Color3
-	return Style.hex(if league > 0 then Style.leagues[league] else Style.stops[kind])
+	return Style.hex(if league > 0 then Board.leagues[league].color else Style.stops[kind])
 end
 
 return table.freeze(Style)

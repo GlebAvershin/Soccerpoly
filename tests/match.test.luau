@@ -9,7 +9,25 @@ local function start(rng: (number, number) -> number)
 end
 
 assert(#Board.tiles == 24)
-for league = 1, 4 do assert(#Board.members[league] == 3) end
+assert(#Board.leagues == 5)
+local clubCount = 0
+local clubCodes: {[string]: boolean} = {}
+for _, tile in Board.tiles do
+	if tile.kind == "club" then
+		assert(Board.leagues[tile.league] and not clubCodes[tile.code])
+		clubCodes[tile.code] = true
+		clubCount += 1
+	end
+end
+assert(clubCount == 15)
+for league in Board.leagues do
+	local group = Board.members[league]
+	assert(#group == 3)
+	for rank, index in group do
+		local baseline = Board.tiles[Board.members[1][rank]]
+		assert(Board.tiles[index].price == baseline.price and Board.tiles[index].gate == baseline.gate)
+	end
+end
 local s = start(low)
 assert(not Game.apply(s, 20, "short", low))
 assert(not Game.apply(s, 10, "buy", low))
@@ -37,12 +55,14 @@ s.seats[2].cash = 7
 for _, i in Board.members[1] do s.clubs[i].owner = 10 end
 s.clubs[2].level = 1
 assert(Game.gate(s, 2) == 2 * Board.tiles[2].gate + 2 * Board.upgradeGate)
-assert(Game.score(s, 10) == 700 + Board.tiles[2].price + Board.tiles[3].price + Board.tiles[7].price + Board.upgradeCost + Board.leagueValue)
+local leagueCost = 0
+for _, index in Board.members[1] do leagueCost += Board.tiles[index].price end
+assert(Game.score(s, 10) == 700 + leagueCost + Board.upgradeCost + Board.leagueValue)
 assert(Game.apply(s, 10, "short", low) and Game.apply(s, 10, "upgrade", low))
 assert(s.clubs[2].level == 2)
 assert(Game.apply(s, 20, "short", low) and s.seats[2].cash == 0 and s.last.amount == -7)
 s.seats[1].cash = 0
-assert(Game.apply(s, 10, "short", low) and s.phase == "move") -- next owned club offers upgrade only if affordable
+assert(Game.apply(s, 10, "short", low) and s.phase == "move") -- An unaffordable club resolves without an offer.
 
 -- Matchday action is role- and turn-neutral, and the trophy is worth portfolio value.
 s = start(low)

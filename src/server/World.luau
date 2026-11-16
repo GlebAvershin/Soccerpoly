@@ -124,14 +124,13 @@ local function atlas(parent: Instance)
 		plate(field, "Land relief", -width / 2 + (col + length / 2) * dx, offset - depth / 2 + (row + .5) * dz,
 			.32 + height / 2, length * dx, dz, height, color)
 	end
-	for _, pin in {{-92, 34, 2}, {-48, -13, 4}, {-5, 47, 1}, {20, 6, 2}, {128, 36, 3}, {145, -29, 3}} do
-		local x, z = pin[1] * width / 360, offset - depth / 2 + (83 - pin[2]) * depth / 141
-		local accent = Art.hex(Art.leagues[pin[3]])
-		disc(field, "Venue plinth", x, .83, z, 2.2, .22, ink)
-		disc(field, "Venue emblem", x, 1.03, z, 1.55, .22, accent)
-		plate(field, "Venue pin", x, z, 1.52, .27, .27, .88, paper)
-		plate(field, "Venue flag", x + .42, z, 1.84, .72, .15, .45, accent)
-	end
+	-- The five leagues are all represented in Europe on this edition of the world map.
+	local europeX = 9 * width / 360
+	local europeZ = offset - depth / 2 + (83 - 48) * depth / 141
+	disc(field, "Europe plinth", europeX, .83, europeZ, 2.2, .22, ink)
+	disc(field, "Europe emblem", europeX, 1.03, europeZ, 1.55, .22, Art.gold)
+	plate(field, "Europe pin", europeX, 1.52, europeZ, .27, .27, .88, paper)
+	plate(field, "Europe flag", europeX + .42, 1.84, europeZ, .72, .15, .45, Art.gold)
 
 	local ad = plate(field, "Scoreboard enamel", 0, 19.1, .42, 31.6, 7.8, .30, slate)
 	local sign = printPlate(ad, 480, 120)

@@ -418,7 +418,14 @@ local function routePanel(s: any, seat: any)
 		UI.pad(b, 8, 6)
 		UI.stack(b, 2)
 		UI.label(b, i .. "  /  " .. (if steps == 1 then t("1 step") else t("%d steps", steps)), 11, {font = BOLD, color = colors.panel, ellipsis = true, name = "Steps"})
-		UI.label(b, t(target.name), if mode == "dock" then 17 else 14, {font = BLACK, color = colors.ink, ellipsis = true, name = "Destination"})
+		local destination = UI.label(b, t(target.name), if mode == "dock" then 17 else 14, {
+			font = BLACK, color = colors.ink, ellipsis = true, name = "Destination",
+		})
+		if mode ~= "dock" then
+			destination.Size = UDim2.new(1, 0, 0, 31)
+			destination.TextTruncate = Enum.TextTruncate.None
+			destination.TextWrapped = true
+		end
 		UI.label(b, cost, 11, {font = BOLD, color = colors.ink, name = "Stake"})
 	end
 	storyCard(s)

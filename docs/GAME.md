@@ -2,9 +2,9 @@
 
 **Pitch:** Football club ownership as a quick, social table game. Pick a route, sign clubs around a miniature world and build league sets before the final whistle.
 
-The football action is decision-making: choosing transfers, collecting clubs by league and investing in a stadium. The visual fantasy is a nighttime tabletop arena, with toy footballers, a relief world map, directional motion and a TV scoreboard. Brands and players are original; geographic city names supply recognition. The rules and presentation are authored for this game.
+The football action is decision-making: choosing transfers, collecting clubs by league and investing in a stadium. The visual fantasy is a daylight tabletop stadium, with toy footballers, a relief world map, directional motion and a TV scoreboard. The board lists 15 real clubs across five divisions, with three clubs per division. Players are original characters.
 
-## Continental Cup rules, v0.2
+## Continental Cup rules, v0.4
 
 - One table, up to six humans. Solo starts with two bots. Human players join in the lobby before kickoff. A late arrival watches the current match and can play next. A disconnected seat becomes a bot for the remaining season. No elimination.
 - Eight rounds. Every manager starts on Kickoff with 700 free match credits. Each turn reveals a short route (1–3) and a long route (4–6); their destination is shown before the player commits.
