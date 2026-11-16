@@ -1,5 +1,8 @@
 # World Draft visual kit
 
+- **studio-board-v0110.png**, **studio-strike-v0110.png**, **studio-goal-v0110.png** — кадры доски и повтора из одного прогона Studio для Continental Cup v0.11.0.
+- **stadium-kit.blend**, **pawn-shapes.blend**, **pawn-motion.blend** — редактируемые исходники стадиона, фигурок и анимаций. [Порядок экспорта](../docs/ART_DIRECTION.md).
+
 - **studio-bench.png** — Studio playtest capture showing the bench choice on the updated property board.
 - **studio-auction.png** — Studio playtest capture of the sealed transfer auction.
 - **studio-match.png** — Studio playtest capture, round 1 route selection on the Continental Cup board.

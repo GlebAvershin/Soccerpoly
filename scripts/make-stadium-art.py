@@ -16,12 +16,12 @@ from blender_export import ROOT, blender, export_shapes
 
 NAMES = (
     "table", "enamel", "stand", "tunnel", "dugout", "goal", "lights",
-    "cup", "ball", "academy", "arena", "curls", "sweep", "cap",
+    "cup", "ball", "academy", "arena", "curls", "sweep", "cap", "crest",
 )
-INK, NAVY, SLATE = "11232D", "19323D", "2E5361"
-TEAL, MINT, GOLD = "268F83", "89D5C2", "F5BE62"
-PAPER, STEEL, WHITE = "E6F1DF", "537887", "FFFFFF"
-GRASS, DARK_GRASS = "278B52", "217748"
+INK, NAVY, SLATE = "23334A", "254671", "3C6BA1"
+TEAL, MINT, GOLD = "2679BB", "76CFE2", "EAB561"
+PAPER, STEEL, WHITE = "FFF6E3", "849EB7", "FFFFFF"
+GRASS, DARK_GRASS = "7FAF3A", "669733"
 
 
 def paint(obj, color, smooth=False):
@@ -99,25 +99,37 @@ def ellipsoid(pos, size, color, scale_twist=None):
 
 
 def table_shell():
-    block((0, -1.26, 0), (125.2, .45, 83.5), INK, .21, 2)
-    block((0, -.79, 0), (126.2, .75, 84), NAVY, .28, 3)
-    block((0, -.38, 0), (126.8, .17, 84.45), GOLD, .06, 2)
-    block((0, .18, 0), (127, .98, 84.5), SLATE, .46, 3)
-    block((0, .67, 0), (123.6, .1, 81.2), INK, .045, 1)
-    for x, z in product((-60, 60), (-39, 39)):
-        block((x, .723, z), (3.8, .055, 2.55), STEEL, .023)
-    for sign in (-1, 1):
-        for i in range(-2, 3):
-            block((i * 4.3, .16, sign * 42.20), (2.10, .23, .11), STEEL, .045)
-            block((sign * 63.46, .16, 4.3 * i), (.11, .23, 2.10), STEEL, .045)
+    block((0, -1.40, 0), (125.2, .43, 125.2), "704E3B", .19, 2)
+    block((0, -.97, 0), (127, .72, 127), "A07150", .25, 3)
+    block((0, -.55, 0), (127.2, .13, 127.2), "F2C777", .055, 2)
+    block((0, .075, 0), (127.5, 1.12, 127.5), "D2A575", .49, 3)
+    block((0, .67, 0), (122.10, .12, 122.10), "4B614D", .05, 2)
+    for x, z in product((-61, 61), (-61, 61)):
+        block((x, .735, z), (2.8, .045, 2.8), GOLD, .019)
+    for side in (-1, 1):
+        for i in range(-4, 5):
+            block((i * 12.42, -.16, side * 63.61), (10.8, .048, .078), "B7865C", .020)
+            block((side * 63.61, -.16, 12.42 * i), (.078, .048, 10.8), "B7865C", .020)
+        block((0, -.08, side * 63.67), (11.32, .51, .13), "775338", .075, 2)
+        block((side * 63.67, -.08, 0), (.13, .51, 11.32), "775338", .075, 2)
+
+
+def club_crest():
+    shape = [(-.50, -.45), (.50, -.45), (.46, .12), (.30, .36),
+             (0, .53), (-.30, .36), (-.46, .12)]
+    vertices = [blender((x, y, z)) for y in (-.10, .10) for x, z in shape]
+    n = len(shape)
+    faces = [tuple(range(n)), tuple(reversed(range(n, n * 2)))]
+    faces.extend((j, j+n, (j+1) % n+n, (j+1) % n) for j in range(n))
+    return bevel(from_faces(vertices, faces, None), .08, 3)
 
 
 def seating():
     block((0, .27, 0), (8.65, .52, 7.65), INK, .14, 2)
     for row in range(4):
         y, z = .47 + row * .45, -2.53 + row * 1.37
-        block((0, (y + .52) / 2, z), (8.43, max(.2, y - .1), 1.44), SLATE, .045)
-        block((0, y, z), (8.40, .14, 1.43), STEEL, .065)
+        block((0, (y + .52) / 2, z), (8.43, max(.2, y - .1), 1.44), "CBD5D8", .045)
+        block((0, y, z), (8.40, .14, 1.43), PAPER, .065)
         for i in range(-2, 3):
             x = i * 1.52
             tint = MINT if row in (0, 2) and i in (-1, 0, 1) else TEAL
@@ -129,6 +141,11 @@ def seating():
         pipe((x, 2.55, .39), (x, 2.76, 2.74), .05, PAPER)
     block((0, 2.46, 2.82), (7.2, .45, .21), NAVY, .085)
     block((0, 2.47, 2.695), (5.9, .14, .06), MINT, .025)
+    for side in (-1, 1):
+        block((side * 3.22, 2.63, 2.16), (.23, 1.32, .29), NAVY, .065)
+    block((0, 3.17, 2.18), (8.4, .31, 1.62), PAPER, .13, 2)
+    block((0, 3.12, 1.43), (8.2, .21, .18), NAVY, .065)
+    block((0, 3.35, 2.39), (6.4, .07, .18), GOLD, .028)
 
 
 def tunnel():
@@ -286,10 +303,10 @@ def hair(style):
 def build_scene():
     bpy.ops.wm.read_factory_settings(use_empty=True)
     builders = (
-        table_shell, lambda: block((0, 0, 0), (15.9, .20, 9.95), radius=.095, segments=3),
+        table_shell, lambda: block((0, 0, 0), (15.9, .42, 15.9), radius=.20, segments=3),
         seating, tunnel, dugout, goal, lights, trophy, soccer_ball,
         lambda: club_stadium(False), lambda: club_stadium(True),
-        lambda: hair("curls"), lambda: hair("sweep"), lambda: hair("cap"),
+        lambda: hair("curls"), lambda: hair("sweep"), lambda: hair("cap"), club_crest,
     )
     objects = []
     for name, build in zip(NAMES, builders):

@@ -52,7 +52,7 @@ end)
 
 local mark = UI.box(root, "Masthead", colors.background, 10)
 UI.stroke(mark, colors.outline)
-local shield = UI.box(mark, "Shield", colors.mint, 7)
+local shield = UI.box(mark, "Shield", colors.gold, 7)
 shield.Size, shield.Position = UDim2.fromOffset(38, 36), UDim2.fromOffset(8, 7)
 local monogram = UI.label(shield, "FP", 17, {font = BLACK, align = CENTER, color = colors.ink, ellipsis = true})
 monogram.Size = UDim2.fromScale(1, 1)
@@ -429,7 +429,7 @@ local function arrange()
 	local size = root.AbsoluteSize
 	mode = View.mode(size)
 	mark.Position = UDim2.fromOffset(10, 6)
-	mark.Size = UDim2.fromOffset(math.clamp(size.X - 161, 179, 256), 50)
+	mark.Size = UDim2.fromOffset(math.clamp(size.X - 161, 179, 228), 50)
 	rulesButton.Size = UDim2.fromOffset(if size.X < 420 then 42 else 76, 44)
 	clubsButton.Size = UDim2.fromOffset(if size.X < 420 then 65 else 91, 44)
 	rulesButton.AnchorPoint, clubsButton.AnchorPoint = Vector2.new(1, 0), Vector2.new(1, 0)
@@ -442,10 +442,10 @@ local function arrange()
 		scores.Size = UDim2.new(1, -View.railWidth(size) - 28, 0, 75)
 	else
 		panel.AnchorPoint, panel.Position = Vector2.new(.5, 1), UDim2.new(.5, 0, 1, -10)
-		panel.Size = UDim2.fromOffset(math.max(1, math.min(956, size.X - 20)), View.dockHeight(size, mode))
+		panel.Size = UDim2.fromOffset(math.max(1, math.min(784, size.X - 20)), View.dockHeight(size, mode))
 		if size.X >= 920 then
-			scores.AnchorPoint, scores.Position = Vector2.zero, UDim2.fromOffset(276, 9)
-			scores.Size = UDim2.new(1, -466, 0, 41)
+			scores.AnchorPoint, scores.Position = Vector2.zero, UDim2.fromOffset(247, 9)
+			scores.Size = UDim2.new(1, -437, 0, 41)
 		else
 			scores.AnchorPoint, scores.Position = Vector2.new(.5, 0), UDim2.new(.5, 0, 0, 62)
 			scores.Size = UDim2.fromOffset(math.max(1, size.X - 20), 91)
@@ -610,7 +610,7 @@ local function lobbyPanel(data: any)
 	viewport.Parent = feature
 	local camera = Instance.new("Camera")
 	camera.FieldOfView = 35
-	camera.CFrame = CFrame.lookAt(Vector3.new(4.6, 4.10, 9.55), Vector3.new(0, 2.78, 0))
+	camera.CFrame = CFrame.lookAt(Vector3.new(3.55, 3.85, 9.85), Vector3.new(0, 2.95, 0))
 	camera.Parent, viewport.CurrentCamera = viewport, camera
 	tableView.preview(Pawn.make(selected, viewport))
 

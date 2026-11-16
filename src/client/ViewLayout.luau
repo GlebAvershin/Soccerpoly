@@ -8,7 +8,7 @@ end
 
 function View.dockHeight(size: Vector2, mode: string): number
 	if mode == "portrait" then return math.clamp(math.round(size.Y * .32), 222, 286) end
-	return 156
+	return 145
 end
 
 function View.railWidth(size: Vector2): number

@@ -2,6 +2,13 @@
   "name": "Footbolapolia",
   "tree": {
     "$className": "DataModel",
+    "Lighting": {
+      "$className": "Lighting",
+      "$properties": {
+        "LightingStyle": "Realistic",
+        "PrioritizeLightingQuality": true
+      }
+    },
     "Workspace": {
       "$className": "Workspace",
       "$properties": {

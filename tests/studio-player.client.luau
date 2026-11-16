@@ -93,7 +93,14 @@ local ok, failure = pcall(function()
 			local tile = catalog.tiles[index]
 			local label = assert(overlays:FindFirstChild("Cell" .. index))
 			assert(label.Title:IsA("TextLabel") and label.Title:GetAttribute("FullName") ~= "", "Unlabelled board cell")
-			if drawable then assert(label.Visible and label.Title.Text ~= "", "Label never projected") end
+			if drawable then
+				assert(label.Visible and label.Title.Text ~= "", "Label never projected")
+				assert(label.Title.TextFits, "Clipped board label: " .. label.Title.Text)
+				local size = camera.ViewportSize
+				if size.X >= 750 and size.Y >= 650 then
+					assert(label.Title.Text:gsub("\n", " ") == label.Title:GetAttribute("FullName"), "Missing full-size title: " .. tile.name)
+				end
+			end
 			if tile.price > 0 then
 				assert(label.Price.Text == tostring(tile.price) .. " CR", "Wrong club price on board cell " .. index)
 			end
@@ -126,9 +133,9 @@ local ok, failure = pcall(function()
 	assert(figurePreview:FindFirstChild("Left leg", true) and figurePreview:FindFirstChild("Right arm", true), "Figure rig missing")
 	if verifyArt then
 		local limit = os.clock() + 9
-		while (blenderCount(stage) < 55 or blenderCount(figurePreview) < 11) and os.clock() < limit do task.wait(.10) end
-		assert(blenderCount(stage) == 55, "Incomplete Blender stadium")
-		assert(blenderCount(figurePreview) == 11, "Incomplete Blender figure")
+		while (blenderCount(stage) < 87 or blenderCount(figurePreview) < 13) and os.clock() < limit do task.wait(.10) end
+		assert(blenderCount(stage) == 87, "Incomplete Blender stadium")
+		assert(blenderCount(figurePreview) == 13, "Incomplete Blender figure")
 		local audio = game:GetService("SoundService")
 		local music = audio:WaitForChild("Footbolapolia Music", 4)
 		local score = music and music:FindFirstChildOfClass("Sound")

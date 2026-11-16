@@ -45,9 +45,14 @@ function Banner.new(parent: Frame)
 			stop()
 			local revision = seq
 			heading.Text, detail.Text, stripe.BackgroundColor3 = title, caption, tint
-			view.Size = UDim2.new(if mode == "rail" then railFraction - .06 else .88, 0, 0, 65)
+			local headerSpace = mode ~= "rail" and parent.AbsoluteSize.X >= 700 and parent.AbsoluteSize.X < 920
+			view.Size = if headerSpace then UDim2.fromOffset(math.min(295, parent.AbsoluteSize.X - 440), 52)
+				else UDim2.new(if mode == "rail" then railFraction - .06 else .88, 0, 0, 65)
+			heading.Position = UDim2.fromOffset(31, if headerSpace then 0 else 6)
+			detail.Position = UDim2.fromOffset(32, if headerSpace then 25 else 34)
 			local place = if mode == "rail" then UDim2.new(railFraction * .5, 0, 0, 108)
 				elseif mode == "portrait" then UDim2.new(.5, 0, .46, 0)
+				elseif headerSpace then UDim2.new(.5, 22, 0, 5)
 				else UDim2.new(.5, 0, 0, if parent.AbsoluteSize.X >= 920 then 76 else 108)
 			view.Position = place
 			view.Visible = true

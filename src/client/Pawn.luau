@@ -41,8 +41,8 @@ function Pawn.make(figure: number, parent: Instance, onPitch: boolean?, uniform:
 	local root = piece("Root", .08, .08, .08, 0, 0, 0, rubber)
 	root.Transparency, root.CastShadow, model.PrimaryPart = 1, false, root
 	if not onPitch then
-		for i, ring in {{.19, 3.45, .12}, {.09, 3.39, .26}, {.07, 3.19, .33}} do
-			local color = if i == 1 then trim elseif i == 2 then kit else C("DFE6D9")
+		for i, ring in {{.19, 2.88, .12}, {.10, 2.98, .25}, {.08, 2.74, .34}} do
+			local color = if i == 1 then trim elseif i == 2 then kit else C("FAE7B3")
 			local base = piece("Turntable " .. i, ring[1], ring[2], ring[2], 0, ring[3], 0, color, Enum.PartType.Cylinder, math.pi * .5)
 			if i == 1 then base.Material = Enum.Material.Metal end
 		end
@@ -87,7 +87,8 @@ function Pawn.make(figure: number, parent: Instance, onPitch: boolean?, uniform:
 	for _, side in {-1, 1} do
 		local arm = joint(if side < 0 then "Left arm" else "Right arm", side * .96, 3.45, 0)
 		local glove, coach = figure == 4, figure == 5
-		soft("Sleeve", .78, .86, .85, side * 1.06, 3.30, .005, kit:Lerp(ivory, .09), side * .27)
+		Meshes.apply("sleeve", soft("Sleeve", .90, .87, .93, side * 1.10, 3.30, .005, kit:Lerp(ivory, .05), side * .27))
+		soft("Contrast piping", .69, .10, .72, side * 1.24, 3.12, .02, ivory, side * .27)
 		soft("Sleeve cuff", .69, .19, .72, side * 1.25, 3.03, .010, trim, side * .28)
 		Meshes.apply("forearm", soft("Bent forearm", .50, .83, .58, side * 1.30, 2.73, .13, if coach then kit else skin, side * .23))
 		local hand = soft("Palm", if glove then .71 else .53, .55, .60, side * 1.37, 2.42, .23, if glove then ivory else skin)
@@ -115,9 +116,9 @@ function Pawn.make(figure: number, parent: Instance, onPitch: boolean?, uniform:
 	for _, side in {-1, 1} do
 		local x = side * .377
 		soft("Ear", .32, .44, .36, side * .819, 4.53, .06, skin)
-		soft("Eyes", .29, .24, .108, x, 4.65, .70, ivory)
-		soft("Iris", .153, .19, .078, x + .032, 4.64, .755, trim:Lerp(rubber, .58))
-		soft("Catchlight", .049, .05, .021, x + .057, 4.687, .792, ivory).CastShadow = false
+		soft("Eyes", .36, .285, .124, x, 4.65, .715, ivory)
+		soft("Iris", .181, .22, .084, x + .033, 4.64, .775, trim:Lerp(rubber, .58))
+		soft("Catchlight", .056, .060, .027, x + .060, 4.697, .817, ivory).CastShadow = false
 		soft("Eyebrow", .29, .087, .08, x, 4.875, .678, hair, -side * .11)
 	end
 	if figure == 5 then
@@ -149,6 +150,7 @@ function Pawn.make(figure: number, parent: Instance, onPitch: boolean?, uniform:
 		Meshes.apply("sweep", crown, fringe)
 	end
 	head.model.WorldPivot = head.rest
+	head.model:ScaleTo(1.23)
 	rigs[model] = {body, head, arms[1], arms[2], legs[1], legs[2]}
 	model.Parent = parent
 	return model
