@@ -102,9 +102,19 @@ local function trophy(parent: Folder, at: Vector3, color: Color3)
 end
 
 type Flight = {model: Model, shadow: Part, start: number, from: number, steps: number, figure: number, color: Color3, bounced: number}
-local PREP, STEP, SETTLE = .10, .105, .10
+local PREP, STEP, SETTLE = .10, .105, .15
+local SHOT_RELEASE, SHOT_IMPACT, SHOT_END = .29, .80, 1.30
+local SHOT_START = Vector3.new(-12, 1.22, 2.6)
+type Shot = {
+	actors: Folder, ball: Model, trail: Trail, shooter: Model, keeper: Model, start: number,
+	outcome: string, scorer: number, released: boolean, resolved: boolean, impact: () -> (),
+}
 
-function Arena.new(myId: number, root: Frame, translate: (string) -> string)
+function Arena.landingAfter(steps: number): number
+	return PREP + steps * STEP
+end
+
+function Arena.new(myId: number, root: Frame, translate: (string) -> string, playSound: (string) -> ())
 	local labels = BoardLabels(root, translate)
 	task.defer(function()
 		local stage = workspace:WaitForChild("WorldDraftArena", 12)
@@ -135,9 +145,17 @@ function Arena.new(myId: number, root: Frame, translate: (string) -> string)
 	local activeId = 0
 	local cheerId, cheerUntil = 0, 0
 	local posed: Model? = nil
-	local shot: {ball: Model, start: number, outcome: string}? = nil
+	local shot: Shot? = nil
+	local function clearShot()
+		if not shot then return end
+		shot.ball:Destroy()
+		shot.actors:Destroy()
+		shot = nil
+	end
 	local previews: {Model} = {}
 	local heroModel: Model? = nil
+	local portraitModel: Model? = nil
+	local lastPortraitPose = -1
 	local heroFigure = 0
 	local lastIdlePose = -1
 	local serial, lastMotion = -1, 0
@@ -247,7 +265,7 @@ function Arena.new(myId: number, root: Frame, translate: (string) -> string)
 		local s = snapshot.match
 		if s == nil then
 			activeId, cheerId = 0, 0
-			if shot then shot.ball:Destroy(); shot = nil end
+			clearShot()
 			finishFlight()
 			if cue ~= "" then selection:ClearAllChildren() end
 			table.clear(tagPositions)
@@ -335,6 +353,8 @@ function Arena.new(myId: number, root: Frame, translate: (string) -> string)
 		if entry and not reduced and finalTile > 0 then
 			local spot = Geometry.cells[finalTile]
 			nudge = Vector3.new(spot.X, 0, spot.Z) * .045
+		elseif shot and not reduced then
+			nudge = Vector3.new(2, 0, 0)
 		end
 		cameraNudge = if reduced then Vector3.zero else cameraNudge:Lerp(nudge, 1 - math.exp(-7 * dt))
 		local cameraFrame = cameraTarget :: CFrame
@@ -356,6 +376,14 @@ function Arena.new(myId: number, root: Frame, translate: (string) -> string)
 		end
 
 		local clock = os.clock()
+		local portrait = portraitModel
+		if portrait and not portrait.Parent then portraitModel = nil end
+		local portraitFrame = math.floor(clock * 24)
+		if portrait and portrait.Parent and not reduced and portraitFrame ~= lastPortraitPose then
+			lastPortraitPose = portraitFrame
+			portrait:PivotTo(CFrame.Angles(0, math.sin(clock * 1.55) * .19, 0))
+			Pawn.pose(portrait, clock * 2.5, 0)
+		end
 		local focus = models[if cheerUntil > clock then cheerId else activeId]
 		if entry and focus == entry.model then focus = nil end
 		if posed and posed ~= focus and posed.Parent and (not entry or posed ~= entry.model) then Pawn.pose(posed, 0, 0) end
@@ -376,19 +404,48 @@ function Arena.new(myId: number, root: Frame, translate: (string) -> string)
 		end
 
 		if shot then
-			local elapsed = clock - shot.start
-			local progress = math.clamp(elapsed / .61, 0, 1)
-			local offside = shot.outcome == "offside"
-			local saved = shot.outcome == "save"
-			local origin = Vector3.new(-8, 1.30, 2.6)
-			local goal = if offside then Vector3.new(22, .65, -9) elseif saved then Vector3.new(25, 1.22, 0) else Vector3.new(33.4, .85, .4)
-			local pos = origin:Lerp(goal, 1 - (1 - progress) ^ 1.6) + Vector3.yAxis * (math.sin(progress * math.pi) * (if offside then 4.8 else 3.6))
-			if not reduced and elapsed < .95 then
-				shot.ball:PivotTo(CFrame.new(pos) * CFrame.Angles(progress * 10, 0, progress * 5))
-				if elapsed >= .61 and elapsed - dt < .61 then pulse(goal, if offside then Art.gold elseif saved then Art.paper else Art.mint, not saved) end
+			local replay = shot
+			local elapsed = clock - replay.start
+			local saved, offside = replay.outcome == "save", replay.outcome == "offside"
+			local target = if offside then Vector3.new(20, 1.00, -9) elseif saved then Vector3.new(27, 1.75, -.85)
+				else Vector3.new(33.4, 1.15, .9)
+			if elapsed >= SHOT_RELEASE and not replay.released then
+				replay.released = true
+				replay.trail.Enabled = not reduced
+				playSound("kick")
+			end
+			if (reduced or elapsed >= SHOT_IMPACT) and not replay.resolved then
+				replay.resolved = true
+				replay.trail.Enabled = false
+				replay.impact()
+				if replay.outcome == "goal" then cheerId, cheerUntil = replay.scorer, clock + .92 end
+				if not reduced then pulse(target, if offside then Art.gold elseif saved then Art.paper else Art.mint, not saved) end
+			end
+			if reduced or elapsed >= SHOT_END then
+				clearShot()
 			else
-				shot.ball:Destroy()
-				shot = nil
+				local t = math.clamp((elapsed - SHOT_RELEASE) / (SHOT_IMPACT - SHOT_RELEASE), 0, 1)
+				local settle = math.clamp((elapsed - SHOT_IMPACT) / (SHOT_END - SHOT_IMPACT), 0, 1)
+				local travel = SHOT_START:Lerp(target, 1 - (1 - t) ^ 1.35)
+				travel += Vector3.yAxis * (math.sin(t * math.pi) * (if saved then 2.4 else 3.7))
+				if saved then
+					travel += Vector3.new(-8, -.6, -5) * settle + Vector3.yAxis * (math.sin(settle * math.pi) * 2.1)
+				end
+				replay.ball:PivotTo(CFrame.new(travel) * CFrame.Angles(t * 7 + settle * 3, 0, t * 3))
+				local approach = math.clamp(elapsed / SHOT_RELEASE, 0, 1)
+				local strikerX = -20 + 5 * approach + 2 * settle
+				replay.shooter:PivotTo(CFrame.new(strikerX, -.17, 2.6) * CFrame.Angles(0, math.pi * .5, 0))
+				if replay.outcome == "goal" and replay.resolved then
+					Pawn.animate(replay.shooter, "cheer", .18 + settle * .66)
+				else
+					Pawn.animate(replay.shooter, "kick", math.clamp(elapsed / .55, 0, 1))
+				end
+				local dive = math.clamp((elapsed - .44) / .62, 0, 1)
+				local spring = math.sin(dive * math.pi)
+				local keeperZ = if offside then 0 elseif saved then -2.6 else 3.05
+				replay.keeper:PivotTo(CFrame.new(29.5 - (if saved then 1.8 else .3) * spring, -.17 + spring * .67, keeperZ * spring)
+					* CFrame.Angles(0, -math.pi * .5, 0))
+				Pawn.animate(replay.keeper, "save", if offside then 0 else dive)
 			end
 		end
 
@@ -396,6 +453,7 @@ function Arena.new(myId: number, root: Frame, translate: (string) -> string)
 		local elapsed = clock - entry.start
 		local movement = elapsed - PREP
 		if reduced or movement >= STEP * entry.steps + SETTLE then
+			if entry.bounced < entry.steps then playSound("land") end
 			finishFlight()
 			return
 		end
@@ -409,7 +467,7 @@ function Arena.new(myId: number, root: Frame, translate: (string) -> string)
 		if movement < 0 then
 			local prep = elapsed / PREP
 			entry.model:PivotTo(CFrame.new(a - direction.Unit * (.36 * math.sin(math.pi * prep))) * CFrame.Angles(.13 * prep, yaw, 0))
-			Pawn.pose(entry.model, -prep * 1.75, prep * .60)
+			Pawn.animate(entry.model, "launch", prep)
 			return
 		end
 		local hop = math.sin(math.pi * k)
@@ -420,7 +478,7 @@ function Arena.new(myId: number, root: Frame, translate: (string) -> string)
 		if ending then
 			local ease = math.clamp((movement - STEP * entry.steps) / SETTLE, 0, 1)
 			entry.model:PivotTo((CFrame.new(b) * CFrame.Angles(.12 * math.sin(math.pi * ease), yaw, 0)):Lerp(settled(b), ease))
-			Pawn.pose(entry.model, entry.steps * math.pi, 1 - ease)
+			Pawn.animate(entry.model, "land", ease)
 		else
 			entry.model:PivotTo(CFrame.new(travel + Vector3.yAxis * (hop ^ 1.35 * .92)) * CFrame.Angles(0, yaw, 0) * CFrame.Angles(lean, 0, 0))
 			Pawn.pose(entry.model, (beat + k + .3) * math.pi, 1)
@@ -428,6 +486,7 @@ function Arena.new(myId: number, root: Frame, translate: (string) -> string)
 		local landed = if ending then entry.steps else beat
 		if landed > 0 and landed > entry.bounced then
 			entry.bounced = landed
+			if ending or landed % 2 == 1 then playSound(if ending then "land" else "step") end
 			pulse(position(Game.target(entry.from, landed), entry.figure), entry.color, ending)
 		end
 	end)
@@ -453,9 +512,22 @@ function Arena.new(myId: number, root: Frame, translate: (string) -> string)
 		end
 	end
 
-	local function playShot(outcome: string, scorer: number)
-		if reduced then return end
-		if shot then shot.ball:Destroy() end
+	local function playShot(outcome: string, scorer: number, figure: number, impact: () -> ())
+		if reduced then
+			impact()
+			return
+		end
+		if shot and not shot.resolved then shot.impact() end
+		clearShot()
+		local actors = Instance.new("Folder")
+		actors.Name, actors.Parent = "Matchday players", effects
+		local shooter = Pawn.make(figure, actors, true)
+		local keeper = Pawn.make(4, actors, true, C("E3AE4A"))
+		shooter.Name, keeper.Name = "Striker", "Goalkeeper"
+		shooter:ScaleTo(1.40)
+		keeper:ScaleTo(1.38)
+		shooter:PivotTo(CFrame.new(-20, -.17, 2.6) * CFrame.Angles(0, math.pi * .5, 0))
+		keeper:PivotTo(CFrame.new(29.5, -.17, 0) * CFrame.Angles(0, -math.pi * .5, 0))
 		local ball = Instance.new("Model")
 		ball.Name, ball.Parent = "Matchday ball", effects
 		local pivot = part(ball, "Ball pivot", Vector3.one * .05, Vector3.zero, Art.paper)
@@ -470,9 +542,18 @@ function Arena.new(myId: number, root: Frame, translate: (string) -> string)
 			marking.Shape = Enum.PartType.Ball
 		end
 		decorated(ball, "Stitched football", "ball", Vector3.one * 2.28, Vector3.zero, fallback)
-		ball:PivotTo(CFrame.new(-8, 1.3, 2.6))
-		shot = {ball = ball, start = os.clock(), outcome = outcome}
-		if outcome == "goal" then cheerId, cheerUntil = scorer, os.clock() + .92 end
+		local top, bottom = Instance.new("Attachment"), Instance.new("Attachment")
+		top.Position, bottom.Position = Vector3.yAxis * .31, -Vector3.yAxis * .31
+		top.Parent, bottom.Parent = pivot, pivot
+		local trail = Instance.new("Trail")
+		trail.Name, trail.Attachment0, trail.Attachment1 = "Ball flight", top, bottom
+		trail.Lifetime, trail.MinLength, trail.FaceCamera = .12, .18, true
+		trail.Color = ColorSequence.new(Art.paper, Art.mint)
+		trail.Transparency = NumberSequence.new(.25, 1)
+		trail.Enabled, trail.Parent = false, pivot
+		ball:PivotTo(CFrame.new(SHOT_START))
+		shot = {ball = ball, actors = actors, trail = trail, shooter = shooter, keeper = keeper,
+			start = os.clock(), outcome = outcome, scorer = scorer, released = false, resolved = false, impact = impact}
 	end
 
 	return {
@@ -498,11 +579,18 @@ function Arena.new(myId: number, root: Frame, translate: (string) -> string)
 		end,
 		celebrate = celebrate,
 		playShot = playShot,
+		preview = function(model: Model)
+			portraitModel, lastPortraitPose = model, -1
+		end,
 		reduceMotion = function(value: boolean)
 			reduced = value
 			if value then
 				if posed then Pawn.pose(posed, 0, 0) end
 				if heroModel then Pawn.pose(heroModel, 0, 0) end
+				if portraitModel and portraitModel.Parent then
+					portraitModel:PivotTo(CFrame.identity)
+					Pawn.pose(portraitModel, 0, 0)
+				end
 			end
 		end,
 	}

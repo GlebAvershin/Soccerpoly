@@ -14,7 +14,10 @@ JOINTS = {
     "Left arm": (-.96, 3.45, 0), "Right arm": (.96, 3.45, 0),
     "Left leg": (-.43, 2.09, 0), "Right leg": (.43, 2.09, 0),
 }
-RANGES = {"idle": (1, 25), "stride": (33, 57), "cheer": (65, 89)}
+RANGES = {
+    "idle": (1, 25), "stride": (33, 57), "cheer": (65, 89),
+    "launch": (97, 121), "land": (129, 153), "kick": (161, 185), "save": (193, 217),
+}
 BASIS = Matrix(((1, 0, 0), (0, 0, -1), (0, 1, 0)))
 NEUTRAL = [(0, 0, 0)] * 6
 
@@ -34,7 +37,7 @@ def record(rig, clip, time, angles, torso_y=0):
 def figure_rig():
     bpy.ops.wm.read_factory_settings(use_empty=True)
     scene = bpy.context.scene
-    scene.frame_start, scene.frame_end, scene.render.fps = 1, 89, 24
+    scene.frame_start, scene.frame_end, scene.render.fps = 1, 217, 24
     rig = {}
     for name, at in JOINTS.items():
         joint = bpy.data.objects.new(name, None)
@@ -86,6 +89,23 @@ def figure_rig():
     record(rig, "cheer", .40, [(-9, 10, 2), (-13, 0, -5), (-137, 12, -28), (-117, -10, 35), (11, 0, 4), (-15, 0, -4)], .10)
     record(rig, "cheer", .63, [(-3, 7, -3), (-8, -9, -2), (-105, 5, -57), (-130, -11, 40), (5, 0, 4), (-9, 0, -4)], .042)
     record(rig, "cheer", 1, NEUTRAL)
+    record(rig, "launch", 0, NEUTRAL)
+    record(rig, "launch", .60, [(19, -9, 2), (5, 4, 0), (31, 0, -12), (28, 0, 12), (-13, 0, 5), (-21, 0, -4)], -.23)
+    record(rig, "launch", 1, [(10, 0, -2), (0, 0, -2), (29, 0, -8), (-22, 0, 8), (-21, 0, 5), (20, 0, -5)])
+    record(rig, "land", 0, [(12, -7, -2), (0, 0, 0), (21, 0, -15), (-16, 0, 13), (-19, 0, 2), (17, 0, -3)])
+    record(rig, "land", .34, [(21, 0, 2), (9, 0, 0), (21, 0, -24), (17, 0, 22), (-12, 0, 9), (-12, 0, -9)], -.26)
+    record(rig, "land", .72, [(-4, 2, 0), (-8, 0, 0), (-10, 0, -7), (-9, 0, 7), (0, 0, 0), (0, 0, 0)], .035)
+    record(rig, "land", 1, NEUTRAL)
+    record(rig, "kick", 0, [(11, 4, -3), (-4, -4, 6), (-21, 2, -15), (30, 0, 13), (-23, 0, 8), (32, 0, -3)])
+    record(rig, "kick", .30, [(6, 18, -5), (2, -14, 4), (-9, 6, -38), (42, -2, 38), (-13, 0, 7), (60, 0, -3)], -.09)
+    record(rig, "kick", .52, [(-11, -16, 4), (-5, 11, -3), (18, 0, -52), (-40, 12, 31), (7, 0, 4), (-74, 0, -7)], .03)
+    record(rig, "kick", .75, [(-5, -28, 7), (5, 22, -5), (24, 5, -31), (-31, 12, 27), (8, 0, 3), (-46, 0, -5)], .06)
+    record(rig, "kick", 1, NEUTRAL)
+    record(rig, "save", 0, [(12, 0, 0), (3, 0, 0), (-21, -5, -19), (-21, 5, 19), (-12, 0, 11), (-12, 0, -11)], -.19)
+    record(rig, "save", .24, [(9, -5, 13), (7, 7, -4), (-56, 0, -34), (-71, 2, 27), (-14, 4, 17), (-7, 0, -10)], -.10)
+    record(rig, "save", .49, [(-16, 4, 36), (-11, -8, -17), (-115, 5, -43), (-100, -17, 24), (15, 3, 13), (22, 4, -8)], .11)
+    record(rig, "save", .72, [(4, -5, 25), (7, 6, -11), (-72, 5, -15), (-69, -7, 12), (-17, 4, 13), (-20, 2, -10)], -.16)
+    record(rig, "save", 1, NEUTRAL)
     for screen in bpy.data.screens:
         for area in screen.areas:
             if area.type == "VIEW_3D":
@@ -95,7 +115,7 @@ def figure_rig():
                 region.view_location = blender((0, 2.75, 0))
                 region.view_distance = 10
     bpy.ops.object.select_all(action="DESELECT")
-    scene.frame_set(45)
+    scene.frame_set(173)
     return rig
 
 

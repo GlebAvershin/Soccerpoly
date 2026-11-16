@@ -126,9 +126,15 @@ local ok, failure = pcall(function()
 	assert(figurePreview:FindFirstChild("Left leg", true) and figurePreview:FindFirstChild("Right arm", true), "Figure rig missing")
 	if verifyArt then
 		local limit = os.clock() + 9
-		while (blenderCount(stage) < 55 or blenderCount(figurePreview) < 7) and os.clock() < limit do task.wait(.10) end
+		while (blenderCount(stage) < 55 or blenderCount(figurePreview) < 11) and os.clock() < limit do task.wait(.10) end
 		assert(blenderCount(stage) == 55, "Incomplete Blender stadium")
-		assert(blenderCount(figurePreview) == 7, "Incomplete Blender figure")
+		assert(blenderCount(figurePreview) == 11, "Incomplete Blender figure")
+		local audio = game:GetService("SoundService")
+		local music = audio:WaitForChild("Footbolapolia Music", 4)
+		local score = music and music:FindFirstChildOfClass("Sound")
+		local audioLimit = os.clock() + 9
+		while score and not score.IsLoaded and os.clock() < audioLimit do task.wait(.15) end
+		assert(score and score.TimeLength > 0 and score.IsPlaying, "Lobby score is unavailable")
 	end
 	report:FireServer("READY")
 	if lobby.host == me.UserId then

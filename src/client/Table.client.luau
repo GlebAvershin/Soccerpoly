@@ -5,7 +5,6 @@ local StarterGui = game:GetService("StarterGui")
 local Localize = game:GetService("LocalizationService")
 local GuiService = game:GetService("GuiService")
 local Input = game:GetService("UserInputService")
-local SoundService = game:GetService("SoundService")
 
 local Player = Players.LocalPlayer
 local shared = ReplicatedStorage:WaitForChild("League")
@@ -18,6 +17,7 @@ local View = require(script.Parent.ViewLayout)
 local ResultBanner = require(script.Parent.ResultBanner)
 local Pawn = require(script.Parent.Pawn)
 local Arena = require(script.Parent.Arena)
+local TableAudio = require(script.Parent.TableAudio)
 local UI = require(script.Parent.Components)
 local copy = require(script.Parent.Copy)
 local colors = UI.color
@@ -25,7 +25,7 @@ local GOLD, BOLD, BLACK = colors.gold, Enum.Font.BuilderSansBold, Enum.Font.Buil
 local CENTER, RIGHT = Enum.TextXAlignment.Center, Enum.TextXAlignment.Right
 local function hex(v: number): Color3 return Color3.fromHex(string.format("%06x", v)) end
 local russian = string.sub(string.lower(Localize.RobloxLocaleId), 1, 2) == "ru"
-local soundOn, reducePreference = true, false
+local soundOn, musicOn, reducePreference = true, true, false
 local function reduced(): boolean return reducePreference or GuiService.ReducedMotionEnabled end
 local function t(key: string, ...: any): string return copy(key, russian, ...) end
 local snapshot: any = nil
@@ -43,7 +43,8 @@ pcall(function()
 end)
 local root = UI.box(gui, "Viewport")
 root.Size = UDim2.fromScale(1, 1)
-local tableView = Arena.new(Player.UserId, root, t)
+local audio = TableAudio()
+local tableView = Arena.new(Player.UserId, root, t, audio.play)
 local resultBanner = ResultBanner.new(root)
 GuiService:GetPropertyChangedSignal("ReducedMotionEnabled"):Connect(function()
 	tableView.reduceMotion(reduced())
@@ -115,22 +116,11 @@ local function abilityText(power: string): string
 	if power == "upgrade" then return t(abilityDetails[power], Board.abilityAmounts.signing, Board.abilityAmounts.upgrade) end
 	return t(abilityDetails[power], Board.abilityAmounts[power])
 end
-local function playSound(mode: string)
-	if not soundOn then return end
-	local sound = Instance.new("Sound")
-	sound.Name = "TableFeedback"
-	sound.SoundId = if mode == "land" then "rbxasset://sounds/action_jump_land.mp3" else "rbxasset://sounds/volume_slider.ogg"
-	sound.PlaybackSpeed = if mode == "win" then 1.38 elseif mode == "land" then 1.38 else 1.05
-	sound.Volume = if mode == "land" then 0.20 else 0.15
-	sound.Parent = SoundService
-	sound:Play()
-	game:GetService("Debris"):AddItem(sound, 2)
-end
-
 type TradeIntent = {buyer: number, offered: number, requested: number, option: number}
 local function send(verb: string, value: (number | TradeIntent)?)
 	local channel, data = remote, snapshot
 	if not channel or not data then return end
+	audio.play("select")
 	if verb == "tradeAccept" or verb == "tradeDecline" then
 		if data.trade and workspace:GetServerTimeNow() < data.trade.expires then
 			channel:FireServer(verb, data.trade.token)
@@ -373,6 +363,12 @@ local function drawDialog()
 		end)
 		preferencesLine(dialogBody, "Audio", t(if soundOn then "Sound: on" else "Sound: off"), function()
 			soundOn = not soundOn
+			audio.setEnabled(soundOn)
+			drawDialog()
+		end)
+		preferencesLine(dialogBody, "Music", t(if musicOn then "Music: on" else "Music: off"), function()
+			musicOn = not musicOn
+			audio.setMusic(musicOn)
 			drawDialog()
 		end)
 		preferencesLine(dialogBody, "Motion", t(if reduced() then "Motion: reduced" else "Motion: full"), function()
@@ -614,9 +610,9 @@ local function lobbyPanel(data: any)
 	viewport.Parent = feature
 	local camera = Instance.new("Camera")
 	camera.FieldOfView = 35
-	camera.CFrame = CFrame.lookAt(Vector3.new(6, 4.65, 10), Vector3.new(0, 2.71, 0))
+	camera.CFrame = CFrame.lookAt(Vector3.new(4.6, 4.10, 9.55), Vector3.new(0, 2.78, 0))
 	camera.Parent, viewport.CurrentCamera = viewport, camera
-	Pawn.make(selected, viewport)
+	tableView.preview(Pawn.make(selected, viewport))
 
 	local row = UI.box(actions, "FigurePicker")
 	row.Size = UDim2.new(1, 0, 0, 43)
@@ -925,11 +921,13 @@ snapshots.OnClientEvent:Connect(function(data)
 	local old = snapshot
 	if old and data.version <= old.version then return end
 	snapshot = data
+	audio.scene(data.match ~= nil and data.match.phase ~= "final")
 	if data.trade and data.trade.terms.buyer == Player.UserId and (not old or not old.trade or old.trade.token ~= data.trade.token) then
 		opened = "tradeReply"
 		dialogBody.CanvasPosition = Vector2.zero
 	end
 	if data.auction and (not old or not old.auction or old.auction.token ~= data.auction.token) then
+		audio.play("card")
 		for _, seat in data.match.seats do
 			if seat.id == Player.UserId and not seat.bot and seat.cash >= Game.auctionMinimum(data.auction.tile) then
 				opened = ""
@@ -947,8 +945,13 @@ snapshots.OnClientEvent:Connect(function(data)
 	local last, before = match.last, previous.last
 	local moved = match.motion.serial ~= previous.motion.serial
 	local final = match.phase == "final" and previous.phase ~= "final"
+	if final then
+		audio.play("whistle")
+		audio.play("final")
+	end
 	if not (moved or final or last.kind ~= before.kind or last.tile ~= before.tile or last.who ~= before.who) then return end
-	local delay = if moved and not reduced() then .10 + match.motion.steps * .105 else 0
+	local animatedMove = moved and not reduced()
+	local delay = if animatedMove then Arena.landingAfter(match.motion.steps) else 0
 	task.delay(delay, function()
 		if snapshot.serial ~= data.serial or not snapshot.match then return end
 		local name = sessionName(last.who)
@@ -956,7 +959,7 @@ snapshots.OnClientEvent:Connect(function(data)
 		local shot: string? = nil
 		if Board.tiles[last.tile].league == 0 and last.kind == "buy" then headline = "Asset acquired" end
 		if Board.tiles[last.tile].league == 0 and last.kind == "auctionWon" then headline = "Asset won at auction" end
-		if final and previous.phase ~= "auction" then
+		if final then
 			local tied = {}
 			for _, record in match.standings do
 				if record.score == match.standings[1].score then table.insert(tied, sessionName(record.id)) end
@@ -987,15 +990,31 @@ snapshots.OnClientEvent:Connect(function(data)
 			local league = Board.leagues[Board.tiles[last.tile].league]
 			caption, tint = name .. "  /  " .. (if russian then league.ru else league.name), GOLD
 		end
-		if moved and snapshot.match.motion.serial == match.motion.serial then playSound("land") end
+		if moved and not animatedMove and snapshot.match.motion.serial == match.motion.serial then audio.play("land") end
 		if not headline then return end
 		if snapshot.version ~= data.version and (snapshot.match.last.who ~= last.who or snapshot.match.last.kind ~= last.kind or snapshot.match.last.tile ~= last.tile) then return end
+		local title = t(headline)
 		local exciting = final or last.kind == "goal" or last.kind == "league" or last.kind == "auctionLeague"
-		if exciting then playSound("win") elseif not moved then playSound("confirm") end
-		if shot then tableView.playShot(shot, last.who) end
-		resultBanner.reveal(t(headline), caption, tint, reduced(), mode,
-			math.max(.28, 1 - (View.railWidth(root.AbsoluteSize) + 24) / math.max(1, root.AbsoluteSize.X)), shot)
-		if exciting then tableView.celebrate(last.tile, true) elseif last.kind == "upgrade" then tableView.celebrate(last.tile, false) end
+		local function reveal()
+			if snapshot.serial ~= data.serial or not snapshot.match then return end
+			if shot then audio.play(shot) end
+			if not final and snapshot.match.phase == "final" then return end
+			if not final and not shot then
+				audio.play(if last.card > 0 or last.kind == "auctionEmpty" then "card" else "sign")
+			end
+			resultBanner.reveal(title, caption, tint, reduced(), mode,
+				math.max(.28, 1 - (View.railWidth(root.AbsoluteSize) + 24) / math.max(1, root.AbsoluteSize.X)))
+			if exciting then tableView.celebrate(last.tile, true) elseif last.kind == "upgrade" then tableView.celebrate(last.tile, false) end
+		end
+		if shot then
+			local figure = 1
+			for _, seat in match.seats do
+				if seat.id == last.who then figure = seat.figure; break end
+			end
+			tableView.playShot(shot, last.who, figure, reveal)
+		else
+			reveal()
+		end
 	end)
 end)
 

@@ -128,6 +128,7 @@ local ru: {[string]: string} = {
 	["3. Beat the final whistle"] = "3. Собери самый ценный состав",
 	["After 8 rounds, cash, clubs, stadiums, leagues and cups decide the winner. Everyone plays to the end."] = "Через 8 раундов считаем баланс, стоимость клубов и стадионов, бонусы лиг и кубки. Все играют до конца.",
 	["Sound: on"] = "Звук: вкл.", ["Sound: off"] = "Звук: выкл.",
+	["Music: on"] = "Музыка: вкл.", ["Music: off"] = "Музыка: выкл.",
 	["Motion: full"] = "Анимация: полная", ["Motion: reduced"] = "Анимация: минимум",
 	["Connect to table…"] = "Подключение к столу…", ["You"] = "Ты", ["LIVE TABLE"] = "ПРЯМОЙ ЭФИР",
 	["Complete three clubs for a 160 CR portfolio bonus."] = "Полная лига приносит 160 CR к стоимости состава.",

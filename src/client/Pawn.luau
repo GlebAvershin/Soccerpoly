@@ -11,9 +11,9 @@ type Joint = {model: Model, rest: CFrame}
 type Rig = {Joint}
 local rigs: {[Model]: Rig} = setmetatable({}, {__mode = "k"}) :: any
 
-function Pawn.make(figure: number, parent: Instance): Model
+function Pawn.make(figure: number, parent: Instance, onPitch: boolean?, uniform: Color3?): Model
 	local def = Board.figures[figure]
-	local kit, trim, skin, hair = Art.hex(def.color), Art.hex(def.dark), Art.hex(def.skin), Art.hex(def.hair)
+	local kit, trim, skin, hair = uniform or Art.hex(def.color), Art.hex(def.dark), Art.hex(def.skin), Art.hex(def.hair)
 	local ivory, rubber = C("F2F5E4"), C("152528")
 	local model = Instance.new("Model")
 	model.Name = def.name
@@ -40,10 +40,12 @@ function Pawn.make(figure: number, parent: Instance): Model
 
 	local root = piece("Root", .08, .08, .08, 0, 0, 0, rubber)
 	root.Transparency, root.CastShadow, model.PrimaryPart = 1, false, root
-	for i, ring in {{.19, 3.45, .12}, {.09, 3.39, .26}, {.07, 3.19, .33}} do
-		local color = if i == 1 then trim elseif i == 2 then kit else C("DFE6D9")
-		local base = piece("Turntable " .. i, ring[1], ring[2], ring[2], 0, ring[3], 0, color, Enum.PartType.Cylinder, math.pi * .5)
-		if i == 1 then base.Material = Enum.Material.Metal end
+	if not onPitch then
+		for i, ring in {{.19, 3.45, .12}, {.09, 3.39, .26}, {.07, 3.19, .33}} do
+			local color = if i == 1 then trim elseif i == 2 then kit else C("DFE6D9")
+			local base = piece("Turntable " .. i, ring[1], ring[2], ring[2], 0, ring[3], 0, color, Enum.PartType.Cylinder, math.pi * .5)
+			if i == 1 then base.Material = Enum.Material.Metal end
+		end
 	end
 
 	local legs, arms = {}, {}
@@ -52,7 +54,7 @@ function Pawn.make(figure: number, parent: Instance): Model
 		local leg = joint(if side < 0 then "Left leg" else "Right leg", x, 2.09, 0)
 		Meshes.apply("shorts", soft("Tailored short", .88, .95, .91, x, 2.03, .005, trim, side * .07))
 		soft("Knee", .62, .62, .64, x * 1.10, 1.63, .03, if figure == 5 then trim else skin)
-		soft("Ribbed sock", .59, 1.05, .64, x * 1.13, 1.18, .045, if figure == 5 then trim else kit)
+		Meshes.apply("sock", soft("Ribbed sock", .59, 1.05, .64, x * 1.13, 1.18, .045, if figure == 5 then trim else kit))
 		soft("Sock band", .58, .15, .65, x * 1.13, 1.46, .05, ivory)
 		soft("Studded sole", .76, .19, 1.08, x * 1.15, .50, .25, rubber)
 		Meshes.apply("boot", soft("Leather boot", .74, .49, 1.06, x * 1.15, .69, .24, trim:Lerp(rubber, .35)))
@@ -87,9 +89,13 @@ function Pawn.make(figure: number, parent: Instance): Model
 		local glove, coach = figure == 4, figure == 5
 		soft("Sleeve", .78, .86, .85, side * 1.06, 3.30, .005, kit:Lerp(ivory, .09), side * .27)
 		soft("Sleeve cuff", .69, .19, .72, side * 1.25, 3.03, .010, trim, side * .28)
-		soft("Bent forearm", .50, .83, .58, side * 1.30, 2.73, .13, if coach then kit else skin, side * .23)
-		soft("Palm", if glove then .68 else .53, .51, .60, side * 1.37, 2.42, .23, if glove then ivory else skin)
-		if glove then soft("Glove cuff", .59, .22, .58, side * 1.35, 2.62, .21, trim, side * .22) end
+		Meshes.apply("forearm", soft("Bent forearm", .50, .83, .58, side * 1.30, 2.73, .13, if coach then kit else skin, side * .23))
+		local hand = soft("Palm", if glove then .71 else .53, .55, .60, side * 1.37, 2.42, .23, if glove then ivory else skin)
+		if glove then
+			Meshes.apply("glove", hand)
+			soft("Glove cuff", .59, .22, .58, side * 1.35, 2.62, .21, trim, side * .22)
+			soft("Thumb padding", .22, .29, .31, side * 1.60, 2.48, .35, ivory, side * .26)
+		end
 		if coach and side < 0 then
 			piece("Tactics tablet", .73, .82, .14, -1.26, 2.57, .58, rubber, nil, .18)
 			piece("Tactics screen", .58, .66, .021, -1.26, 2.57, .66, C("87C9A4"), nil, .18)
@@ -168,17 +174,26 @@ local function frameAt(clip: {{CFrame}}, progress: number): ({CFrame}, {CFrame},
 	return clip[lower], clip[math.min(lower + 1, #clip)], position - lower
 end
 
-function Pawn.pose(model: Model, phase: number, running: number, celebration: number?)
+function Pawn.animate(model: Model, name: string, progress: number, weight: number?)
 	local rig = rigs[model]
 	if not rig then return end
-	local cycle = (phase / (2 * math.pi)) % 1
-	local clip = if celebration then clips.cheer elseif running > 0 then clips.stride else clips.idle
-	local before, after, weight = frameAt(clip, celebration or cycle)
-	local blend = if celebration or clip == clips.idle then 1 else math.clamp(running, 0, 1)
+	local before, after, alpha = frameAt(clips[name], progress)
+	local blend = weight or 1
 	local at, scale = model:GetPivot(), model:GetScale()
 	for i, joint in rig do
-		local motion = CFrame.identity:Lerp(before[i]:Lerp(after[i], weight), blend)
+		local motion = CFrame.identity:Lerp(before[i]:Lerp(after[i], alpha), blend)
 		joint.model:PivotTo(at * CFrame.new((joint.rest.Position + motion.Position) * scale) * motion.Rotation)
+	end
+end
+
+function Pawn.pose(model: Model, phase: number, running: number, celebration: number?)
+	local cycle = (phase / (2 * math.pi)) % 1
+	if celebration then
+		Pawn.animate(model, "cheer", celebration)
+	elseif running > 0 then
+		Pawn.animate(model, "stride", cycle, math.clamp(running, 0, 1))
+	else
+		Pawn.animate(model, "idle", cycle)
 	end
 end
 
