@@ -1,0 +1,30 @@
+name: Footbolapolia QA
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install pinned tools
+        working-directory: ${{ runner.temp }}
+        run: |
+          curl -fsSLo luau.zip https://github.com/luau-lang/luau/releases/download/0.747/luau-ubuntu.zip
+          curl -fsSLo rojo.zip https://github.com/rojo-rbx/rojo/releases/download/v7.7.1/rojo-7.7.1-linux-x86_64.zip
+          sha256sum -c <<'CHECKSUMS'
+          6a740240248e872815865a2cb03b0c327f24939478f1d0081a0540cdfd77fdaa  luau.zip
+          00feb4fa0829a1dd72b49df2639da519a352bfe13cadcd83969e2ba2bb5693c4  rojo.zip
+          CHECKSUMS
+          unzip -q luau.zip -d luau
+          unzip -q rojo.zip -d rojo
+          chmod +x luau/luau luau/luau-compile luau/luau-analyze rojo/rojo
+          realpath luau rojo >> "$GITHUB_PATH"
+      - name: Verify and build
+        run: make verify
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Footbolapolia-Place-${{ github.sha }}
+          path: dist/Footbolapolia.rbxl
+          if-no-files-found: error
