@@ -28,7 +28,7 @@ def main():
     spark = SparkSession.builder.master("local[2]").appName("WorldDraft Parquet parity").config("spark.ui.enabled", "false").getOrCreate()
     try:
         spark.sparkContext.setLogLevel("ERROR")
-        events = spark.read.schema(schema).option("mode", "FAILFAST").json(args.events.resolve().as_uri())
+        events = spark.read.schema(schema).option("mode", "FAILFAST").json(str(args.events.resolve()))
         simulation = events.filter(F.col("dataset") == "rules_simulation").dropDuplicates(["event_id"])
         def avg(name):
             return F.avg(F.when(F.col("name") == name, F.col("value")))
