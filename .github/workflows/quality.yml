@@ -23,8 +23,22 @@ jobs:
           realpath luau rojo >> "$GITHUB_PATH"
       - name: Verify and build
         run: make verify
+      - name: Write content and analytics review
+        run: |
+          {
+            echo '### Continental Cup content check'
+            python3 scripts/event_studio.py validate
+            echo '### Analytical fixture and mart checks'
+            cat dist/analytics/lineage.json
+          } >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@v4
         with:
           name: Footbolapolia-Place-${{ github.sha }}
           path: dist/Footbolapolia.rbxl
+          if-no-files-found: error
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Footbolapolia-Analytics-${{ github.sha }}
+          path: dist/analytics/
           if-no-files-found: error
