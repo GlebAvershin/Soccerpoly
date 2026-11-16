@@ -64,7 +64,7 @@ actions.AnchorPoint, actions.Position = Vector2.new(0, 1), UDim2.new(0, 12, 1, -
 
 local dialogShade = UI.button(root, "DismissBackdrop", "", 1, nil, Color3.new())
 dialogShade.Size, dialogShade.BackgroundTransparency, dialogShade.Visible, dialogShade.Modal = UDim2.fromScale(1, 1), 0.36, false, true
-dialogShade.Active, dialogShade.ZIndex = true, 10
+dialogShade.Active, dialogShade.AutoButtonColor, dialogShade.ZIndex = true, false, 10
 local dialog = UI.box(dialogShade, "Dialog", colors.panel, 16)
 dialog.AnchorPoint, dialog.Position, dialog.Size = Vector2.new(0.5, 0.5), UDim2.fromScale(0.5, 0.5), UDim2.new(0.94, 0, 0.88, 0)
 UI.stroke(dialog, colors.outline)
@@ -283,12 +283,17 @@ local function scorecards(s: any)
 end
 
 local function lobbyPanel(data: any)
-	title("Choose your footballer", "All figures play by the same rules.")
-	local selected = 1
+	local selected = nil
 	local taken = {}
 	for _, person in data.lobby do
 		if person.id == Player.UserId then selected = person.figure else taken[person.figure] = true end
 	end
+	if not selected then
+		title("Table full", "A place opens when a player leaves.")
+		footer(0)
+		return
+	end
+	title("Choose your footballer", "All figures play by the same rules.")
 	local figure = Board.figures[selected]
 	local figureColor = hex(figure.color)
 	local feature = UI.box(body, "FootballerCard", colors.surface, 12)
@@ -329,6 +334,22 @@ local function lobbyPanel(data: any)
 		if isHost then colors.mint else colors.surface, if isHost then colors.ink else colors.muted)
 end
 
+local function portfolio(s: any, seat: any)
+	local score = 0
+	for i, entry in s.seats do if entry.id == seat.id then score = snapshot.scores[i] end end
+	local card = UI.box(body, "LeagueProgress", colors.background, 9)
+	card.Size, card.AutomaticSize = UDim2.new(1, 0, 0, 0), Enum.AutomaticSize.Y
+	UI.pad(card, 10, 8)
+	UI.stack(card, 5)
+	UI.label(card, t("Season value") .. "  /  " .. score .. " CR", 13, {font = BOLD})
+	for i, league in Board.leagues do
+		local count = 0
+		for _, index in Board.members[i] do if s.clubs[index].owner == seat.id then count += 1 end end
+		UI.label(card, (if russian then league.ru else league.name) .. "  " .. count .. " / 3", 11,
+			{color = hex(league.color), font = BOLD})
+	end
+end
+
 local function routePanel(s: any, seat: any)
 	title("Choose a route", "Preview the destination. Then pick your move.")
 	footer(58)
@@ -343,13 +364,14 @@ local function routePanel(s: any, seat: any)
 		UI.stack(lane, 3)
 		UI.label(lane, i .. "  /  " .. t(target.name), 15, {font = BOLD, color = color})
 		local extra = if seat.position + steps > #Board.tiles and index ~= 1 then "  ·  +" .. Board.kickoffCash else ""
-		UI.label(lane, cost .. extra, 10, {color = accent, font = BOLD})
+		UI.label(lane, cost .. extra, 11, {color = accent, font = BOLD})
 		local function choose() send(verb) end
 		if i == 1 then primary = choose else alternate = choose end
 		local b = UI.button(actions, if i == 1 then "RouteShort" else "RouteLong", i .. "  /  " .. t("%d steps", steps) .. "\n" .. t(target.name), 58, choose, color, colors.ink)
 		b.Position, b.Size = UDim2.new(0.5 * (i - 1), if i == 1 then 0 else 4, 0, 0), UDim2.new(0.5, -4, 0, 58)
 	end
 	storyCard(s)
+	if not portrait then portfolio(s, seat) end
 end
 
 local function contractPanel(s: any, seat: any)

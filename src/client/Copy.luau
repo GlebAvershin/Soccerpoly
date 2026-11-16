@@ -40,6 +40,7 @@ local ru: {[string]: string} = {
 	["Complete three clubs for a 160 CR portfolio bonus."] = "Полная лига приносит 160 CR к стоимости состава.",
 	["View clubs"] = "Клубы", ["Rules"] = "Правила", ["STADIUM LEVEL %d"] = "СТАДИОН · УР. %d",
 	["Season value"] = "Стоимость состава", ["Same team value: shared title"] = "При равной стоимости титул общий",
+	["Table full"] = "Стол занят", ["A place opens when a player leaves."] = "Ждём, когда освободится место.",
 	["%s drew a card"] = "%s тянет карту", ["No fee paid"] = "Без сбора",
 }
 

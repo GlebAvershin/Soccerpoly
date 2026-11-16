@@ -38,17 +38,16 @@ function Arena.new(myId: number)
 	local function layoutCamera(camera: Camera)
 		local size = camera.ViewportSize
 		local aspect = math.max(0.1, size.X / math.max(1, size.Y))
-		local compact = size.X < 790 or aspect < 1.2
-		local portrait = aspect < 1.2
+		local portrait = aspect < 1.16
 		local fov = 39
 		-- Frame the table in the unoccluded part of the viewport.
-		local usableWidth = if compact then 0.94 else math.max(0.50, 1 - 365 / size.X)
+		local usableWidth = if portrait then 0.90 else math.max(0.40, 1 - (if size.X < 800 then 325 else 377) / size.X)
 		local half = math.tan(math.rad(fov / 2))
-		local distance = math.max(if compact then 92 else 113, 68 / (half * aspect * usableWidth))
-		local center = Vector3.new(if compact then 0 else distance * half * aspect * (1 - usableWidth), 0, 0)
+		local distance = math.max(if portrait then 92 else 113, 68 / (half * aspect * usableWidth))
+		local center = Vector3.new(if portrait then 0 else distance * half * aspect * (1 - usableWidth), 0, 0)
 		local inclination = if portrait then math.rad(65) else math.rad(53)
 		local base = CFrame.lookAt(center + Vector3.new(0, math.sin(inclination), math.cos(inclination)) * distance, center)
-		if compact then base *= CFrame.new(0, -distance * half * (if portrait then 0.34 else 0.25), 0) end
+		if portrait then base *= CFrame.new(0, -distance * half * 0.40, 0) end
 		lastCamera = base
 		oldSize = size
 		camera.FieldOfView = fov

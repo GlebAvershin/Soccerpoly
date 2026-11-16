@@ -28,7 +28,6 @@ if RunService:IsStudio() then
 	if ok then studioArgs = args end
 end
 local fast = studioArgs == "WorldDraftSmoke" or studioArgs == "WorldDraftDuo"
-local preview = studioArgs == "WorldDraftCapture"
 local network = Instance.new("Folder")
 network.Name = "WorldDraft"
 local intent = Instance.new("RemoteEvent")
@@ -38,7 +37,7 @@ pushed.Name, pushed.Parent = "Snapshot", network
 
 type LobbySeat = {id: number, order: number, name: string, figure: number}
 type Quota = {tokens: number, time: number}
-type Funnel = {id: string, step: number}
+type Funnel = {id: string, step: number, joinedAt: number, completed: number}
 local lobby: {[Player]: LobbySeat} = {}
 local quotas: {[Player]: Quota} = {}
 local funnels: {[Player]: Funnel} = {}
@@ -51,6 +50,7 @@ local function seatList(): {LobbySeat}
 	local result = {}
 	for _, seat in lobby do table.insert(result, seat) end
 	table.sort(result, function(a: LobbySeat, b: LobbySeat) return a.order < b.order end)
+	while #result > MAX_SEATS do table.remove(result) end
 	return result
 end
 
@@ -82,15 +82,32 @@ local function step(player: Player, target: number, label: string)
 	end
 end
 
+-- When a watcher moves into one of the four seats, preserve existing selections.
+local function refreshFigures()
+	local listed, used, undecided = seatList(), {}, {}
+	for _, seat in listed do
+		if seat.figure > 0 and not used[seat.figure] then
+			used[seat.figure] = true
+		else
+			table.insert(undecided, seat)
+		end
+	end
+	for _, seat in undecided do
+		for figure = 1, MAX_SEATS do
+			if not used[figure] then
+				seat.figure, used[figure] = figure, true
+				break
+			end
+		end
+	end
+end
+
 local function joined(player: Player)
 	if lobby[player] then return end
 	entryNumber += 1
-	local used = {}
-	for _, seat in lobby do used[seat.figure] = true end
-	local figure = 1
-	while figure < MAX_SEATS and used[figure] do figure += 1 end
-	lobby[player] = {id = player.UserId, order = entryNumber, name = player.DisplayName, figure = figure}
-	funnels[player] = {id = HttpService:GenerateGUID(false), step = 0}
+	lobby[player] = {id = player.UserId, order = entryNumber, name = player.DisplayName, figure = 0}
+	refreshFigures()
+	funnels[player] = {id = HttpService:GenerateGUID(false), step = 0, joinedAt = os.clock(), completed = 0}
 	step(player, 1, "Joined")
 	publish()
 end
@@ -141,22 +158,29 @@ local function start()
 		end
 	end
 	-- Randomise seating so the host has no systematic first-move advantage.
-	if not fast and not preview then
+	if not fast then
 		for i = #entries, 2, -1 do
 			local j = nextInteger(1, i)
 			entries[i], entries[j] = entries[j], entries[i]
 		end
 	end
 	local s = Game.new(entries, if fast then function(a, _b) return a end else nextInteger)
-	if preview then
-		s.short, s.long = 1, 4
-		s.seats[2].position, s.seats[3].position = 10, 16
-	end
 	match = s
 	serial += 1
 	startedAt = os.clock()
 	clockTurn(s, false)
-	for _, player in Players:GetPlayers() do step(player, 2, "Season started") end
+	for _, seat in s.seats do
+		if not seat.bot then
+			local player = Players:GetPlayerByUserId(seat.id)
+			if player then
+				step(player, 2, "Season started")
+				Telemetry.event(player, "SeasonStarted_v1", 1, mode)
+				if funnels[player] and funnels[player].completed > 0 then
+					Telemetry.event(player, "SeasonReplayed_v1", 1, mode)
+				end
+			end
+		end
+	end
 	publish()
 end
 
@@ -168,7 +192,13 @@ local function action(s: Rules.Match, verb: string, player: Player?)
 	clockTurn(s, moved)
 	publish()
 	if player then
-		if moved then step(player, 3, "First route chosen") end
+		if moved then
+			local funnel = funnels[player]
+			if funnel and funnel.step == 2 then
+				Telemetry.event(player, "FirstRouteSeconds_v1", os.clock() - funnel.joinedAt, mode)
+				step(player, 3, "First route chosen")
+			end
+		end
 		if previousPhase == "offer" and verb == "buy" then Telemetry.event(player, "ClubSigned_v1", 1, mode) end
 		if s.last.kind == "league" then Telemetry.event(player, "LeagueCompleted_v1", 1, mode) end
 	end
@@ -176,6 +206,8 @@ local function action(s: Rules.Match, verb: string, player: Player?)
 		for _, attendee in s.seats do
 			local p = if attendee.bot then nil else Players:GetPlayerByUserId(attendee.id)
 			if p then
+				local funnel = funnels[p]
+				if funnel then funnel.completed += 1 end
 				step(p, 4, "Season finished")
 				Telemetry.event(p, "SeasonFinished_v1", math.floor(os.clock() - startedAt), mode)
 			end
@@ -206,9 +238,18 @@ intent.OnServerEvent:Connect(function(player, verb, revision, value)
 		end
 	elseif verb == "figure" then
 		if s or type(value) ~= "number" or value % 1 ~= 0 or value < 1 or value > MAX_SEATS or value == seat.figure then return end
-		for other, slot in lobby do if other ~= player and slot.figure == value then return end end
-		seat.figure = value
-		publish()
+		local eligible = false
+		for _, slot in seatList() do
+			if slot.id == seat.id then
+				eligible = true
+			elseif slot.figure == value then
+				return
+			end
+		end
+		if eligible then
+			seat.figure = value
+			publish()
+		end
 	elseif s and s.phase ~= "final" and not s.seats[s.active].bot and s.seats[s.active].id == player.UserId then
 		local now = workspace:GetServerTimeNow()
 		if now >= availableAt and now < deadline then action(s, verb, player) end
@@ -220,12 +261,13 @@ network.Parent = ReplicatedStorage
 Players.PlayerAdded:Connect(joined)
 Players.PlayerRemoving:Connect(function(player)
 	lobby[player], quotas[player], funnels[player] = nil, nil, nil
+	refreshFigures()
 	local s = match
 	if next(lobby) == nil then
 		match, deadline = nil, 0
 	elseif s then
 		for i, seat in s.seats do
-			if seat.id == player.UserId then
+			if seat.id == player.UserId and not seat.bot then
 				seat.bot = true
 				if i == s.active then clockTurn(s, false) end
 				break
