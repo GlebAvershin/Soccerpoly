@@ -87,16 +87,21 @@ local function drawTile(tray: Instance, index: number, tile: Board.Tile)
 	local faceColor = if tile.league > 0 then paper else paper:Lerp(accent, .22)
 	frame(sg, .027, .037, .946, .926, faceColor, 16)
 	frame(sg, .027, .037, .946, .092, accent, 8)
-	frame(sg, .065, .235, .195, .58, accent, 13)
-	local brand = if tile.league > 0 then tile.code else Art.sign[tile.kind]
-	label(sg, "Crest", brand, .069, .327, .184, .37, ink, Enum.Font.GothamBlack, true)
-	local title = if tile.league > 0 then (Art.shortCity[tile.city] or tile.city) else Art.shortStop[tile.kind]
-	label(sg, "City", title, .297, .203, .65, .34, ink, Enum.Font.GothamBlack)
-	local value = if tile.league > 0 then tostring(tile.price) .. " CR"
-		elseif tile.kind == "kickoff" then "+" .. Board.kickoffCash .. " CR"
-		elseif tile.kind == "tactics" then "Draw a card"
-		elseif tile.kind == "matchday" then "Play for a cup" else "+" .. tile.award .. " CR"
-	label(sg, "Value", value, .30, .555, .635, .255, C("365367"), Enum.Font.GothamBold)
+	if tile.kind == "club" then
+		local title = string.gsub(tile.name, " ", "\n", 1)
+		label(sg, "ClubName", title, .064, .167, .872, .54, ink, Enum.Font.GothamBlack, true)
+		frame(sg, .125, .743, .20, .156, accent, 7)
+		label(sg, "Crest", tile.code, .134, .764, .182, .115, ink, Enum.Font.GothamBlack, true)
+		label(sg, "Value", tostring(tile.price) .. " CR", .366, .719, .51, .205, C("365367"), Enum.Font.GothamBold)
+	else
+		frame(sg, .065, .235, .195, .58, accent, 13)
+		label(sg, "Crest", Art.sign[tile.kind], .069, .327, .184, .37, ink, Enum.Font.GothamBlack, true)
+		label(sg, "EventName", Art.shortStop[tile.kind], .297, .203, .65, .34, ink, Enum.Font.GothamBlack)
+		local value = if tile.kind == "kickoff" then "+" .. Board.kickoffCash .. " CR"
+			elseif tile.kind == "tactics" then "Draw a card"
+			elseif tile.kind == "matchday" then "Play for a cup" else "+" .. tile.award .. " CR"
+		label(sg, "Value", value, .30, .555, .635, .255, C("365367"), Enum.Font.GothamBold)
+	end
 end
 
 local function atlas(parent: Instance)

@@ -52,6 +52,7 @@ local ok, failure = pcall(function()
 	task.wait(0.18)
 	button("StartSeason")
 	local board = workspace:WaitForChild("WorldDraftArena"):WaitForChild("Board")
+	local catalog = require(game:GetService("ReplicatedStorage").League.Board)
 	local tileCount, indices = 0, {}
 	local camera = workspace.CurrentCamera
 	local cameraDeadline = os.clock() + 4
@@ -68,7 +69,15 @@ local ok, failure = pcall(function()
 			indices[index] = true
 			local _, visible = camera:WorldToViewportPoint(part.Position + Vector3.yAxis * .11)
 			assert(visible, "Board camera loses cell " .. index .. " at " .. tostring(camera.ViewportSize))
-			assert(part.Artwork.City.Text ~= "" and part.Artwork.Value.Text ~= "", "Unlabelled board cell")
+			local tile = catalog.tiles[index]
+			local artwork = part.Artwork
+			assert(artwork.Value.Text ~= "", "Unlabelled board cell")
+			if tile.kind == "club" then
+				assert(artwork.ClubName.Text:gsub("\n", " ") == tile.name, "Wrong club on board cell " .. index)
+				assert(artwork.Value.Text == tostring(tile.price) .. " CR", "Wrong club price on board cell " .. index)
+			else
+				assert(artwork.EventName.Text ~= "", "Missing event name")
+			end
 		end
 	end
 	assert(tileCount == 24, "Incomplete board")

@@ -22,7 +22,6 @@ Style.stops = table.freeze({
 	kickoff = 0x6FCD91, tactics = 0xAC91E6, broadcast = 0x75BBEA,
 	sponsor = 0xF5C46F, matchday = 0x5FC7AE, whistle = 0xEE8B74,
 })
-Style.shortCity = table.freeze({["Rio de Janeiro"] = "Rio"})
 Style.shortStop = table.freeze({
 	kickoff = "Kickoff", tactics = "Tactics", broadcast = "TV Rights",
 	sponsor = "Sponsor", matchday = "Matchday", whistle = "Added Time",
