@@ -1,0 +1,20 @@
+{
+  "name": "Footbolapolia",
+  "tree": {
+    "$className": "DataModel",
+    "Workspace": {
+      "$className": "Workspace",
+      "$properties": {"StreamingEnabled": false}
+    },
+    "ReplicatedStorage": {"League": {"$path": "src/shared"}},
+    "ServerScriptService": {"Footbolapolia": {"$path": "src/server"}},
+    "StarterPlayer": {"StarterPlayerScripts": {"Footbolapolia": {"$path": "src/client"}}},
+    "TextChatService": {
+      "$className": "TextChatService",
+      "$properties": {"CreateDefaultTextChannels": false},
+      "ChatWindowConfiguration": {"$className": "ChatWindowConfiguration", "$properties": {"Enabled": false}},
+      "ChatInputBarConfiguration": {"$className": "ChatInputBarConfiguration", "$properties": {"Enabled": false}},
+      "BubbleChatConfiguration": {"$className": "BubbleChatConfiguration", "$properties": {"Enabled": false}}
+    }
+  }
+}
