@@ -21,7 +21,7 @@ local Arena = require(script.Parent.Arena)
 local UI = require(script.Parent.Components)
 local copy = require(script.Parent.Copy)
 local colors = UI.color
-local GOLD, BOLD, BLACK = colors.gold, Enum.Font.GothamBold, Enum.Font.GothamBlack
+local GOLD, BOLD, BLACK = colors.gold, Enum.Font.BuilderSansBold, Enum.Font.BuilderSansExtraBold
 local CENTER, RIGHT = Enum.TextXAlignment.Center, Enum.TextXAlignment.Right
 local function hex(v: number): Color3 return Color3.fromHex(string.format("%06x", v)) end
 local russian = string.sub(string.lower(Localize.RobloxLocaleId), 1, 2) == "ru"
@@ -40,32 +40,32 @@ gui.Parent = Player:WaitForChild("PlayerGui")
 pcall(function() StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.PlayerList, false) end)
 local root = UI.box(gui, "Viewport")
 root.Size = UDim2.fromScale(1, 1)
-local tableView = Arena.new(Player.UserId, root)
+local tableView = Arena.new(Player.UserId, root, t)
 local resultBanner = ResultBanner.new(root)
 GuiService:GetPropertyChangedSignal("ReducedMotionEnabled"):Connect(function()
 	tableView.reduceMotion(reduced())
 end)
 
-local mark = UI.box(root, "Masthead", colors.paper, 11)
-UI.stroke(mark, colors.ink, 2)
-local shield = UI.box(mark, "Shield", colors.gold, 7)
+local mark = UI.box(root, "Masthead", colors.background, 10)
+UI.stroke(mark, colors.outline)
+local shield = UI.box(mark, "Shield", colors.mint, 7)
 shield.Size, shield.Position = UDim2.fromOffset(38, 36), UDim2.fromOffset(8, 7)
-local wd = UI.label(shield, "WD", 16, {font = BLACK, align = CENTER, color = colors.ink, ellipsis = true})
-wd.Size = UDim2.fromScale(1, 1)
-local mast = UI.label(mark, "FOOTBOLAPOLIA", 17, {font = BLACK, color = colors.ink, ellipsis = true})
+local monogram = UI.label(shield, "FP", 17, {font = BLACK, align = CENTER, color = colors.ink, ellipsis = true})
+monogram.Size = UDim2.fromScale(1, 1)
+local mast = UI.label(mark, "Footbolapolia", 18, {font = BLACK, color = colors.text, ellipsis = true})
 mast.Size, mast.Position = UDim2.new(1, -60, 0, 21), UDim2.fromOffset(54, 5)
-local tagline = UI.label(mark, "", 10, {font = BOLD, color = colors.panel, ellipsis = true})
+local tagline = UI.label(mark, "", 12, {font = BOLD, color = colors.muted, ellipsis = true})
 tagline.Size, tagline.Position = UDim2.new(1, -60, 0, 15), UDim2.fromOffset(54, 27)
 
 local scores = UI.box(root, "Scoreboard")
-local panel = UI.box(root, "MatchPanel", colors.panel, 15)
+local panel = UI.box(root, "MatchPanel", colors.panel, 13)
 panel.Active = true
 UI.stroke(panel, colors.outline)
 local topLine = UI.box(panel, "KickoffLine", colors.mint, 1)
 topLine.Size, topLine.Position = UDim2.new(1, -26, 0, 2), UDim2.fromOffset(13, 0)
 local phase = UI.label(panel, "", 11, {font = BOLD, color = colors.mint, ellipsis = true, name = "Phase"})
 phase.Position, phase.Size = UDim2.fromOffset(14, 12), UDim2.new(0.75, -15, 0, 20)
-local countdown = UI.label(panel, "", 13, {font = BOLD, color = GOLD, align = RIGHT, ellipsis = true, name = "Countdown"})
+local countdown = UI.label(panel, "", 15, {font = BOLD, color = GOLD, align = RIGHT, ellipsis = true, name = "Countdown"})
 countdown.Position, countdown.Size = UDim2.new(0.75, 0, 0, 12), UDim2.new(0.25, -14, 0, 20)
 local body = UI.scroll(panel, "MatchBody")
 body.Position = UDim2.fromOffset(10, 37)
@@ -365,6 +365,7 @@ local function drawDialog()
 		end
 		preferencesLine(dialogBody, "Language", if russian then "Language: Русский  /  EN" else "Language: English  /  RU", function()
 			russian = not russian
+			tableView.relocalize()
 			render()
 		end)
 		preferencesLine(dialogBody, "Audio", t(if soundOn then "Sound: on" else "Sound: off"), function()
@@ -442,7 +443,7 @@ local function arrange()
 		scores.Size = UDim2.new(1, -View.railWidth(size) - 28, 0, 75)
 	else
 		panel.AnchorPoint, panel.Position = Vector2.new(.5, 1), UDim2.new(.5, 0, 1, -10)
-		panel.Size = UDim2.fromOffset(math.max(1, math.min(1116, size.X - 20)), View.dockHeight(size, mode))
+		panel.Size = UDim2.fromOffset(math.max(1, math.min(956, size.X - 20)), View.dockHeight(size, mode))
 		if size.X >= 920 then
 			scores.AnchorPoint, scores.Position = Vector2.zero, UDim2.fromOffset(276, 9)
 			scores.Size = UDim2.new(1, -466, 0, 41)
@@ -548,21 +549,33 @@ local function scorecards(s: any)
 	if not s then return end
 	local width = scores.AbsoluteSize.X
 	local compact = mode == "rail"
-	local cardHeight = if compact then 34 else 41
+	local cardHeight = if compact then 35 else 42
 	local gap = if width < 500 then 4 else 6
 	local columns = if #s.seats > 4 and width < 620 and root.AbsoluteSize.X < 920 then 3 else #s.seats
 	for i, seat in s.seats do
 		local color = hex(Board.figures[seat.figure].color)
-		local frame = UI.box(scores, "Seat" .. i, colors.background, 8)
+		local active = s.active == i and s.phase ~= "final"
+		local frame = UI.box(scores, "Seat" .. i, if active then colors.surface else colors.background, 8)
 		frame.Size = UDim2.new(1 / columns, -gap, 0, cardHeight)
 		frame.Position = UDim2.new(((i - 1) % columns) / columns, 0, 0, math.floor((i - 1) / columns) * (cardHeight + 4))
-		UI.stroke(frame, if s.active == i and s.phase ~= "final" then color else colors.outline)
-		UI.pad(frame, 7, if compact then 1 else 4)
-		UI.stack(frame, 1)
-		UI.label(frame, sessionName(seat.id) .. (if seat.bot then " · " .. t("BOT") else ""), 11, {color = color, font = BOLD, ellipsis = true})
-		local cash = tostring(seat.cash)
-		if seat.trophies > 0 then cash ..= " · " .. t("%d cups", seat.trophies) else cash ..= " CR" end
-		UI.label(frame, cash, 13, {font = BOLD, ellipsis = true})
+		UI.stroke(frame, if active then color else colors.outline, if active then 1.5 else 1)
+		local wide = width / columns >= 94
+		if wide then
+			local badge = UI.box(frame, "Shirt", color, 5)
+			badge.Position, badge.Size = UDim2.fromOffset(5, 5), UDim2.fromOffset(26, cardHeight - 10)
+			UI.label(badge, Board.figures[seat.figure].number, 13, {color = colors.ink, font = BLACK, align = CENTER, ellipsis = true}).Size = UDim2.fromScale(1, 1)
+		end
+		local info = UI.box(frame, "Score")
+		local inset = if wide then 36 else 5
+		info.Position = UDim2.fromOffset(inset, if compact then 0 else 3)
+		info.Size = UDim2.new(1, -inset - 5, 1, 0)
+		local name = UI.label(info, sessionName(seat.id) .. (if seat.bot and wide then " · " .. t("BOT") else ""), 12,
+			{color = if active then color else colors.muted, font = BOLD, ellipsis = true})
+		name.Size = UDim2.new(1, 0, 0, 15)
+		local cash = tostring(seat.cash) .. " CR"
+		if seat.trophies > 0 and wide then cash ..= "  ·  " .. t("%d cups", seat.trophies) end
+		local balance = UI.label(info, cash, 15, {font = BLACK, ellipsis = true})
+		balance.Position, balance.Size = UDim2.fromOffset(0, 15), UDim2.new(1, 0, 0, 18)
 	end
 end
 
@@ -660,20 +673,22 @@ local function routePanel(s: any, seat: any)
 		local cost = spendText(s, seat, index)
 		local function choose() send(verb) end
 		if i == 1 then primary = choose else alternate = choose end
-		local b = UI.button(actions, if i == 1 then "RouteShort" else "RouteLong", "", 78, choose, color, colors.ink)
+		local b = UI.button(actions, if i == 1 then "RouteShort" else "RouteLong", "", 78, choose, colors.background, colors.text)
 		b.Position, b.Size = UDim2.new(.5 * (i - 1), if i == 1 then 0 else 4, 0, 0), UDim2.new(.5, -4, 0, 78)
-		UI.pad(b, 8, 6)
-		UI.stack(b, 2)
-		UI.label(b, i .. "  /  " .. (if steps == 1 then t("1 step") else t("%d steps", steps)), 11, {font = BOLD, color = colors.panel, ellipsis = true, name = "Steps"})
-		local destination = UI.label(b, t(target.name), if mode == "dock" then 17 else 14, {
-			font = BLACK, color = colors.ink, ellipsis = true, name = "Destination",
-		})
-		if mode ~= "dock" then
-			destination.Size = UDim2.new(1, 0, 0, 31)
-			destination.TextTruncate = Enum.TextTruncate.None
-			destination.TextWrapped = true
-		end
-		UI.label(b, cost, 11, {font = BOLD, color = colors.ink, name = "Stake"})
+		UI.stroke(b, color, 1.2)
+		local indexBadge = UI.box(b, "Route number", color, 5)
+		indexBadge.Size, indexBadge.Position = UDim2.fromOffset(21, 20), UDim2.fromOffset(8, 7)
+		UI.label(indexBadge, tostring(i), 13, {font = BLACK, color = colors.ink, align = CENTER, ellipsis = true}).Size = UDim2.fromScale(1, 1)
+		local stepLabel = UI.label(b, if steps == 1 then t("1 step") else t("%d steps", steps), 12,
+			{font = BOLD, color = color, ellipsis = true, name = "Steps"})
+		stepLabel.Position, stepLabel.Size = UDim2.fromOffset(35, 7), UDim2.new(1, -40, 0, 19)
+		local destination = UI.label(b, t(target.name), if mode == "dock" then 17 else 14,
+			{font = BOLD, color = colors.text, ellipsis = true, name = "Destination"})
+		destination.Position = UDim2.fromOffset(8, 28)
+		destination.Size = UDim2.new(1, -14, 0, 28)
+		destination.TextTruncate, destination.TextWrapped = Enum.TextTruncate.None, true
+		local budget = UI.label(b, cost, 12, {font = BOLD, color = colors.muted, name = "Stake", ellipsis = true})
+		budget.Position, budget.Size = UDim2.fromOffset(8, 57), UDim2.new(1, -14, 0, 16)
 	end
 	storyCard(s)
 end
@@ -974,6 +989,7 @@ snapshots.OnClientEvent:Connect(function(data)
 		if snapshot.version ~= data.version and (snapshot.match.last.who ~= last.who or snapshot.match.last.kind ~= last.kind or snapshot.match.last.tile ~= last.tile) then return end
 		local exciting = final or last.kind == "goal" or last.kind == "league" or last.kind == "auctionLeague"
 		if exciting then playSound("win") elseif not moved then playSound("confirm") end
+		if shot then tableView.playShot(shot, last.who) end
 		resultBanner.reveal(t(headline), caption, tint, reduced(), mode,
 			math.max(.28, 1 - (View.railWidth(root.AbsoluteSize) + 24) / math.max(1, root.AbsoluteSize.X)), shot)
 		if exciting then tableView.celebrate(last.tile, true) elseif last.kind == "upgrade" then tableView.celebrate(last.tile, false) end

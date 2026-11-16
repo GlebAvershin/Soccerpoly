@@ -12,6 +12,7 @@ local Art = require(shared.Presentation)
 local Game = require(shared.Rules).withBoard(Board, require(shared.EventCards))
 local View = require(script.Parent.ViewLayout)
 local Pawn = require(script.Parent.Pawn)
+local BoardLabels = require(script.Parent.BoardLabels)
 local UI = require(script.Parent.Components)
 local Arena = {}
 local TAU = math.pi * 2
@@ -37,7 +38,7 @@ end
 local function position(index: number, figure: number): Vector3
 	local tile = Geometry.cells[index]
 	local col, row = (figure - 1) % 3, math.floor((figure - 1) / 3)
-	return Vector3.new(tile.X + (col - 1) * 3.55, Art.tileTop + .03, tile.Z + (0.5 - row) * 3.50)
+	return Vector3.new(tile.X + (col - 1) * 3.55, Art.tileTop + .03, tile.Z - 1.85 + (0.5 - row) * 2.25)
 end
 
 local function settled(point: Vector3): CFrame
@@ -87,7 +88,8 @@ end
 type Flight = {model: Model, shadow: Part, start: number, from: number, steps: number, figure: number, color: Color3, bounced: number}
 local PREP, STEP, SETTLE = .10, .105, .10
 
-function Arena.new(myId: number, root: Frame)
+function Arena.new(myId: number, root: Frame, translate: (string) -> string)
+	local labels = BoardLabels(root, translate)
 	local localParts = Instance.new("Folder")
 	localParts.Name, localParts.Parent = "LocalTablePieces", workspace
 	local markers = Instance.new("Folder")
@@ -101,7 +103,7 @@ function Arena.new(myId: number, root: Frame)
 	local tagPositions: {Vector3} = {}
 	for key, tint in Art.route do
 		local tag = UI.label(root, tostring(key), 14, {
-			font = Enum.Font.GothamBlack, color = Art.ink, align = Enum.TextXAlignment.Center, ellipsis = true, name = "RouteBadge" .. key,
+			font = Enum.Font.BuilderSansBold, color = Art.ink, align = Enum.TextXAlignment.Center, ellipsis = true, name = "RouteBadge" .. key,
 		})
 		tag.AnchorPoint, tag.Size, tag.Visible = Vector2.new(.5, 1), UDim2.fromOffset(24, 22), false
 		tag.BackgroundColor3, tag.BackgroundTransparency = Art.hex(tint), 0
@@ -110,7 +112,14 @@ function Arena.new(myId: number, root: Frame)
 		table.insert(tags, tag)
 	end
 	local models: {[number]: Model} = {}
+	local activeId = 0
+	local cheerId, cheerUntil = 0, 0
+	local posed: Model? = nil
+	local shot: {ball: Model, start: number, outcome: string}? = nil
 	local previews: {Model} = {}
+	local heroModel: Model? = nil
+	local heroFigure = 0
+	local lastIdlePose = -1
 	local serial, lastMotion = -1, 0
 	local signature = ""
 	local cue = ""
@@ -121,12 +130,14 @@ function Arena.new(myId: number, root: Frame)
 	local cameraPose: CFrame? = nil
 	local cameraTarget: CFrame? = nil
 	local cameraNudge = Vector3.zero
+	local projectedCamera: CFrame? = nil
 	local finalTile = 0
 
 	local function finishFlight()
 		local flight = activeFlight
 		if not flight then return end
 		flight.model:PivotTo(settled(position(Game.target(flight.from, flight.steps), flight.figure)))
+		Pawn.pose(flight.model, 0, 0)
 		flight.shadow:Destroy()
 		activeFlight = nil
 	end
@@ -139,7 +150,7 @@ function Arena.new(myId: number, root: Frame)
 		local fov = 38
 		local tangent = math.tan(math.rad(fov) / 2)
 		local rail = mode == "rail"
-		local top = if mode == "portrait" then 154 elseif rail then 102 elseif usable.X < 920 then 153 else 60
+		local top = if mode == "portrait" then 132 elseif rail then 104 elseif usable.X < 920 then 126 else 66
 		local screenTop = math.max(0, size.Y - usable.Y) + top
 		local screenBottom = size.Y - (if rail then 11 else View.dockHeight(usable, mode) + 16)
 		local screenRight = if rail then usable.X - View.railWidth(usable) - 14 else size.X - 12
@@ -147,8 +158,8 @@ function Arena.new(myId: number, root: Frame)
 		local height = math.max(.42, (screenBottom - screenTop) * 2 / size.Y)
 		local targetX = (screenRight + 12) / size.X - 1
 		local targetY = 1 - (screenTop + screenBottom) / size.Y
-		local yaw = math.rad(if mode == "portrait" then 5 elseif rail then 8 else 12)
-		local angle = math.rad(if rail then 68 else 59)
+		local yaw = math.rad(if mode == "portrait" then 1.5 elseif rail then 2 else 3.5)
+		local angle = math.rad(if mode == "portrait" then 62 elseif rail then 54 else 51)
 		local orbit = Vector3.new(math.sin(yaw) * math.cos(angle), math.sin(angle), math.cos(yaw) * math.cos(angle))
 		local distance = math.max(123 / (tangent * aspect * width), 70 / (tangent * height))
 		local base = CFrame.identity
@@ -172,6 +183,7 @@ function Arena.new(myId: number, root: Frame)
 		end
 		cameraTarget = base
 		oldSize, oldRoot, camera.FieldOfView = size, root.AbsoluteSize, fov
+		projectedCamera = nil
 		if not cameraPose or reduced then cameraPose = cameraTarget end
 	end
 
@@ -214,6 +226,8 @@ function Arena.new(myId: number, root: Frame)
 	local function sync(snapshot: any)
 		local s = snapshot.match
 		if s == nil then
+			activeId, cheerId = 0, 0
+			if shot then shot.ball:Destroy(); shot = nil end
 			finishFlight()
 			if cue ~= "" then selection:ClearAllChildren() end
 			table.clear(tagPositions)
@@ -223,12 +237,24 @@ function Arena.new(myId: number, root: Frame)
 			if #previews == 0 then
 				for i in Board.figures do
 					local model = Pawn.make(i, localParts)
-					model:PivotTo(settled(Vector3.new((i - 3.5) * 7.0, .60, 12.85)))
+					model:PivotTo(settled(Vector3.new((i - 3.5) * 7.1, .37, 12.1)))
 					table.insert(previews, model)
 				end
 			end
+			local chosen = 1
+			for _, seat in snapshot.lobby do
+				if seat.id == myId then chosen = seat.figure break end
+			end
+			if chosen ~= heroFigure or not heroModel then
+				if heroModel then heroModel:Destroy() end
+				local model = Pawn.make(chosen, localParts)
+				model:ScaleTo(2.35)
+				model:PivotTo(settled(Vector3.new(0, .36, -.90)))
+				heroModel, heroFigure, lastIdlePose = model, chosen, -1
+			end
 			return
 		end
+		if heroModel then heroModel:Destroy(); heroModel = nil end
 		for _, model in previews do model:Destroy() end
 		table.clear(previews)
 		local sameMatch = serial == snapshot.serial
@@ -261,6 +287,7 @@ function Arena.new(myId: number, root: Frame)
 		serial, lastMotion = snapshot.serial, s.motion.serial
 		savedDecor(s)
 		local active = s.seats[s.active]
+		activeId = if s.phase == "final" then 0 else active.id
 		local first, second = 0, 0
 		if (s.phase == "move" or s.phase == "bench") and active.id == myId and not active.bot then
 			first = Game.target(active.position, s.short)
@@ -294,6 +321,10 @@ function Arena.new(myId: number, root: Frame)
 		cameraPose = if reduced then cameraFrame else (cameraPose or cameraFrame):Lerp(cameraFrame, 1 - math.exp(-11 * dt))
 		camera.CFrame = (cameraPose :: CFrame) + cameraNudge
 		camera.Focus = CFrame.new(cameraNudge)
+		if projectedCamera ~= camera.CFrame then
+			projectedCamera = camera.CFrame
+			labels.project(camera)
+		end
 		for key, tag in tags do
 			local at = tagPositions[key]
 			if at then
@@ -304,8 +335,45 @@ function Arena.new(myId: number, root: Frame)
 			end
 		end
 
+		local clock = os.clock()
+		local focus = models[if cheerUntil > clock then cheerId else activeId]
+		if entry and focus == entry.model then focus = nil end
+		if posed and posed ~= focus and posed.Parent and (not entry or posed ~= entry.model) then Pawn.pose(posed, 0, 0) end
+		posed = focus
+		if not reduced then
+			if focus then
+				local cheer = if cheerUntil > clock then math.sin(math.clamp((cheerUntil - clock) / .92, 0, 1) * math.pi) else 0
+				Pawn.pose(focus, clock * 2.8, 0, cheer)
+			elseif heroModel then
+				local poseFrame = math.floor(clock * 30)
+				if poseFrame ~= lastIdlePose then
+					lastIdlePose = poseFrame
+					local turn = -.15 + math.sin(clock * 1.30) * .13
+					heroModel:PivotTo(CFrame.new(0, .36, -.90) * CFrame.Angles(0, turn, 0))
+					Pawn.pose(heroModel, clock * 2.2, 0)
+				end
+			end
+		end
+
+		if shot then
+			local elapsed = clock - shot.start
+			local progress = math.clamp(elapsed / .61, 0, 1)
+			local offside = shot.outcome == "offside"
+			local saved = shot.outcome == "save"
+			local origin = Vector3.new(-8, 1.30, 2.6)
+			local goal = if offside then Vector3.new(22, .65, -9) elseif saved then Vector3.new(25, 1.22, 0) else Vector3.new(33.4, .85, .4)
+			local pos = origin:Lerp(goal, 1 - (1 - progress) ^ 1.6) + Vector3.yAxis * (math.sin(progress * math.pi) * (if offside then 4.8 else 3.6))
+			if not reduced and elapsed < .95 then
+				shot.ball:PivotTo(CFrame.new(pos) * CFrame.Angles(progress * 10, 0, progress * 5))
+				if elapsed >= .61 and elapsed - dt < .61 then pulse(goal, if offside then Art.gold elseif saved then Art.paper else Art.mint, not saved) end
+			else
+				shot.ball:Destroy()
+				shot = nil
+			end
+		end
+
 		if not entry then return end
-		local elapsed = os.clock() - entry.start
+		local elapsed = clock - entry.start
 		local movement = elapsed - PREP
 		if reduced or movement >= STEP * entry.steps + SETTLE then
 			finishFlight()
@@ -321,6 +389,7 @@ function Arena.new(myId: number, root: Frame)
 		if movement < 0 then
 			local prep = elapsed / PREP
 			entry.model:PivotTo(CFrame.new(a - direction.Unit * (.36 * math.sin(math.pi * prep))) * CFrame.Angles(.13 * prep, yaw, 0))
+			Pawn.pose(entry.model, -prep * 1.75, prep * .60)
 			return
 		end
 		local hop = math.sin(math.pi * k)
@@ -331,8 +400,10 @@ function Arena.new(myId: number, root: Frame)
 		if ending then
 			local ease = math.clamp((movement - STEP * entry.steps) / SETTLE, 0, 1)
 			entry.model:PivotTo((CFrame.new(b) * CFrame.Angles(.12 * math.sin(math.pi * ease), yaw, 0)):Lerp(settled(b), ease))
+			Pawn.pose(entry.model, entry.steps * math.pi, 1 - ease)
 		else
-			entry.model:PivotTo(CFrame.new(travel + Vector3.yAxis * (hop ^ 1.35 * 1.12)) * CFrame.Angles(0, yaw, 0) * CFrame.Angles(lean, 0, 0))
+			entry.model:PivotTo(CFrame.new(travel + Vector3.yAxis * (hop ^ 1.35 * .92)) * CFrame.Angles(0, yaw, 0) * CFrame.Angles(lean, 0, 0))
+			Pawn.pose(entry.model, (beat + k + .3) * math.pi, 1)
 		end
 		local landed = if ending then entry.steps else beat
 		if landed > 0 and landed > entry.bounced then
@@ -362,8 +433,29 @@ function Arena.new(myId: number, root: Frame)
 		end
 	end
 
+	local function playShot(outcome: string, scorer: number)
+		if reduced then return end
+		if shot then shot.ball:Destroy() end
+		local ball = Instance.new("Model")
+		ball.Name, ball.Parent = "Matchday ball", effects
+		local core = part(ball, "Ball", Vector3.one * 2.28, Vector3.zero, Art.paper)
+		core.Shape, ball.PrimaryPart = Enum.PartType.Ball, core
+		for i = 1, 5 do
+			local angle = i * TAU / 5
+			local marking = part(ball, "Panel", Vector3.one * .84, Vector3.new(math.cos(angle) * .85, .50 * (-1) ^ i, math.sin(angle) * .85), Art.ink)
+			marking.Shape = Enum.PartType.Ball
+		end
+		ball:PivotTo(CFrame.new(-8, 1.3, 2.6))
+		shot = {ball = ball, start = os.clock(), outcome = outcome}
+		if outcome == "goal" then cheerId, cheerUntil = scorer, os.clock() + .92 end
+	end
+
 	return {
 		sync = sync,
+		relocalize = function()
+			labels.translate()
+			projectedCamera = nil
+		end,
 		pickTile = function(point: Vector3): number?
 			local camera = workspace.CurrentCamera
 			if not camera then return nil end
@@ -380,7 +472,14 @@ function Arena.new(myId: number, root: Frame)
 			return nil
 		end,
 		celebrate = celebrate,
-		reduceMotion = function(value: boolean) reduced = value end,
+		playShot = playShot,
+		reduceMotion = function(value: boolean)
+			reduced = value
+			if value then
+				if posed then Pawn.pose(posed, 0, 0) end
+				if heroModel then Pawn.pose(heroModel, 0, 0) end
+			end
+		end,
 	}
 end
 

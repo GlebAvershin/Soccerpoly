@@ -2,9 +2,9 @@
 local UI = {}
 local function c(hex: string): Color3 return Color3.fromHex(hex) end
 UI.color = table.freeze({
-	background = c("12283C"), panel = c("19364F"), surface = c("244963"), outline = c("587B90"),
-	text = c("FFF7E7"), muted = c("CBDDE7"), mint = c("80E3A8"), blue = c("8DD1F4"),
-	ink = c("132F45"), gold = c("FFCA68"), pink = c("FFB3A3"), paper = c("FFF8E8"),
+	background = c("0E1F25"), panel = c("15292F"), surface = c("223D40"), outline = c("4D6669"),
+	text = c("F8F8ED"), muted = c("BFD1CE"), mint = c("B4F190"), blue = c("9BDEF3"),
+	ink = c("132729"), gold = c("FFD279"), pink = c("FFC4B6"), paper = c("F6F4E8"),
 })
 local colors = UI.color
 
@@ -51,12 +51,13 @@ end
 
 function UI.label(parent: Instance, message: string, size: number, opts: {font: Enum.Font?, color: Color3?, align: Enum.TextXAlignment?, name: string?, ellipsis: boolean?}?): TextLabel
 	local o = opts or {}
+	size = math.max(12, size)
 	local l = Instance.new("TextLabel")
 	l.Name = o.name or "Text"
 	l.Size = UDim2.new(1, 0, 0, size + 4)
 	l.BackgroundTransparency = 1
 	l.Text, l.TextSize = message, size
-	l.TextColor3, l.Font = o.color or colors.text, o.font or Enum.Font.Gotham
+	l.TextColor3, l.Font = o.color or colors.text, o.font or Enum.Font.BuilderSans
 	l.TextXAlignment, l.TextYAlignment = o.align or Enum.TextXAlignment.Left, Enum.TextYAlignment.Center
 	l.TextWrapped = not o.ellipsis
 	if o.ellipsis then
@@ -75,7 +76,7 @@ function UI.button(parent: Instance, name: string, text: string, height: number,
 	b.BackgroundColor3 = fill or colors.surface
 	b.BorderSizePixel = 0
 	b.TextColor3 = color or colors.text
-	b.Text, b.TextSize, b.Font = text, 15, Enum.Font.GothamBold
+	b.Text, b.TextSize, b.Font = text, 16, Enum.Font.BuilderSansBold
 	b.TextWrapped = true
 	b.AutoButtonColor = callback ~= nil
 	b.Active = callback ~= nil

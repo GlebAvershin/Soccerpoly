@@ -2,7 +2,7 @@
 
 **Pitch:** Football club ownership as a quick, social table game. Pick a route, sign clubs around a miniature world and build league sets before the final whistle.
 
-The football action is decision-making: choosing transfers, collecting clubs by league and investing in a stadium. The visual fantasy is a daylight tabletop stadium, with toy footballers, a relief world map, directional motion and a TV scoreboard. The board lists 15 real clubs across five divisions, with three clubs per division. Players are original characters.
+The football action is decision-making: choosing transfers, collecting clubs by league and investing in a stadium. The visual fantasy is a daylight tabletop stadium, with articulated football figures, a central pitch, readable screen-space labels and a broadcast-style scoreboard. The board lists 15 real clubs across five divisions, with three clubs per division. Players are original characters.
 
 ## Continental Cup rules, v0.7.1
 

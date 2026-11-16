@@ -56,7 +56,11 @@ local ok, failure = pcall(function()
 	local lobby = await(function(data) return data.match == nil and #data.lobby == expected end, "full test lobby", if expected == 6 then 82 else 42)
 	task.wait(0.18)
 	button("StartSeason")
-	local board = workspace:WaitForChild("WorldDraftArena"):WaitForChild("Board")
+	local stage = workspace:WaitForChild("WorldDraftArena")
+	local board = stage:WaitForChild("Board")
+	local center = stage:WaitForChild("Continental Cup stadium")
+	assert(center:FindFirstChild("Grandstands") and center:FindFirstChild("Pitch and goals"), "Incomplete stadium")
+	local overlays = hud.Viewport:WaitForChild("BoardLabels")
 	local catalog = require(game:GetService("ReplicatedStorage").League.Board)
 	local tileCount, indices = 0, {}
 	local camera = workspace.CurrentCamera
@@ -78,13 +82,11 @@ local ok, failure = pcall(function()
 				assert(visible, "Board camera loses cell " .. index .. " at " .. tostring(camera.ViewportSize))
 			end
 			local tile = catalog.tiles[index]
-			local artwork = part.Artwork
-			assert(artwork.Value.Text ~= "", "Unlabelled board cell")
+			local label = assert(overlays:FindFirstChild("Cell" .. index))
+			assert(label.Title:IsA("TextLabel") and label.Title:GetAttribute("FullName") ~= "", "Unlabelled board cell")
+			if drawable then assert(label.Visible and label.Title.Text ~= "", "Label never projected") end
 			if tile.price > 0 then
-				assert(artwork.PropertyName.Text:gsub("\n", " ") == tile.name, "Wrong club on board cell " .. index)
-				assert(artwork.Value.Text == tostring(tile.price) .. " CR", "Wrong club price on board cell " .. index)
-			else
-				assert(artwork.EventName.Text ~= "", "Missing event name")
+				assert(label.Price.Text == tostring(tile.price) .. " CR", "Wrong club price on board cell " .. index)
 			end
 		end
 	end
@@ -111,7 +113,8 @@ local ok, failure = pcall(function()
 			assert(not hud.Viewport.DismissBackdrop.Visible, "Cell details did not close")
 		end
 	end
-	assert(hud:FindFirstChild("FootballerPreview", true), "No figure preview")
+	local figurePreview = assert(hud:FindFirstChild("FootballerPreview", true), "No figure preview")
+	assert(figurePreview:FindFirstChild("Left leg", true) and figurePreview:FindFirstChild("Right arm", true), "Figure rig missing")
 	report:FireServer("READY")
 	if lobby.host == me.UserId then
 		local waitUntil = os.clock() + 24

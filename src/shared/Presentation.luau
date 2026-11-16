@@ -6,14 +6,13 @@ function Style.hex(value: number): Color3
 	return Color3.fromRGB(math.floor(value / 65536), math.floor(value / 256) % 256, value % 256)
 end
 
-Style.ink = Color3.fromHex("19364D")
-Style.paper = Color3.fromHex("FFF8E6")
-Style.sea = Color3.fromHex("83C7DB")
-Style.field = Color3.fromHex("328677")
-Style.slate = Color3.fromHex("24465C")
-Style.gold = Color3.fromHex("FFBF50")
-Style.mint = Color3.fromHex("84E4AA")
-Style.route = table.freeze({0x67E3A2, 0x78C5FF})
+Style.ink = Color3.fromHex("122626")
+Style.paper = Color3.fromHex("F6F5E9")
+Style.field = Color3.fromHex("1F895B")
+Style.slate = Color3.fromHex("284349")
+Style.gold = Color3.fromHex("FFCB69")
+Style.mint = Color3.fromHex("A7ED8C")
+Style.route = table.freeze({0xB3FA87, 0x92DBF7})
 Style.tileWidth = 15.9
 Style.tileDepth = 9.95
 Style.tileTop = 0.69
@@ -25,7 +24,6 @@ Style.stops = table.freeze({
 Style.shortStop = table.freeze({
 	kickoff = "Kickoff", goalDeck = "Goal", offsideDeck = "Offside", matchday = "Matchday",
 })
-Style.sign = table.freeze({kickoff = "»", goalDeck = "+", offsideDeck = "!", matchday = "★"})
 
 function Style.accent(kind: string, league: number): Color3
 	return Style.hex(if league > 0 then Board.leagues[league].color else Style.stops[kind])
