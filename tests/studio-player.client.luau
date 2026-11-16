@@ -51,6 +51,49 @@ local ok, failure = pcall(function()
 	local lobby = await(function(data) return data.match == nil and #data.lobby == expected end, "full test lobby", 42)
 	task.wait(0.18)
 	button("StartSeason")
+	local board = workspace:WaitForChild("WorldDraftArena"):WaitForChild("Board")
+	local tileCount, indices = 0, {}
+	local camera = workspace.CurrentCamera
+	local cameraDeadline = os.clock() + 4
+	while camera.CameraType ~= Enum.CameraType.Scriptable and os.clock() < cameraDeadline do
+		task.wait(.05)
+		camera = workspace.CurrentCamera
+	end
+	assert(camera.CameraType == Enum.CameraType.Scriptable, "Board camera not active")
+	for _, part in board:GetDescendants() do
+		if part.Name == "Printed tile" then
+			local index = part:GetAttribute("BoardIndex")
+			assert(index and not indices[index], "Missing or duplicate board index")
+			tileCount += 1
+			indices[index] = true
+			local _, visible = camera:WorldToViewportPoint(part.Position + Vector3.yAxis * .11)
+			assert(visible, "Board camera loses cell " .. index .. " at " .. tostring(camera.ViewportSize))
+			assert(part.Artwork.City.Text ~= "" and part.Artwork.Value.Text ~= "", "Unlabelled board cell")
+		end
+	end
+	assert(tileCount == 24, "Incomplete board")
+	if expected == 1 and not device then
+		local virtual = game:GetService("UserInputService"):CreateVirtualInput()
+		if virtual then
+			local tile
+			for _, candidate in board:GetDescendants() do
+				if candidate:GetAttribute("BoardIndex") == 8 then tile = candidate break end
+			end
+			local screen = camera:WorldToViewportPoint(tile.Position + Vector3.yAxis * .11)
+			local function click(point)
+				virtual:SendMouseButton(point, Enum.UserInputType.MouseButton1, true, 0)
+				task.wait(.05)
+				virtual:SendMouseButton(point, Enum.UserInputType.MouseButton1, false, 0)
+				task.wait(.12)
+			end
+			click(Vector2.new(screen.X, screen.Y))
+			local details = hud:FindFirstChild("CellDetails", true)
+			assert(details, "Tap did not open cell details")
+			local close = hud:FindFirstChild("Close", true)
+			click(close.AbsolutePosition + close.AbsoluteSize * .5 + game:GetService("GuiService"):GetGuiInset())
+			assert(not hud.Viewport.DismissBackdrop.Visible, "Cell details did not close")
+		end
+	end
 	assert(hud:FindFirstChild("FootballerPreview", true), "No figure preview")
 	if lobby.host == me.UserId then
 		if expected == 1 then
@@ -74,8 +117,14 @@ local ok, failure = pcall(function()
 	local own = seatOf(begun.match)
 	assert(own.position == 1 and own.cash == 700)
 	if begun.host == me.UserId then
-		button("RouteShort")
-		button("RouteLong")
+		for _, action in {"RouteShort", "RouteLong"} do
+			local route = button(action)
+			assert(route.Destination.Text ~= "" and route.Stake.Text ~= "", "Missing route information")
+		end
+		local shownBy = os.clock() + 4
+		local viewport = hud.Viewport
+		while not (viewport.RouteBadge1.Visible and viewport.RouteBadge2.Visible) and os.clock() < shownBy do task.wait(.05) end
+		assert(viewport.RouteBadge1.Visible and viewport.RouteBadge2.Visible, "Route markers not shown")
 		assert((hud:FindFirstChild("CoachHint", true) ~= nil) == (begun.variant == "coach"), "First route hint does not match assignment")
 		task.wait(0.28)
 		intent:FireServer("long", begun.version - 1)
@@ -90,6 +139,8 @@ local ok, failure = pcall(function()
 		intent:FireServer("buy", offer.version)
 		local signed = await(function(data) return data.match.clubs[2].owner == me.UserId end, "one signing")
 		assert(seatOf(signed.match).cash == 540, "Duplicate buy was applied")
+		task.wait(.18)
+		assert(hud.Viewport.PlayResult.Visible, "Signing feedback not shown")
 	else
 		intent:FireServer("short", begun.version)
 	end

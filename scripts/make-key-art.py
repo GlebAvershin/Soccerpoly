@@ -5,13 +5,14 @@ import re
 
 ROOT = Path(__file__).resolve().parents[1]
 ART = ROOT / "art"
-WHITE, MINT, CYAN, NAVY = "#f3fff0", "#c4ff87", "#8dd2ff", "#0b1422"
+WHITE, MINT, NAVY = "#fff8e6", "#80e3a8", "#19364d"
+GOLD, TEAL = "#ffbf50", "#23596b"
 PALETTE = ["#ff9754", "#56c7fa", "#bc9aff", "#71dfad"]
 DEFS = """
-<linearGradient id="night" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#101e33"/><stop offset="1" stop-color="#07111a"/></linearGradient>
-<linearGradient id="pool" x1="0" y1="1" x2="1" y2="0"><stop stop-color="#142632"/><stop offset="1" stop-color="#294b52"/></linearGradient>
-<linearGradient id="lime" x1="0" y1="1" x2="1" y2="0"><stop stop-color="#78d59b"/><stop offset="1" stop-color="#ddff9f"/></linearGradient>
-<radialGradient id="beam"><stop stop-color="#4be2c2" stop-opacity=".34"/><stop offset="1" stop-color="#1f5076" stop-opacity="0"/></radialGradient>
+<linearGradient id="night" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#e5f6ef"/><stop offset="1" stop-color="#94cfdb"/></linearGradient>
+<linearGradient id="pool" x1="0" y1="1" x2="1" y2="0"><stop stop-color="#4c7890"/><stop offset="1" stop-color="#80b5bc"/></linearGradient>
+<linearGradient id="lime" x1="0" y1="1" x2="1" y2="0"><stop stop-color="#f1a634"/><stop offset="1" stop-color="#ffe2a2"/></linearGradient>
+<radialGradient id="beam"><stop stop-color="#fff8d5" stop-opacity=".75"/><stop offset="1" stop-color="#1f5076" stop-opacity="0"/></radialGradient>
 <pattern id="grid" width="38" height="38" patternUnits="userSpaceOnUse"><path d="M0 38V0H38" fill="none" stroke="#719aaf" stroke-opacity=".17"/></pattern>
 """
 
@@ -44,7 +45,7 @@ def shield(x, y, s, lines=True):
     if lines:
         art += label(0, -63, "W D", 20, NAVY, 900, 'text-anchor="middle" letter-spacing="5"')
     return (
-        f'<g transform="translate({x} {y}) scale({s})">{art}{ball(0, 0, 1.11, NAVY, MINT)}'
+        f'<g transform="translate({x} {y}) scale({s})">{art}{ball(0, 0, 1.11, NAVY, GOLD)}'
         '<path d="M-44 64H44" stroke="#273b43" stroke-width="3" stroke-linecap="round"/></g>'
     )
 
@@ -97,31 +98,30 @@ def iso(x, y):
 
 
 top = [rect(0, 0, 655, 550, "url(#pool)", 18, 'stroke="#4f8c91" stroke-width="5"'),
-       rect(12, 12, 631, 526, "#112031", 14, 'stroke="#a4ebbc" stroke-width="1.2"'),
-       rect(104, 88, 447, 358, "#193b4b", 8)]
+       rect(12, 12, 631, 526, "#275469", 14, 'stroke="#a4ebbc" stroke-width="1.2"'),
+       rect(104, 88, 447, 358, "#8ccadb", 8)]
 for i in range(115, 545, 21):
-    top.append(f'<path d="M{i} 93V439" stroke="#488090" opacity=".32"/>')
+    top.append(f'<path d="M{i} 93V439" stroke="#e6f2f3" opacity=".48"/>')
 for i in range(93, 444, 21):
-    top.append(f'<path d="M109 {i}H548" stroke="#488090" opacity=".32"/>')
+    top.append(f'<path d="M109 {i}H548" stroke="#e6f2f3" opacity=".48"/>')
 for y, x, length in land:
     top.append(rect(112 + x * 6, 110 + y * 9.6, length * 6 + 0.2, 9.8,
-                    ["#518372", "#528c78", "#57917d"][y % 3]))
+                    ["#77bda0", "#86c198", "#a2cf8c"][y % 3]))
 for x, y, color in [(330, 170, "#ff9754"), (485, 187, "#bc9aff"), (229, 301, "#71dfad"), (345, 254, "#56c7fa")]:
     top.append(f'<circle cx="{x}" cy="{y}" r="10" fill="{color}" opacity=".24"/><circle cx="{x}" cy="{y}" r="4.7" fill="{color}"/>')
-for n, (((col, row), (code, accent, price))) in enumerate(zip(path, tiles)):
+for (col, row), (code, accent, price) in zip(path, tiles):
     x, y = 21 + col * 88, 18 + row * 74
     top += [
-        rect(x, y, 82, 65, "#20344b", 5, f'stroke="{accent}" stroke-opacity=".56"'),
+        rect(x, y, 82, 65, WHITE, 6, f'stroke="{accent}" stroke-width="2"'),
         rect(x, y, 82, 4, accent, 2),
-        label(x + 9, y + 20, f"{n + 1:02}", 10, accent, 700),
-        label(x + 41, y + 43, code, 22, WHITE, 900, 'text-anchor="middle"'),
-        label(x + 41, y + 57, price or "WORLD", 9, accent, 700, 'text-anchor="middle"'),
+        label(x + 41, y + 34, code, 22, NAVY, 900, 'text-anchor="middle"'),
+        label(x + 41, y + 53, (price + " CR") if price else "", 11, NAVY, 700, 'text-anchor="middle"'),
     ]
-top.append(label(471, 425, "WORLD DRAFT", 16, WHITE, 850, 'text-anchor="end" letter-spacing="2"'))
-lines = ''.join(f'<path d="M{x} 0L{x-305} 900" stroke="#1a4254" stroke-width="1"/>' for x in [1130, 1190, 1250, 1310, 1370, 1430, 1490, 1550, 1610, 1670, 1730, 1790])
+top += [rect(228, 408, 199, 32, NAVY, 5), label(327, 430, "CONTINENTAL CUP", 14, WHITE, 850, 'text-anchor="middle" letter-spacing="1"')]
+lines = ''.join(f'<path d="M{x} 0L{x-305} 900" stroke="#35839b" opacity=".25" stroke-width="1"/>' for x in [1130, 1190, 1250, 1310, 1370, 1430, 1490, 1550, 1610, 1670, 1730, 1790])
 ground = '<ellipse cx="1135" cy="430" rx="640" ry="530" fill="url(#beam)"/>'
-shadow = '<path d="M623 643L1333 463L1540 596L839 824Z" fill="#01060c" opacity=".7"/>'
-platform = f'<g transform="matrix(1 -.27 .31 .76 678 236)">{rect(0,30,655,550,"#080f19",18)}{rect(0,15,655,550,"#234555",18)}{"".join(top)}</g>'
+shadow = '<path d="M623 643L1333 463L1540 596L839 824Z" fill="#225673" opacity=".26"/>'
+platform = f'<g transform="matrix(1 -.27 .31 .76 678 236)">{rect(0,30,655,550,"#25485d",18)}{rect(0,15,655,550,GOLD,18)}{"".join(top)}</g>'
 tokens = [
     token(*iso(310, 35), 0.62, "#f4d46b", "#39453f", "#cf9269", "#3b2a27", "CT"),
     token(*iso(170, 169), 0.62, "#f588a5", "#402a49", "#bd785b", "#262132", "RF"),
@@ -138,20 +138,14 @@ cup = '''
 <path d="M-24-3H24" stroke="#fff4bb" stroke-width="4"/>
 </g>'''
 left = (
-    shield(111, 133, 0.39)
-    + label(174, 125, "FOOTBOLAPOLIA", 26, WHITE, 900, 'letter-spacing="3"')
-    + label(176, 151, "FOOTBALL STRATEGY  /  CONTINENTAL CUP", 12, CYAN, 700, 'letter-spacing="2.2"')
-    + label(72, 361, "THE WORLD", 87, WHITE, 900, 'letter-spacing="-3"')
-    + label(66, 495, "DRAFT", 145, MINT, 900, 'letter-spacing="-5"')
-    + rect(76, 537, 66, 5, MINT, 2)
-    + label(76, 588, "Pick a route. Sign a club.", 27, WHITE, 650)
-    + label(76, 626, "Build the winning portfolio.", 27, "#b3c9df", 500)
+    shield(114, 148, 0.38)
+    + label(179, 145, "FOOTBOLAPOLIA", 29, NAVY, 900, 'letter-spacing="2"')
+    + label(72, 373, "THE WORLD", 88, NAVY, 900, 'letter-spacing="-3"')
+    + label(65, 503, "DRAFT", 147, TEAL, 900, 'letter-spacing="-5"')
+    + rect(77, 542, 86, 6, GOLD, 3)
+    + label(77, 608, "Build your football empire.", 29, NAVY, 650)
 )
-chips = ""
-for x, w, text in [(77, 111, "1–6 PLAYERS"), (199, 110, "8 ROUNDS"), (320, 113, "4 LEAGUES")]:
-    chips += rect(x, 686, w, 37, "#162a39", 7, 'stroke="#45657a"') + label(x + w/2, 709, text, 12, MINT, 850, 'text-anchor="middle" letter-spacing=".8"')
-footer = rect(76, 802, 1448, 1, "#3b596d") + label(76, 836, "WORLD DRAFT  /  01", 12, "#9eb5c8", 700, 'letter-spacing="3"') + label(1524, 836, "FOOTBALL BOARD STRATEGY", 12, "#9eb5c8", 700, 'text-anchor="end" letter-spacing="3"')
-art = rect(0, 0, 1600, 900, "url(#night)") + ground + lines + shadow + platform + "".join(tokens) + cup + left + chips + footer
+art = rect(0, 0, 1600, 900, "url(#night)") + ground + lines + shadow + platform + "".join(tokens) + cup + left
 (ART / "world-draft-thumb.svg").write_text(canvas(1920, 1080, 1600, 900, art, "Footbolapolia: The World Draft — cover"))
 icon = (
     rect(0, 0, 512, 512, "url(#night)")
@@ -160,8 +154,8 @@ icon = (
     + '<circle cx="256" cy="227" r="187" fill="none" stroke="#65b6a6" stroke-opacity=".65" stroke-width="2" stroke-dasharray="6 9"/>'
     + '<path d="M48 222H464M256 30V424" stroke="#70bcab" stroke-opacity=".38" stroke-width="2"/>'
     + shield(256, 220, 1.36)
-    + label(256, 452, "WORLD DRAFT", 40, WHITE, 900, 'text-anchor="middle" letter-spacing="1.5"')
-    + label(256, 479, "F O O T B O L A P O L I A", 12, MINT, 700, 'text-anchor="middle"')
+    + label(256, 452, "WORLD DRAFT", 40, NAVY, 900, 'text-anchor="middle" letter-spacing="1.5"')
+    + label(256, 479, "F O O T B O L A P O L I A", 12, TEAL, 700, 'text-anchor="middle"')
 )
 (ART / "world-draft-icon.svg").write_text(canvas(512, 512, 512, 512, icon, "World Draft — game icon"))
 print(f"Created key art for {len(tiles)} tiles and {len(land)} map spans")

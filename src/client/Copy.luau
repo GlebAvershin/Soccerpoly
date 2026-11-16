@@ -1,5 +1,11 @@
 --!strict
 local ru: {[string]: string} = {
+	["GOAL!"] = "ГОЛ!", ["Clubs"] = "Клубы", ["Your club"] = "Твой клуб", ["Gate · −%d CR"] = "Сбор · −%d CR",
+	["Draw a card"] = "Взять карту", ["Play for a cup"] = "Шанс на кубок", ["BOARD CELL"] = "КЛЕТКА ПОЛЯ",
+	["Tap any cell to see its full details."] = "Нажми на любую клетку, чтобы узнать подробности.",
+	["Draw a card from the tactics deck."] = "Возьми карту из колоды тактики.",
+	["Club signed"] = "Клуб подписан", ["Stadium upgraded"] = "Стадион улучшен", ["League complete"] = "Лига собрана",
+
 	["Coach tip: a free club pays you when rivals visit."] = "Совет тренера. Выбери свободный клуб, чтобы получать сборы с соперников.",
 	["CUP CHANCE"] = "ШАНС НА КУБОК",
 	["Take the shot?"] = "Пробить по воротам?",
@@ -19,7 +25,7 @@ local ru: {[string]: string} = {
 	["Choose a route"] = "Выбери маршрут", ["Preview the destination. Then pick your move."] = "Посмотри, куда ведёт каждый маршрут, и выбери ход.",
 	["%s's turn"] = "Ход: %s", ["%s is deciding. You're up soon."] = "%s выбирает действие.",
 	["Watch this season and join the next one."] = "Смотри этот сезон и присоединяйся к следующему.",
-	["%d steps"] = "%d кл.", ["Sign this club?"] = "Подписать клуб?", ["Upgrade your stadium?"] = "Улучшить стадион?",
+	["1 step"] = "1 кл.", ["%d steps"] = "%d кл.", ["Sign this club?"] = "Подписать клуб?", ["Upgrade your stadium?"] = "Улучшить стадион?",
 	["Sign · %d CR"] = "Подписать · %d CR", ["Upgrade · %d CR"] = "Улучшить · %d CR",
 	["Pass"] = "Пропустить", ["Gate +%d CR each visit from a rival."] = "Соперник платит %d CR за визит.",
 	["Sign all 3 clubs in a league to double their gate."] = "Собери 3 клуба одной лиги, чтобы удвоить их сборы.",

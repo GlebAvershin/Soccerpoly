@@ -2,9 +2,9 @@
 local UI = {}
 local function c(hex: string): Color3 return Color3.fromHex(hex) end
 UI.color = table.freeze({
-	background = c("0B1422"), panel = c("101D2D"), surface = c("192B3E"), outline = c("2C495D"),
-	text = c("F0F5FC"), muted = c("ADBED1"), mint = c("C4FF87"), blue = c("8DD2FF"),
-	ink = c("111D28"), gold = c("FFD680"), pink = c("FCA39B"),
+	background = c("12283C"), panel = c("19364F"), surface = c("244963"), outline = c("587B90"),
+	text = c("FFF7E7"), muted = c("CBDDE7"), mint = c("80E3A8"), blue = c("8DD1F4"),
+	ink = c("132F45"), gold = c("FFCA68"), pink = c("FFB3A3"), paper = c("FFF8E8"),
 })
 local colors = UI.color
 
@@ -75,13 +75,16 @@ function UI.button(parent: Instance, name: string, text: string, height: number,
 	b.BackgroundColor3 = fill or colors.surface
 	b.BorderSizePixel = 0
 	b.TextColor3 = color or colors.text
-	b.Text, b.TextSize, b.Font = text, 14, Enum.Font.GothamBold
+	b.Text, b.TextSize, b.Font = text, 15, Enum.Font.GothamBold
 	b.TextWrapped = true
 	b.AutoButtonColor = callback ~= nil
 	b.Active = callback ~= nil
 	b.Selectable = callback ~= nil
-	UI.round(b, 9)
-	if callback then b.Activated:Connect(callback) end
+	UI.round(b, 10)
+	if callback then
+		UI.stroke(b, b.BackgroundColor3:Lerp(colors.ink, .34))
+		b.Activated:Connect(callback)
+	end
 	b.Parent = parent
 	return b
 end
