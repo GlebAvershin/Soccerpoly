@@ -2,12 +2,13 @@
 local shared = game:GetService("ReplicatedStorage"):WaitForChild("League")
 local Board = require(shared.Board)
 local Art = require(shared.Presentation)
-local Meshes = require(script.Parent.PawnMeshes)
+local Meshes = require(script.Parent.MeshLibrary)
+local Motion = require(script.Parent.PawnMotionData)
 local Pawn = {}
 local C = Color3.fromHex
 
 type Joint = {model: Model, rest: CFrame}
-type Rig = {arms: {Joint}, legs: {Joint}, head: Joint, body: Joint}
+type Rig = {Joint}
 local rigs: {[Model]: Rig} = setmetatable({}, {__mode = "k"}) :: any
 
 function Pawn.make(figure: number, parent: Instance): Model
@@ -114,53 +115,70 @@ function Pawn.make(figure: number, parent: Instance): Model
 		soft("Eyebrow", .29, .087, .08, x, 4.875, .678, hair, -side * .11)
 	end
 	if figure == 5 then
-		soft("Cap crown", 1.93, .69, 1.61, 0, 5.13, -.035, trim)
-		soft("Structured brim", 1.44, .155, 1.07, 0, 5.02, .62, kit)
+		local cap = soft("Cap crown", 1.93, .69, 1.61, 0, 5.13, -.035, trim)
+		local brim = soft("Structured brim", 1.44, .155, 1.07, 0, 5.02, .62, kit)
+		Meshes.apply("cap", cap, {brim})
 		soft("Embroidered cap crest", .28, .21, .08, 0, 5.22, .706, Art.gold)
 	elseif figure == 2 or figure == 6 then
-		soft("Side part", 1.83, .83, 1.57, 0, 5.018, -.08, hair)
-		soft("Swept fringe", 1.10, .46, .58, -.36, 5.02, .60, hair, -.20)
+		local crown = soft("Side part", 1.83, .83, 1.57, 0, 5.018, -.08, hair)
+		local fringe = soft("Swept fringe", 1.10, .46, .58, -.36, 5.02, .60, hair, -.20)
+		Meshes.apply("sweep", crown, {fringe})
 		soft(if figure == 2 then "Ponytail" else "Bun", .74, if figure == 2 then 1.38 else .82, .76, .42, 4.69, -.68, hair, .29)
 		soft("Hair tie", .64, .15, .67, .37, 5.00, -.51, kit)
 	elseif figure == 1 or figure == 4 then
-		soft("Curl base", 1.80, .62, 1.55, 0, 5.02, -.09, hair)
+		local crown = soft("Curl base", 1.82, .70, 1.66, 0, 5.175, .015, hair)
+		local curls: {Instance} = {}
 		for i = -2, 2 do
 			local tint = hair:Lerp(C("624638"), .12 + .07 * (i % 2))
-			soft("Sculpted curl", .60, .54, .60, i * .31, 5.17 + .065 * (2 - math.abs(i)), .35, tint)
+			table.insert(curls, soft("Sculpted curl", .60, .54, .60, i * .31, 5.17 + .065 * (2 - math.abs(i)), .35, tint))
 		end
+		Meshes.apply("curls", crown, curls)
 		if figure == 4 then soft("Keeper band", 1.83, .17, 1.58, 0, 4.95, .02, kit) end
 	else
-		soft("Tapered hair", 1.86, .70, 1.53, 0, 5.02, -.13, hair)
+		local crown = soft("Tapered hair", 1.86, .70, 1.53, 0, 5.02, -.13, hair)
+		local fringe: {Instance} = {}
 		for i = 0, 2 do
-			soft("Sculpted fringe", 1.03 - i * .13, .40, .54, -.31 + .25 * i, 5.04 + i * .041, .59, hair, -.26)
+			table.insert(fringe, soft("Sculpted fringe", 1.03 - i * .13, .40, .54, -.31 + .25 * i, 5.04 + i * .041, .59, hair, -.26))
 		end
+		Meshes.apply("sweep", crown, fringe)
 	end
 	head.model.WorldPivot = head.rest
-	rigs[model] = {arms = arms, legs = legs, body = body, head = head}
+	rigs[model] = {body, head, arms[1], arms[2], legs[1], legs[2]}
 	model.Parent = parent
 	return model
+end
+
+local clips: {[string]: {{CFrame}}} = {}
+for name, samples in Motion do
+	local frames = {}
+	for i, sample in samples do
+		local joints = {}
+		for index = 1, #sample, 7 do
+			table.insert(joints, CFrame.new(sample[index], sample[index + 1], sample[index + 2],
+				sample[index + 3], sample[index + 4], sample[index + 5], sample[index + 6]))
+		end
+		frames[i] = joints
+	end
+	clips[name] = frames
+end
+
+local function frameAt(clip: {{CFrame}}, progress: number): ({CFrame}, {CFrame}, number)
+	local position = 1 + math.clamp(progress, 0, 1) * (#clip - 1)
+	local lower = math.floor(position)
+	return clip[lower], clip[math.min(lower + 1, #clip)], position - lower
 end
 
 function Pawn.pose(model: Model, phase: number, running: number, celebration: number?)
 	local rig = rigs[model]
 	if not rig then return end
-	local at = model:GetPivot()
-	local stride, sway = math.sin(phase), math.sin(phase * .5)
-	local cheer = celebration or 0
-	local scale = model:GetScale()
-	local function pivot(joint: Joint): CFrame
-		return at * CFrame.new(joint.rest.Position * scale)
-	end
-	rig.body.model:PivotTo(pivot(rig.body) * CFrame.Angles(.11 * running, .055 * stride * running, .035 * sway))
-	rig.head.model:PivotTo(pivot(rig.head) * CFrame.Angles(.06 * stride * running, .12 * sway * (1 - running), -.052 * sway))
-	for i, arm in rig.arms do
-		local side = if i == 1 then -1 else 1
-		arm.model:PivotTo(pivot(arm) * CFrame.Angles(-side * stride * .68 * running - cheer * 1.28,
-			0, side * (.035 + .14 * running + .87 * cheer)))
-	end
-	for i, leg in rig.legs do
-		local side = if i == 1 then -1 else 1
-		leg.model:PivotTo(pivot(leg) * CFrame.Angles(side * stride * .58 * running, 0, -.03 * sway * (1 - running)))
+	local cycle = (phase / (2 * math.pi)) % 1
+	local clip = if celebration then clips.cheer elseif running > 0 then clips.stride else clips.idle
+	local before, after, weight = frameAt(clip, celebration or cycle)
+	local blend = if celebration or clip == clips.idle then 1 else math.clamp(running, 0, 1)
+	local at, scale = model:GetPivot(), model:GetScale()
+	for i, joint in rig do
+		local motion = CFrame.identity:Lerp(before[i]:Lerp(after[i], weight), blend)
+		joint.model:PivotTo(at * CFrame.new((joint.rest.Position + motion.Position) * scale) * motion.Rotation)
 	end
 end
 

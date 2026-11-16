@@ -10,9 +10,12 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--rojo", default="rojo")
 parser.add_argument("--players", type=int, choices=[1, 2, 6], default=1)
 parser.add_argument("--device", choices=["portrait", "landscape"])
+parser.add_argument("--art", action="store_true", help="verify the in-game Blender meshes in a single-client test")
 parser.add_argument("--launchservices", action="store_true", help="use native macOS app launch instead of direct CLI")
 parser.add_argument("--studio", default="/Applications/RobloxStudio.app/Contents/MacOS/RobloxStudio")
 args = parser.parse_args()
+if args.art and args.players != 1:
+    parser.error("--art uses a single test client")
 work = root / ".tools"
 work.mkdir(exist_ok=True)
 mode = {1: "WorldDraftSmoke", 2: "WorldDraftDuo", 6: "WorldDraftSix"}[args.players]
@@ -29,6 +32,8 @@ with tempfile.TemporaryDirectory(prefix=mode + "-", dir=work) as folder:
                else f'test:ExecuteMultiplayerTestAsync({args.players}, "{mode}")')
     device = ("local fixture = game:GetService('StarterPlayer').StarterPlayerScripts."
               f'Footbolapolia["studio-player"]\nfixture:SetAttribute("ExpectedPlayers", {args.players})\n')
+    if args.art:
+        device += 'fixture:SetAttribute("VerifyBlenderArt", true)\n'
     if args.device:
         portrait = args.device == "portrait"
         direction = "Portrait" if portrait else "LandscapeLeft"

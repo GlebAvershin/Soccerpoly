@@ -12,6 +12,7 @@ local Art = require(shared.Presentation)
 local Game = require(shared.Rules).withBoard(Board, require(shared.EventCards))
 local View = require(script.Parent.ViewLayout)
 local Pawn = require(script.Parent.Pawn)
+local Meshes = require(script.Parent.MeshLibrary)
 local BoardLabels = require(script.Parent.BoardLabels)
 local UI = require(script.Parent.Components)
 local Arena = {}
@@ -58,10 +59,19 @@ local function route(selection: Folder, index: number, color: Color3): Vector3
 	return Vector3.new(p.X - 6.0, y + 1.0, p.Z - 4.60)
 end
 
+local function decorated(parent: Instance, name: string, shape: string, size: Vector3, at: Vector3, fallback: Instance)
+	local marker = part(parent, name, size, at, Color3.new(1, 1, 1))
+	marker.Transparency = 1
+	marker:SetAttribute("MeshPlaceholder", true)
+	Meshes.apply(shape, marker, {fallback})
+end
+
 local function clubStadium(parent: Folder, p: Vector3, level: number, color: Color3)
 	local x, z = p.X + 5.95, p.Z - 2.95
+	local fallback = Instance.new("Folder")
+	fallback.Parent = parent
 	local function stadiumPart(name: string, width: number, height: number, depth: number, px: number, y: number, pz: number, tint: Color3)
-		return part(parent, name, Vector3.new(width, height, depth), Vector3.new(px, y, pz), tint)
+		return part(fallback, name, Vector3.new(width, height, depth), Vector3.new(px, y, pz), tint)
 	end
 	stadiumPart("Stadium foundations", 2.83, .31, 2.58, x, .86, z, Art.ink)
 	stadiumPart("Stadium pitch", 2.62, .12, 2.38, x, 1.06, z, Art.field)
@@ -70,19 +80,25 @@ local function clubStadium(parent: Folder, p: Vector3, level: number, color: Col
 		local px = x + side * 1.18
 		stadiumPart("Terrace", .45, .22 + level * .26, 2.40, px, 1.22, z, color)
 		if level == 2 then stadiumPart("Stadium canopy", .65, .13, 2.60, px, 1.79, z, Art.paper) end
-		stadiumPart("Scoreboard", .17, .35, .68, x + side * 1.29, 1.21, z, Art.ink)
 	end
+	local height = if level == 2 then 1.31 else .79
+	decorated(parent, "Club stadium", if level == 2 then "arena" else "academy",
+		Vector3.new(3.06, height, 2.51), Vector3.new(x, Art.tileTop + height * .5, z), fallback)
 end
 
 local function trophy(parent: Folder, at: Vector3, color: Color3)
-	medallion(parent, "Cup base", at + Vector3.yAxis * .37, 1.73, .24, color)
-	medallion(parent, "Cup stem", at + Vector3.yAxis * .76, .41, .70, Art.gold)
-	medallion(parent, "Continental Cup", at + Vector3.yAxis * 1.29, 1.08, .64, Art.gold)
-	medallion(parent, "Cup rim", at + Vector3.yAxis * 1.64, 1.20, .13, C("FFE595"))
+	local fallback = Instance.new("Folder")
+	fallback.Parent = parent
+	medallion(parent, "Cup base", at + Vector3.yAxis * .15, 1.73, .20, color)
+	medallion(fallback, "Cup stem", at + Vector3.yAxis * .66, .41, .70, Art.gold)
+	medallion(fallback, "Continental Cup", at + Vector3.yAxis * 1.20, 1.08, .64, Art.gold)
+	medallion(fallback, "Cup rim", at + Vector3.yAxis * 1.58, 1.20, .13, C("FFE595"))
 	for _, side in {-1, 1} do
-		local handle = part(parent, "Cup handle", Vector3.new(.27, .47, .24), at + Vector3.new(side * .62, 1.37, 0), Art.gold)
+		local handle = part(fallback, "Cup handle", Vector3.new(.27, .47, .24), at + Vector3.new(side * .62, 1.32, 0), Art.gold)
 		handle.CFrame *= CFrame.Angles(0, 0, side * .38)
 	end
+	decorated(parent, "Continental Cup", "cup", Vector3.new(1.98, 1.64, 1.27),
+		at + Vector3.yAxis * .91, fallback)
 end
 
 type Flight = {model: Model, shadow: Part, start: number, from: number, steps: number, figure: number, color: Color3, bounced: number}
@@ -90,6 +106,10 @@ local PREP, STEP, SETTLE = .10, .105, .10
 
 function Arena.new(myId: number, root: Frame, translate: (string) -> string)
 	local labels = BoardLabels(root, translate)
+	task.defer(function()
+		local stage = workspace:WaitForChild("WorldDraftArena", 12)
+		if stage then Meshes.decorate(stage) end
+	end)
 	local localParts = Instance.new("Folder")
 	localParts.Name, localParts.Parent = "LocalTablePieces", workspace
 	local markers = Instance.new("Folder")
@@ -211,7 +231,7 @@ function Arena.new(myId: number, root: Frame, translate: (string) -> string)
 		for slot, seat in s.seats do
 			local color = Art.hex(Board.figures[seat.figure].color)
 			colors[seat.id] = color
-			if seat.trophies > 0 then trophy(markers, Vector3.new((slot - 3.5) * 4.1, .43, 24.95), color) end
+			if seat.trophies > 0 then trophy(markers, Vector3.new((slot - (#s.seats + 1) * .5) * 4.1, .43, 27), color) end
 		end
 		for i, club in s.clubs do
 			if club.owner ~= 0 then
@@ -248,7 +268,7 @@ function Arena.new(myId: number, root: Frame, translate: (string) -> string)
 			if chosen ~= heroFigure or not heroModel then
 				if heroModel then heroModel:Destroy() end
 				local model = Pawn.make(chosen, localParts)
-				model:ScaleTo(2.35)
+				model:ScaleTo(2.72)
 				model:PivotTo(settled(Vector3.new(0, .36, -.90)))
 				heroModel, heroFigure, lastIdlePose = model, chosen, -1
 			end
@@ -342,7 +362,7 @@ function Arena.new(myId: number, root: Frame, translate: (string) -> string)
 		posed = focus
 		if not reduced then
 			if focus then
-				local cheer = if cheerUntil > clock then math.sin(math.clamp((cheerUntil - clock) / .92, 0, 1) * math.pi) else 0
+				local cheer = if cheerUntil > clock then 1 - (cheerUntil - clock) / .92 else nil
 				Pawn.pose(focus, clock * 2.8, 0, cheer)
 			elseif heroModel then
 				local poseFrame = math.floor(clock * 30)
@@ -438,13 +458,18 @@ function Arena.new(myId: number, root: Frame, translate: (string) -> string)
 		if shot then shot.ball:Destroy() end
 		local ball = Instance.new("Model")
 		ball.Name, ball.Parent = "Matchday ball", effects
-		local core = part(ball, "Ball", Vector3.one * 2.28, Vector3.zero, Art.paper)
-		core.Shape, ball.PrimaryPart = Enum.PartType.Ball, core
+		local pivot = part(ball, "Ball pivot", Vector3.one * .05, Vector3.zero, Art.paper)
+		pivot.Transparency, ball.PrimaryPart = 1, pivot
+		local fallback = Instance.new("Folder")
+		fallback.Parent = ball
+		local core = part(fallback, "Ball", Vector3.one * 2.28, Vector3.zero, Art.paper)
+		core.Shape = Enum.PartType.Ball
 		for i = 1, 5 do
 			local angle = i * TAU / 5
-			local marking = part(ball, "Panel", Vector3.one * .84, Vector3.new(math.cos(angle) * .85, .50 * (-1) ^ i, math.sin(angle) * .85), Art.ink)
+			local marking = part(fallback, "Panel", Vector3.one * .84, Vector3.new(math.cos(angle) * .85, .50 * (-1) ^ i, math.sin(angle) * .85), Art.ink)
 			marking.Shape = Enum.PartType.Ball
 		end
+		decorated(ball, "Stitched football", "ball", Vector3.one * 2.28, Vector3.zero, fallback)
 		ball:PivotTo(CFrame.new(-8, 1.3, 2.6))
 		shot = {ball = ball, start = os.clock(), outcome = outcome}
 		if outcome == "goal" then cheerId, cheerUntil = scorer, os.clock() + .92 end

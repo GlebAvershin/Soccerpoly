@@ -1,4 +1,4 @@
-# Continental Cup v0.8
+# Continental Cup v0.9
 
 Внутри контура из 24 клеток стоит настольный стадион с размеченным газоном, воротами, рядами сидений, тоннелями и прожекторами. В лобби выбранная фигурка стоит на газоне в увеличенном масштабе. В матче центр освобождается для коротких повторов ударов.
 
@@ -12,14 +12,40 @@
 
 В публичном трейлере и скриншотах Business Tour читаемость доски поддерживают светлые клетки, отделённые от центра объёмные миниатюры и короткие акценты на итогах действий. Эти приёмы перенесены в футбольную сцену с оригинальной геометрией. [Материалы 8Floor в Steam](https://store.steampowered.com/app/397900/Business_Tour/?l=english).
 
-Геометрия строится в `src/server/World.luau`. Проекция подписей — в `src/client/BoardLabels.luau`. Модели и движения — в `src/client/Pawn.luau` и `src/client/Arena.luau`. Использованы навыки работы с ассетами, HUD, камерой и движением из [gamedev-skills](https://github.com/gamedev-skills/awesome-gamedev-agent-skills).
+Геометрия размещается в `src/server/World.luau`. Подписи ячеек проецируются в `src/client/BoardLabels.luau`. Модели и движения интегрированы в `src/client/Pawn.luau` и `src/client/Arena.luau`. Использованы навыки работы с ассетами, HUD, камерой и движением из [gamedev-skills](https://github.com/gamedev-skills/awesome-gamedev-agent-skills).
+
+## Как показать Blender в портфолио
+
+![Трибуна, ворота, тоннель, клубный стадион, кубок и мяч, отрендеренные в Blender Cycles](../art/blender-stadium-kit.png)
+
+| Исходник | Что из него использует Roblox |
+| --- | --- |
+| [Стадион и реквизит](../art/stadium-kit.blend) | 14 форм, включая корпус и ячейки стола, трибуну, ворота, тоннель, скамейку, башню освещения, мяч, кубок, две ступени клубного стадиона и варианты причёсок и кепки. Материалы передаются как цвета граней. |
+| [Фигурки](../art/pawn-shapes.blend) | Четыре общих формы головы, футболки, шорт и бутс. Варианты формы и кожи назначаются в игре. |
+| [Анимация фигурки](../art/pawn-motion.blend) | Ключи ожидания, бега и празднования на шести шарнирах. В Roblox проигрываются экспортированные кватернионы и смещения. Положение фишки на доске определяет состояние партии. |
+
+Все модели и клипы из таблицы созданы для проекта. Источники открываются в Blender 4.5 LTS. Чтобы повторить экспорт после изменения объектов или ключей, сохраняйте их имена и диапазоны клипов на шкале времени.
+
+```sh
+blender_app=/Applications/Blender.app/Contents/MacOS/Blender
+"$blender_app" -b art/stadium-kit.blend -t 2 --python-exit-code 1 --python scripts/make-stadium-art.py -- --export
+"$blender_app" -b art/pawn-motion.blend -t 2 --python-exit-code 1 --python scripts/make-pawn-motion.py -- --export
+"$blender_app" -b -t 4 --python-exit-code 1 --python scripts/render-stadium-kit.py
+make build
+python3 scripts/studio-qa.py --art
+```
+
+Клиент последовательно запекает формы в `DataModelContent`, освобождает редактируемый меш и повторно использует по одному шаблону на форму. При отсутствии доступа к Mesh API остаются запасные модели Roblox. Для показа детальных моделей в опубликованном плейсе требуется настройка Mesh / Image APIs. [Документация Roblox](https://create.roblox.com/docs/reference/engine/classes/EditableMesh).
+
+Сравните исходники и рендер с [кадром лобби из Roblox Studio](../art/studio-stadium-v090.png) и [кадром Matchday](../art/studio-matchday-v090.png). В исходнике анимации видны ключи шагов, в игре тот же клип переносится на выбранную фигурку и разворачивается по маршруту.
 
 ## Фигурки v0.8.1
 
 Голова, футболка, шорты и бутсы собраны в Blender 4.5 LTS. Откройте [pawn-shapes.blend](../art/pawn-shapes.blend), чтобы изменить форму. Команда ниже повторно экспортирует геометрию для Roblox из сохранённой сцены.
 
 ```sh
-blender -b art/pawn-shapes.blend -t 2 --python-exit-code 1 --python scripts/make-pawn-meshes.py -- --export
+blender_app=/Applications/Blender.app/Contents/MacOS/Blender
+"$blender_app" -b art/pawn-shapes.blend -t 2 --python-exit-code 1 --python scripts/make-pawn-meshes.py -- --export
 make build
 ```
 

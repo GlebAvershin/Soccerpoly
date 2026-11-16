@@ -5,6 +5,15 @@ local report, intent, pushes = net:WaitForChild("StudioReport"), net.Intent, net
 local hud = me:WaitForChild("PlayerGui"):WaitForChild("WorldDraftHUD", 8)
 local last
 local expected = script:GetAttribute("ExpectedPlayers") or 1
+local verifyArt = script:GetAttribute("VerifyBlenderArt") == true
+
+local function blenderCount(container)
+	local count = 0
+	for _, part in container:GetDescendants() do
+		if part:IsA("MeshPart") and part:GetAttribute("BlenderMesh") then count += 1 end
+	end
+	return count
+end
 pushes.OnClientEvent:Connect(function(snapshot) last = snapshot end)
 local function await(predicate, label, limit)
 	local deadline = os.clock() + (limit or (if expected == 6 then 30 else 10))
@@ -115,6 +124,12 @@ local ok, failure = pcall(function()
 	end
 	local figurePreview = assert(hud:FindFirstChild("FootballerPreview", true), "No figure preview")
 	assert(figurePreview:FindFirstChild("Left leg", true) and figurePreview:FindFirstChild("Right arm", true), "Figure rig missing")
+	if verifyArt then
+		local limit = os.clock() + 9
+		while (blenderCount(stage) < 55 or blenderCount(figurePreview) < 7) and os.clock() < limit do task.wait(.10) end
+		assert(blenderCount(stage) == 55, "Incomplete Blender stadium")
+		assert(blenderCount(figurePreview) == 7, "Incomplete Blender figure")
+	end
 	report:FireServer("READY")
 	if lobby.host == me.UserId then
 		local waitUntil = os.clock() + 24
@@ -389,7 +404,9 @@ local ok, failure = pcall(function()
 	assert(hud:FindFirstChild("Rank1", true))
 	if final.host == me.UserId then
 		assert(visitedBench and visitedCup and seatOf(final.match).trophies > 0, "Host did not exercise bench and cup gameplay")
-		assert(workspace.LocalTablePieces.Markers:FindFirstChild("Continental Cup"), "Cup visualization missing")
+		local cup = workspace.LocalTablePieces.Markers:FindFirstChild("Continental Cup")
+		assert(cup, "Cup visualization missing")
+		if verifyArt then assert(cup:IsA("MeshPart") and cup:GetAttribute("BlenderMesh"), "Missing Blender cup") end
 		task.wait(if expected == 6 then 1.20 else 0.25)
 		intent:FireServer("lobby", final.version)
 	end

@@ -37,7 +37,10 @@ gui.ResetOnSpawn = false
 gui.ScreenInsets = Enum.ScreenInsets.CoreUISafeInsets
 gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 gui.Parent = Player:WaitForChild("PlayerGui")
-pcall(function() StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.PlayerList, false) end)
+pcall(function()
+	StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.PlayerList, false)
+	StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Chat, false)
+end)
 local root = UI.box(gui, "Viewport")
 root.Size = UDim2.fromScale(1, 1)
 local tableView = Arena.new(Player.UserId, root, t)
