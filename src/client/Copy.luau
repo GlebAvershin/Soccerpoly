@@ -1,0 +1,50 @@
+--!strict
+local ru: {[string]: string} = {
+	["THE WORLD DRAFT  /  SEASON 01"] = "МИРОВОЙ ДРАФТ  /  СЕЗОН 01",
+	["TABLE BRIEFING"] = "ПЕРЕД МАТЧЕМ", ["KICKOFF"] = "СТАРТ", ["ROUND %d / %d"] = "РАУНД %d / %d",
+	["Choose your footballer"] = "Выбери футболиста", ["All figures play by the same rules."] = "У всех фигурок одинаковые возможности.",
+	["Your selection"] = "Твоя фигурка", ["Start season"] = "Начать сезон", ["Waiting for the host"] = "Ждём организатора",
+	["%d online · bots fill empty seats"] = "В лобби: %d · боты дополнят стол",
+	["Open the rules at any time."] = "Правила можно открыть в любой момент.",
+	["Choose a route"] = "Выбери маршрут", ["Preview the destination. Then pick your move."] = "Посмотри, куда ведёт каждый маршрут, и выбери ход.",
+	["%s's turn"] = "Ход: %s", ["%s is deciding. You're up soon."] = "%s выбирает действие.",
+	["Watch this season and join the next one."] = "Смотри этот сезон и присоединяйся к следующему.",
+	["%d steps"] = "%d кл.", ["Sign this club?"] = "Подписать клуб?", ["Upgrade your stadium?"] = "Улучшить стадион?",
+	["Sign · %d CR"] = "Подписать · %d CR", ["Upgrade · %d CR"] = "Улучшить · %d CR",
+	["Pass"] = "Пропустить", ["Gate +%d CR each visit from a rival."] = "Соперник платит %d CR за визит.",
+	["Sign all 3 clubs in a league to double their gate."] = "Собери 3 клуба одной лиги, чтобы удвоить их сборы.",
+	["Level %d → %d · gate +%d CR"] = "Уровень %d → %d · к сборам +%d CR",
+	["Final whistle"] = "Финальный свисток", ["League champions"] = "Чемпионы сезона", ["Season champion"] = "Чемпион сезона",
+	["Back to lobby"] = "В лобби", ["%d CR value"] = "Стоимость: %d CR", ["%d CR cash"] = "Баланс: %d CR",
+	["No clubs"] = "Нет клубов", ["%d clubs"] = "Клубы: %d", ["BOT"] = "БОТ",
+	["FREE CLUB · %d CR"] = "СВОБОДНЫЙ КЛУБ · %d CR", ["RIVAL GATE · −%d CR"] = "СБОР СОПЕРНИКА · −%d CR",
+	["YOUR CLUB"] = "ТВОЙ КЛУБ", ["TACTICS CARD"] = "КАРТА ТАКТИКИ", ["%+d CR · KICKOFF"] = "%+d CR · СТАРТ",
+	["Kickoff"] = "Старт", ["Tactics deck"] = "Карты тактики", ["TV rights"] = "ТВ-права", ["Sponsor"] = "Спонсор",
+	["Matchday"] = "Матчдэй", ["Added time"] = "Добавленное время",
+	["%s signed %s"] = "%s подписал(а) %s", ["%s completed %s"] = "%s собрал(а) лигу «%s»",
+	["%s invested in %s"] = "%s улучшил(а) %s", ["%s passed on %s"] = "%s пропустил(а) %s",
+	["%s paid gate at %s"] = "%s заплатил(а) сбор: %s", ["%s landed on %s"] = "%s на клетке «%s»",
+	["The transfer window is open."] = "Трансферное окно открыто.",
+	["MATCH FEED"] = "ЛЕНТА МАТЧА", ["CLUB LEDGER"] = "КАТАЛОГ КЛУБОВ", ["HOW TO PLAY"] = "КАК ИГРАТЬ",
+	["Close"] = "Закрыть", ["Free"] = "Свободен", ["Owner: %s"] = "Владелец: %s",
+	["Price %d  /  Gate %d  /  Stadium %d"] = "Цена %d  /  Сбор %d  /  Стадион %d",
+	["1. Pick either route"] = "1. Выбери один из двух маршрутов",
+	["Each move shows two destinations. Crossing Kickoff pays 140 CR."] = "Перед ходом видны две клетки. За проход через «Старт» начисляется 140 CR.",
+	["2. Collect a league"] = "2. Собери лигу",
+	["Sign free clubs. Rivals pay you at their gates. Own all three in one league to double those fees."] = "Подписывай свободные клубы. Соперники платят тебе за визит. Собери три клуба одной лиги, чтобы удвоить сборы.",
+	["3. Beat the final whistle"] = "3. Собери самый ценный состав",
+	["After 8 rounds, cash + club and stadium value + league bonuses decide the winner. Everyone plays to the end."] = "Через 8 раундов считаем баланс, стоимость клубов и стадионов и бонусы лиг. Все играют до конца.",
+	["Sound: on"] = "Звук: вкл.", ["Sound: off"] = "Звук: выкл.",
+	["Motion: full"] = "Анимация: полная", ["Motion: reduced"] = "Анимация: минимум",
+	["Connect to table…"] = "Подключение к столу…", ["You"] = "Ты", ["LIVE TABLE"] = "ПРЯМОЙ ЭФИР",
+	["Complete three clubs for a 160 CR portfolio bonus."] = "Полная лига приносит 160 CR к стоимости состава.",
+	["View clubs"] = "Клубы", ["Rules"] = "Правила", ["STADIUM LEVEL %d"] = "СТАДИОН · УР. %d",
+	["Season value"] = "Стоимость состава", ["Same team value: shared title"] = "При равной стоимости титул общий",
+	["%s drew a card"] = "%s тянет карту", ["No fee paid"] = "Без сбора",
+}
+
+return function(key: string, russian: boolean, ...: any): string
+	local phrase = if russian then (ru[key] or key) else key
+	if select("#", ...) > 0 then return string.format(phrase, ...) end
+	return phrase
+end

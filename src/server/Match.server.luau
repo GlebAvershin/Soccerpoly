@@ -22,7 +22,11 @@ local ALLOWED = table.freeze({
 local LOOP_SECONDS, OFFER_SECONDS = 20, 13
 local BOT_MOVE_SECONDS, BOT_OFFER_SECONDS = 1.7, 1.5
 local MIN_ACTION_SECONDS = 0.18
-local studioArgs = if RunService:IsStudio() then game:GetService("StudioTestService"):GetTestArgs() else nil
+local studioArgs
+if RunService:IsStudio() then
+	local ok, args = pcall(function() return game:GetService("StudioTestService"):GetTestArgs() end)
+	if ok then studioArgs = args end
+end
 local fast = studioArgs == "WorldDraftSmoke" or studioArgs == "WorldDraftDuo"
 local preview = studioArgs == "WorldDraftCapture"
 local network = Instance.new("Folder")
@@ -61,7 +65,7 @@ local function output()
 	end
 	return {
 		version = version, serial = serial, lobby = listed, host = if listed[1] then listed[1].id else 0,
-		match = s, deadline = deadline, scores = scores, gates = gates,
+		match = s, deadline = deadline, availableAt = availableAt, scores = scores, gates = gates,
 	}
 end
 
@@ -211,6 +215,8 @@ intent.OnServerEvent:Connect(function(player, verb, revision, value)
 	end
 end)
 
+buildWorld()
+network.Parent = ReplicatedStorage
 Players.PlayerAdded:Connect(joined)
 Players.PlayerRemoving:Connect(function(player)
 	lobby[player], quotas[player], funnels[player] = nil, nil, nil
@@ -229,8 +235,6 @@ Players.PlayerRemoving:Connect(function(player)
 	publish()
 end)
 for _, player in Players:GetPlayers() do joined(player) end
-buildWorld()
-network.Parent = ReplicatedStorage
 
 while task.wait(if fast then 0.05 else 0.16) do
 	local s = match
