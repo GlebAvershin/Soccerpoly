@@ -190,7 +190,7 @@ local function build()
 	plate(tray, "Table lip", 0, 0, -.57, 126.6, 84, 1.16, C("346569"))
 	plate(tray, "Recessed plane", 0, 0, -.02, 122.8, 79.4, .39, ink)
 	local center = folder(stage, "Continental Cup stadium")
-	plate(center, "Stadium foundations", 0, 0, .17, 84.6, 54.5, .44, C("214C4C"))
+	plate(center, "Stadium foundations", 0, 0, .03, 84.6, 54.5, .44, C("214C4C"))
 	pitch(center)
 	terraces(center)
 	for index, tile in Board.tiles do drawTile(tray, index, tile) end

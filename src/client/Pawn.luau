@@ -2,6 +2,7 @@
 local shared = game:GetService("ReplicatedStorage"):WaitForChild("League")
 local Board = require(shared.Board)
 local Art = require(shared.Presentation)
+local Meshes = require(script.Parent.PawnMeshes)
 local Pawn = {}
 local C = Color3.fromHex
 
@@ -48,12 +49,12 @@ function Pawn.make(figure: number, parent: Instance): Model
 	for _, side in {-1, 1} do
 		local x = side * .43
 		local leg = joint(if side < 0 then "Left leg" else "Right leg", x, 2.09, 0)
-		soft("Tailored short", .88, .95, .91, x, 2.03, .005, trim, side * .07)
+		Meshes.apply("shorts", soft("Tailored short", .88, .95, .91, x, 2.03, .005, trim, side * .07))
 		soft("Knee", .62, .62, .64, x * 1.10, 1.63, .03, if figure == 5 then trim else skin)
 		soft("Ribbed sock", .59, 1.05, .64, x * 1.13, 1.18, .045, if figure == 5 then trim else kit)
 		soft("Sock band", .58, .15, .65, x * 1.13, 1.46, .05, ivory)
 		soft("Studded sole", .76, .19, 1.08, x * 1.15, .50, .25, rubber)
-		soft("Leather boot", .74, .49, 1.06, x * 1.15, .69, .24, trim:Lerp(rubber, .35))
+		Meshes.apply("boot", soft("Leather boot", .74, .49, 1.06, x * 1.15, .69, .24, trim:Lerp(rubber, .35)))
 		for seam = 1, 3 do
 			soft("Boot lace", .29, .04, .067, x * 1.15, .92 - seam * .032, .22 + seam * .13, ivory).CastShadow = false
 		end
@@ -63,7 +64,7 @@ function Pawn.make(figure: number, parent: Instance): Model
 
 	local body = joint("Torso", 0, 2.18, 0)
 	soft("Waist", 1.67, .90, 1.04, 0, 2.34, .005, trim)
-	soft("Jersey", 2.23, 1.72, 1.36, 0, 3.01, 0, kit)
+	Meshes.apply("jersey", soft("Jersey", 2.23, 1.72, 1.36, 0, 3.01, 0, kit))
 	soft("Collar ribbing", .87, .27, .80, 0, 3.82, 0, trim)
 	soft("Neck", .56, .48, .61, 0, 3.94, 0, skin)
 	soft("Chest piping", 1.38, .105, .12, 0, 3.36, .622, ivory)
@@ -99,9 +100,10 @@ function Pawn.make(figure: number, parent: Instance): Model
 	end
 
 	local head = joint("Head", 0, 3.97, 0)
-	soft("Face", 1.76, 1.62, 1.49, 0, 4.58, .025, skin)
-	soft("Chin", 1.27, .82, 1.22, 0, 4.25, .12, skin)
-	soft("Nose", .28, .31, .29, 0, 4.47, .766, skin:Lerp(ivory, .17))
+	local face = soft("Face", 1.76, 1.62, 1.58, 0, 4.58, .042, skin)
+	local chin = soft("Chin", 1.27, .82, 1.22, 0, 4.25, .12, skin)
+	local nose = soft("Nose", .28, .31, .29, 0, 4.47, .766, skin:Lerp(ivory, .17))
+	Meshes.apply("head", face, {chin, nose})
 	soft("Smile", .43, .084, .092, 0, 4.25, .726, skin:Lerp(rubber, .58))
 	for _, side in {-1, 1} do
 		local x = side * .377

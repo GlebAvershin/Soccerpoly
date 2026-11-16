@@ -14,6 +14,17 @@
 
 Геометрия строится в `src/server/World.luau`. Проекция подписей — в `src/client/BoardLabels.luau`. Модели и движения — в `src/client/Pawn.luau` и `src/client/Arena.luau`. Использованы навыки работы с ассетами, HUD, камерой и движением из [gamedev-skills](https://github.com/gamedev-skills/awesome-gamedev-agent-skills).
 
+## Фигурки v0.8.1
+
+Голова, футболка, шорты и бутсы собраны в Blender 4.5 LTS. Откройте [pawn-shapes.blend](../art/pawn-shapes.blend), чтобы изменить форму. Команда ниже повторно экспортирует геометрию для Roblox из сохранённой сцены.
+
+```sh
+blender -b art/pawn-shapes.blend -t 2 --python-exit-code 1 --python scripts/make-pawn-meshes.py -- --export
+make build
+```
+
+Движок собирает по одному шаблону на форму на клиенте и повторно использует его на всех фигурках. Если `EditableMesh` недоступен, фигурка использует запасную геометрию с теми же шарнирами и анимациями.
+
 ## Архивная версия
 
 # Continental Cup v0.3
