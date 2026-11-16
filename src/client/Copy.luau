@@ -1,5 +1,18 @@
 --!strict
 local ru: {[string]: string} = {
+	["May go to auction"] = "Возможен аукцион",
+	["Complete the league to upgrade to level 2."] = "Собери лигу, чтобы открыть второй уровень.",
+
+	["TRANSFER AUCTION"] = "ТРАНСФЕРНЫЙ АУКЦИОН", ["Auction club"] = "На аукцион",
+	["Club auctions"] = "Аукционы клубов", ["Bid · %d CR"] = "Ставка · %d CR",
+	["Watching the auction"] = "Ты наблюдаешь за аукционом", ["Budget below %d CR"] = "Нужно от %d CR",
+	["Decision received"] = "Решение принято", ["One sealed bid. Highest offer wins."] = "Одна закрытая ставка. Побеждает самая высокая.",
+	["%d/%d players ready"] = "Ответили %d из %d", ["Club won at auction"] = "Клуб куплен на аукционе",
+	["Club still available"] = "Клуб остался свободным", ["%s is still available"] = "%s остался свободным",
+	["%s won the auction for %s"] = "%s забрал(а) %s на аукционе", ["%s · %d/%d owned"] = "%s · у тебя %d/%d",
+	["Own all three clubs to double fees and unlock level 2 stadiums."] = "Собери три клуба одной лиги. Это удвоит сборы и откроет второй уровень стадионов.",
+	["When a club goes unsigned, each player can submit one sealed bid. The highest bid wins. In a tie, priority starts after the player who opened the auction."] = "Если клуб не подписали, каждый может сделать одну закрытую ставку. Побеждает большая ставка. При равных ставках отсчёт идёт со следующего игрока после открывшего аукцион.",
+
 	["GOAL!"] = "ГОЛ!", ["Clubs"] = "Клубы", ["Your club"] = "Твой клуб", ["Gate · −%d CR"] = "Сбор · −%d CR",
 	["Draw a card"] = "Взять карту", ["Play for a cup"] = "Шанс на кубок", ["BOARD CELL"] = "КЛЕТКА ПОЛЯ",
 	["Tap any cell to see its full details."] = "Нажми на любую клетку, чтобы узнать подробности.",

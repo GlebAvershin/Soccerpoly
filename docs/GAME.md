@@ -4,18 +4,19 @@
 
 The football action is decision-making: choosing transfers, collecting clubs by league and investing in a stadium. The visual fantasy is a daylight tabletop stadium, with toy footballers, a relief world map, directional motion and a TV scoreboard. The board lists 15 real clubs across five divisions, with three clubs per division. Players are original characters.
 
-## Continental Cup rules, v0.4
+## Continental Cup rules, v0.5
 
 - One table, up to six humans. Solo starts with two bots. Human players join in the lobby before kickoff. A late arrival watches the current match and can play next. A disconnected seat becomes a bot for the remaining season. No elimination.
 - Eight rounds. Every manager starts on Kickoff with 700 free match credits. Each turn reveals a short route (1–3) and a long route (4–6); their destination is shown before the player commits.
-- Landing on a free club offers a signing. An opponent's club collects gate revenue, capped by your balance. Landing on your own club offers two levels of stadium investment. A complete three-club league doubles all of its gate revenue and adds 160 to portfolio value.
-- Kickoff crossing pays 140. Broadcast, Sponsor and Final Whistle award credits. Tactics cards are free, drawn without replacement, and reshuffled when depleted. No trading, auctions, mortgages, or debt.
+- Landing on a free club offers a signing. An opponent's club collects gate revenue, capped by your balance. Landing on your own club offers the first stadium level. A complete three-club league unlocks level 2, doubles its gate revenue and adds 160 to portfolio value.
+- Kickoff crossing pays 140. Broadcast, Sponsor and Final Whistle award credits. Tactics cards are free, drawn without replacement, and reshuffled when depleted.
+- An unsigned club can go to an eight-second sealed auction. Each player can pass or bid the full price or 75% rounded up to 5 CR. The highest bid wins. Ties follow turn order starting after the player who opened the auction. The winner pays their bid. The portfolio uses the listed club value.
 - Matchday offers a guaranteed 75 CR or a shot with three possible results. The chance of a goal is 3/6, a save 2/6, and offside 1/6. A goal awards 140 CR and one cup. The safe move is the timeout default.
-- Ranking is cash + acquisition cost + invested capital + complete-league bonuses + 80 per cup. Ties share the title. Every action that costs credits displays the cost. Match credits reset each match and cannot be bought.
+- Ranking is cash + listed club value + invested capital + complete-league bonuses + 80 per cup. Ties share the title. Every action that costs credits displays the cost. Match credits reset each match and cannot be bought.
 - The main panel teaches the next decision; rules and a club ledger are optional. Desktop and touch supported; no claim of console certification.
 
 ## Technical contracts
 
-The server owns RNG, timers, turn state, balances and ownership. A client submits only a verb and an exact state revision. The server checks sender, phase, verb, revision, funds and per-player traffic before mutation. Snapshots carry public data only. A local render layer handles camera, pawn motion, stadiums, trophies and sound. The shuffled deck stays on the server and only resolved cards appear in public snapshots. The server generates the static board. No persistent player data or commerce is needed for the slice.
+The server owns RNG, timers, turn state, balances and ownership. A client submits only a verb and an exact state revision. The server checks sender, phase, verb, revision, funds and per-player traffic before mutation. Snapshots carry public data only. An auction has a stable token and public response flags. The server holds the bid amounts until it commits the result. A local render layer handles camera, pawn motion, stadiums, trophies and sound. The shuffled deck stays on the server and only resolved cards appear in public snapshots. The server generates the static board. No persistent player data or commerce is needed for the slice.
 
 Acceptance: clean build, rule tests and repeated seed simulation; actual Studio join/start/move/action/results smoke; document remaining device/live network, age reach and product gates. See RELEASE.md and QA.md.

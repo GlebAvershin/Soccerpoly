@@ -15,9 +15,10 @@ HERE = Path(__file__).resolve().parent
 COLUMNS = ("event_id", "dataset", "player_id", "session_id", "ts", "variant", "device", "channel", "mode", "name", "value")
 COHORT_DATASETS = {"synthetic_ab", "playtest"}
 COHORT_EVENTS = {"OnboardingAssigned_v1", "FirstRouteSeconds_v2", "ClubSigned_v1", "SeasonFinished_v1",
-                 "SeasonReplayed_v1", "SessionJoined"}
+                 "SeasonReplayed_v1", "SessionJoined", "AuctionWon_v1"}
 ECONOMY_EVENTS = {"TableDecisions", "TableFees", "TableKickoffAwards", "TableCupVisits", "TableGoals",
-                  "EndingCash", "EndingValue", "OwnedClubs", "StadiumUpgrades", "CupsWon"}
+                  "EndingCash", "EndingValue", "OwnedClubs", "StadiumUpgrades", "CupsWon",
+                  "TableAuctions", "TableAuctionSales"}
 DIMENSIONS = {
     "synthetic_ab": ({"control", "coach"}, {"mobile", "desktop", "unknown"}, {"direct", "friend", "campaign", "unknown"}, {"solo"}),
     "rules_simulation": ({"none"}, {"none"}, {"none"}, set("23456")),

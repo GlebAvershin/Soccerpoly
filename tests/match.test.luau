@@ -45,7 +45,45 @@ assert(Game.apply(s, 10, "short", low))
 assert(s.seats[1].cash == 840 and s.seats[1].position == 1)
 s = start(low)
 s.seats[1].cash = 0
+assert(Game.apply(s, 10, "short", low) and s.phase == "auction")
+assert(not Game.bid(s, 10, 1) and not Game.bid(s, 777, 1))
+local minimum = Game.auctionMinimum(2)
+s.seats[2].cash = minimum
+assert(not Game.bid(s, 20, 2) and not Game.bid(s, 20, -1))
+assert(Game.bid(s, 20, 1) and not Game.bid(s, 20, 0) and Game.auctionReady(s))
+assert(s.seats[2].cash == minimum and s.clubs[2].owner == 0)
+assert(Game.closeAuction(s, low) and not Game.closeAuction(s, low))
+assert(s.active == 2 and s.seats[2].cash == 0 and s.clubs[2].owner == 20)
+assert(s.last.kind == "auctionWon" and s.last.amount == -minimum)
+
+s = start(low)
+assert(Game.apply(s, 10, "short", low) and Game.apply(s, 10, "skip", low))
+assert(Game.bid(s, 10, 2) and not Game.auctionReady(s))
+assert(Game.bid(s, 20, 2) and Game.closeAuction(s, low))
+assert(s.clubs[2].owner == 20 and s.last.who == 20 and s.motion.serial == 1)
+
+s = start(low)
+s.round, s.active = Board.rounds, 2
+assert(Game.apply(s, 20, "short", low) and Game.apply(s, 20, "skip", low))
+assert(Game.bid(s, 10, 0))
+assert(Game.closeAuction(s, low) and s.phase == "final" and #s.standings == 2)
+assert(s.last.kind == "auctionEmpty" and s.clubs[2].owner == 0)
+
+s = start(low)
+for _, index in Board.members[1] do
+	if index ~= 2 then s.clubs[index].owner = 20 end
+end
+assert(Game.apply(s, 10, "short", low) and Game.apply(s, 10, "skip", low))
+assert(Game.bid(s, 20, 1) and Game.closeAuction(s, low))
+assert(s.last.kind == "auctionLeague" and Game.gate(s, 2) == 2 * Board.tiles[2].gate)
+
+s = start(low)
+s.clubs[2].owner = 10
+assert(Game.apply(s, 10, "short", low) and Game.apply(s, 10, "upgrade", low))
+assert(s.clubs[2].level == 1 and Game.apply(s, 20, "short", low))
+s.seats[1].position = 1
 assert(Game.apply(s, 10, "short", low) and s.phase == "move" and s.active == 2)
+assert(s.clubs[2].level == 1)
 s = start(low)
 s.seats[1].position = 3
 assert(Game.apply(s, 10, "short", low))
@@ -62,7 +100,7 @@ assert(Game.apply(s, 10, "short", low) and Game.apply(s, 10, "upgrade", low))
 assert(s.clubs[2].level == 2)
 assert(Game.apply(s, 20, "short", low) and s.seats[2].cash == 0 and s.last.amount == -7)
 s.seats[1].cash = 0
-assert(Game.apply(s, 10, "short", low) and s.phase == "move") -- An unaffordable club resolves without an offer.
+assert(Game.apply(s, 10, "short", low) and s.phase == "move") -- Neither seat can afford the auction minimum.
 
 -- Matchday action is role- and turn-neutral, and the trophy is worth portfolio value.
 s = start(low)
@@ -108,7 +146,13 @@ for seed = 1, 800 do
 	local match = Game.new(entries, rng)
 	local actions = 0
 	while match.phase ~= "final" do
-		assert(Game.apply(match, match.seats[match.active].id, Game.botAction(match), rng))
+		if match.phase == "auction" then
+			Game.botBids(match)
+			assert(Game.auctionReady(match))
+			assert(Game.closeAuction(match, rng))
+		else
+			assert(Game.apply(match, match.seats[match.active].id, Game.botAction(match), rng))
+		end
 		actions += 1
 		assert(actions <= count * Board.rounds * 2, "Match did not terminate")
 		for _, seat in match.seats do

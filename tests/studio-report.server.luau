@@ -6,10 +6,18 @@ local net = game:GetService("ReplicatedStorage"):WaitForChild("WorldDraft")
 local players = game:GetService("Players")
 local report = Instance.new("RemoteEvent")
 report.Name = "StudioReport"
+report:SetAttribute("ReadyCount", 0)
 report.Parent = net
 task.delay(if expected == 6 then 145 else 75, function() studio:EndTest("TIMEOUT") end)
-local checks = {}
+local checks, ready = {}, {}
 report.OnServerEvent:Connect(function(player, status)
+	if status == "READY" then
+		if not ready[player] then
+			ready[player] = true
+			report:SetAttribute("ReadyCount", report:GetAttribute("ReadyCount") + 1)
+		end
+		return
+	end
 	if status ~= "PASS" then studio:EndTest(tostring(status)); return end
 	checks[player] = true
 	local total = 0

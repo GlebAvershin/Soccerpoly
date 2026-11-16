@@ -106,9 +106,11 @@ end
 local function send(verb: string, value: number?)
 	local channel, data = remote, snapshot
 	if not channel or not data then return end
-	local revision = data.version
+	local revision = if verb == "bid" and data.auction then data.auction.token else data.version
 	local function dispatch()
-		if snapshot and snapshot.version == revision then channel:FireServer(verb, revision, value) end
+		if not snapshot then return end
+		local current = if verb == "bid" and snapshot.auction then snapshot.auction.token else snapshot.version
+		if current == revision then channel:FireServer(verb, revision, value) end
 	end
 	if data.match and data.match.phase ~= "final" then
 		local delay = data.availableAt - workspace:GetServerTimeNow()
@@ -160,6 +162,9 @@ local function drawDialog()
 			local gate = if club.owner == 0 then tile.gate else snapshot.gates[inspected]
 			UI.label(card, t("Price %d  /  Gate %d  /  Stadium %d", tile.price, gate, club.level), 14, {color = colors.ink})
 			UI.label(card, if club.owner == 0 then t("Free") else t("Owner: %s", sessionName(club.owner)), 14, {font = BOLD, color = colors.panel})
+			if s and club.owner == Player.UserId and club.level == 1 and not Game.setComplete(s, club.owner, tile.league) then
+				UI.label(card, t("Complete the league to upgrade to level 2."), 13, {color = colors.ink})
+			end
 		else
 			local text = if tile.kind == "tactics" then t("Draw a card from the tactics deck.")
 				elseif tile.kind == "matchday" then t("A goal wins a cup and a cash bonus. A safe play keeps your budget steady.")
@@ -170,7 +175,8 @@ local function drawDialog()
 	elseif opened == "rules" then
 		local topics = {
 			{"1. Pick either route", "Each move shows two destinations. Crossing Kickoff pays 140 CR."},
-			{"2. Collect a league", "Sign free clubs. Rivals pay you at their gates. Own all three in one league to double those fees."},
+			{"2. Collect a league", "Own all three clubs to double fees and unlock level 2 stadiums."},
+			{"Club auctions", "When a club goes unsigned, each player can submit one sealed bid. The highest bid wins. In a tie, priority starts after the player who opened the auction."},
 			{"3. Beat the final whistle", "After 8 rounds, cash, clubs, stadiums, leagues and cups decide the winner. Everyone plays to the end."},
 		}
 		UI.label(dialogBody, t("Tap any cell to see its full details."), 14, {font = BOLD, color = colors.mint})
@@ -200,7 +206,15 @@ local function drawDialog()
 		UI.label(dialogBody, t("Complete three clubs for a 160 CR portfolio bonus."), 13, {color = colors.muted})
 		local match = snapshot and snapshot.match
 		for n, league in Board.leagues do
-			UI.label(dialogBody, string.upper(if russian then league.ru else league.name), 14, {font = BOLD, color = hex(league.color)})
+			local owned = 0
+			if match then
+				for _, index in Board.members[n] do
+					if match.clubs[index].owner == Player.UserId then owned += 1 end
+				end
+			end
+			local group = if russian then league.ru else league.name
+			local progress = if match then t("%s · %d/%d owned", group, owned, #Board.members[n]) else group
+			UI.label(dialogBody, progress, 14, {font = BOLD, color = hex(league.color)})
 			for _, i in Board.members[n] do
 				local tile = Board.tiles[i]
 				local club = if match then match.clubs[i] else {owner = 0, level = 0}
@@ -261,7 +275,10 @@ end
 local function spendText(s: any, seat: any, index: number): string
 	local tile, club = Board.tiles[index], s.clubs[index]
 	if tile.kind == "club" then
-		if club.owner == 0 then return t("Sign · %d CR", tile.price) end
+		if club.owner == 0 then
+			local budget = seat.cash + (if index < seat.position then Board.kickoffCash else 0)
+			return if budget < tile.price then t("May go to auction") else t("Sign · %d CR", tile.price)
+		end
 		if club.owner == seat.id then return t("Your club") end
 		return t("Gate · −%d CR", snapshot.gates[index])
 	elseif tile.kind == "tactics" then
@@ -285,9 +302,12 @@ local function storyCard(s: any)
 	local template = ({
 		buy = "%s signed %s", league = "%s completed %s", upgrade = "%s invested in %s",
 		skip = "%s passed on %s", gate = "%s paid gate at %s",
+		auctionWon = "%s won the auction for %s", auctionLeague = "%s won the auction for %s",
 	})[last.kind] or "%s landed on %s"
 	if last.kind == "start" then
 		UI.label(card, t("The transfer window is open."), 14)
+	elseif last.kind == "auctionEmpty" then
+		UI.label(card, t("%s is still available", tile.name), 14)
 	elseif last.card > 0 then
 		local info = Edition.cards[last.card]
 		UI.label(card, (if russian then info.ru else info.title) .. string.format("  /  %+d CR", last.amount), 14, {font = BOLD, color = if last.amount < 0 then colors.pink else GOLD})
@@ -449,8 +469,40 @@ local function contractPanel(s: any, seat: any)
 	local b = UI.button(actions, if offer then "SignClub" else "Upgrade", t(if offer then "Sign · %d CR" else "Upgrade · %d CR",
 		if offer then tile.price else Board.upgradeCost), 50, primary, colors.mint, colors.ink)
 	b.Size = UDim2.new(0.67, -4, 0, 50)
-	local skip = UI.button(actions, "Skip", t("Pass"), 50, alternate)
+	local skip = UI.button(actions, "Skip", t(if offer then "Auction club" else "Pass"), 50, alternate)
 	skip.Size, skip.Position = UDim2.new(0.33, -4, 0, 50), UDim2.new(0.67, 4, 0, 0)
+end
+
+local function auctionPanel(s: any, auction: any)
+	local tile = Board.tiles[auction.tile]
+	local mine = nil
+	local total, ready = 0, 0
+	local minimum = Game.auctionMinimum(auction.tile)
+	for i, seat in s.seats do
+		if seat.cash >= minimum then
+			total += 1
+			if auction.responded[i] then ready += 1 end
+		end
+		if not seat.bot and seat.id == Player.UserId then mine = i end
+	end
+	local amount = if mine then s.seats[mine].cash else 0
+	local status = if not mine then t("Watching the auction") elseif amount < minimum then t("Budget below %d CR", minimum)
+		elseif auction.responded[mine] then t("Decision received") else t("One sealed bid. Highest offer wins.")
+	title(tile.name)
+	UI.label(body, status, 14, {font = BOLD, color = colors.mint})
+	UI.label(body, t("%d/%d players ready", ready, total), 12, {color = colors.muted})
+	local eligible = mine ~= nil and amount >= minimum and not auction.responded[mine]
+	footer(if eligible then 52 else 0)
+	if not eligible then return end
+	primary = function() send("bid", 1) end
+	if amount >= tile.price then alternate = function() send("bid", 2) end end
+	local pass = UI.button(actions, "AuctionPass", t("Pass"), 52, function() send("bid", 0) end)
+	local minimumBid = UI.button(actions, "AuctionMinimum", t("Bid · %d CR", minimum), 52, primary, colors.mint, colors.ink)
+	local listBid = UI.button(actions, "AuctionListPrice", t("Bid · %d CR", tile.price), 52, alternate,
+		if alternate then GOLD else colors.surface, if alternate then colors.ink else colors.muted)
+	for i, button in {minimumBid, listBid, pass} do
+		button.Position, button.Size = UDim2.new((i - 1) / 3, 2, 0, 0), UDim2.new(1 / 3, -5, 0, 52)
+	end
 end
 
 local function matchdayPanel()
@@ -520,6 +572,9 @@ render = function()
 	elseif not s then
 		phase.Text = t("TABLE BRIEFING")
 		lobbyPanel(data)
+	elseif data.auction then
+		phase.Text = t("TRANSFER AUCTION")
+		auctionPanel(s, data.auction)
 	elseif s.phase == "final" then
 		phase.Text = string.upper(t("Final whistle"))
 		finishPanel(s)
@@ -586,11 +641,20 @@ remote = intent
 local outcomes = {
 	goal = "GOAL!", offside = "Offside", save = "Save",
 	buy = "Club signed", upgrade = "Stadium upgraded", league = "League complete",
+	auctionWon = "Club won at auction", auctionLeague = "League complete", auctionEmpty = "Club still available",
 }
 snapshots.OnClientEvent:Connect(function(data)
 	local old = snapshot
 	if old and data.version <= old.version then return end
 	snapshot = data
+	if data.auction and (not old or not old.auction or old.auction.token ~= data.auction.token) then
+		for _, seat in data.match.seats do
+			if seat.id == Player.UserId and not seat.bot and seat.cash >= Game.auctionMinimum(data.auction.tile) then
+				opened = ""
+				break
+			end
+		end
+	end
 	tableView.sync(data)
 	render()
 	local match, previous = data.match, old and old.match
@@ -608,7 +672,7 @@ snapshots.OnClientEvent:Connect(function(data)
 		local name = sessionName(last.who)
 		local headline, caption, tint = outcomes[last.kind], name .. "  /  " .. t(Board.tiles[last.tile].name), colors.mint
 		local shot: string? = nil
-		if final then
+		if final and previous.phase ~= "auction" then
 			local tied = {}
 			for _, record in match.standings do
 				if record.score == match.standings[1].score then table.insert(tied, sessionName(record.id)) end
@@ -621,6 +685,11 @@ snapshots.OnClientEvent:Connect(function(data)
 			shot = last.kind
 			caption = name .. string.format("  /  %+d CR", last.amount)
 			tint = if last.kind == "goal" then GOLD else colors.pink
+		elseif last.kind == "auctionWon" or last.kind == "auctionLeague" then
+			caption = name .. "  /  " .. t(Board.tiles[last.tile].name) .. string.format("  /  %d CR", -last.amount)
+			tint = GOLD
+		elseif last.kind == "auctionEmpty" then
+			caption, tint = t(Board.tiles[last.tile].name), colors.blue
 		elseif last.kind == "league" then
 			local league = Board.leagues[Board.tiles[last.tile].league]
 			caption, tint = name .. "  /  " .. (if russian then league.ru else league.name), GOLD
@@ -628,7 +697,7 @@ snapshots.OnClientEvent:Connect(function(data)
 		if moved and snapshot.match.motion.serial == match.motion.serial then playSound("land") end
 		if not headline then return end
 		if snapshot.version ~= data.version and (snapshot.match.last.who ~= last.who or snapshot.match.last.kind ~= last.kind or snapshot.match.last.tile ~= last.tile) then return end
-		local exciting = final or last.kind == "goal" or last.kind == "league"
+		local exciting = final or last.kind == "goal" or last.kind == "league" or last.kind == "auctionLeague"
 		if exciting then playSound("win") elseif not moved then playSound("confirm") end
 		resultBanner.reveal(t(headline), caption, tint, reduced(), mode,
 			math.max(.28, 1 - (View.railWidth(root.AbsoluteSize) + 24) / math.max(1, root.AbsoluteSize.X)), shot)

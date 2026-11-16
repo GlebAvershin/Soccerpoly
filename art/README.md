@@ -1,5 +1,6 @@
 # World Draft visual kit
 
+- **studio-auction.png** — Studio playtest capture of the sealed transfer auction.
 - **studio-match.png** — Studio playtest capture, round 1 route selection on the Continental Cup board.
 
 - **world-draft-icon.png** — 512 × 512, [Creator Hub game icon](https://create.roblox.com/docs/production/publishing/experience-icons). SVG is the editable master.

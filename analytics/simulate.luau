@@ -55,11 +55,19 @@ for number = 1, 1200 do
 	local match = Game.new(actors, random)
 	local decisions = 0
 	local seconds, visits, goals = 0, 0, 0
+	local auctions, soldAtAuction = 0, 0
 	local fees, kickoffAwards = 0, 0
 	while match.phase ~= "final" do
 		local seat = match.seats[match.active]
 		local when = match.phase
-		assert(Game.apply(match, seat.id, Game.botAction(match), random))
+		if when == "auction" then
+			Game.botBids(match)
+			assert(Game.closeAuction(match, random))
+			auctions += 1
+			if match.last.amount < 0 then soldAtAuction += 1 end
+		else
+			assert(Game.apply(match, seat.id, Game.botAction(match), random))
+		end
 		decisions += 1
 		seconds += if when == "move" then 6 else 4
 		if when == "matchday" then
@@ -78,6 +86,8 @@ for number = 1, 1200 do
 	result("TableKickoffAwards", kickoffAwards)
 	result("TableCupVisits", visits)
 	result("TableGoals", goals)
+	result("TableAuctions", auctions)
+	result("TableAuctionSales", soldAtAuction)
 	for _, seat in match.seats do
 		local clubs, upgrades = 0, 0
 		for _, owned in match.clubs do

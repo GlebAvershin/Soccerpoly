@@ -19,9 +19,9 @@ local bots = table.freeze({"Atlas", "Vega", "Nova"})
 local MAX_SEATS = #Board.figures
 local ALLOWED = table.freeze({
 	sync = true, start = true, lobby = true, figure = true, short = true, long = true,
-	buy = true, upgrade = true, skip = true, shoot = true, safe = true,
+	buy = true, upgrade = true, skip = true, shoot = true, safe = true, bid = true,
 })
-local LOOP_SECONDS, OFFER_SECONDS = 20, 13
+local LOOP_SECONDS, OFFER_SECONDS, AUCTION_SECONDS = 20, 13, 8
 local BOT_MOVE_SECONDS, BOT_OFFER_SECONDS = 1.7, 1.5
 local MIN_ACTION_SECONDS = 0.18
 local studioArgs
@@ -45,7 +45,7 @@ local quotas: {[Player]: Quota} = {}
 local funnels: {[Player]: Funnel} = {}
 local match: Rules.Match? = nil
 local startedAt, deadline, availableAt = 0, 0, 0
-local entryNumber, version, serial = 0, 0, 0
+local entryNumber, version, serial, auctionToken = 0, 0, 0, 0
 local mode, variant = "solo", "none"
 
 local function seatList(): {LobbySeat}
@@ -61,6 +61,12 @@ local function output()
 	local s = match
 	local scores = {}
 	local gates = {}
+	local auction = nil
+	if s and s.auction then
+		local responded = {}
+		for i, seat in s.seats do responded[i] = s.auction.replies[seat.id] ~= nil end
+		auction = {token = auctionToken, tile = s.auction.tile, responded = responded}
+	end
 	if s then
 		for _, seat in s.seats do table.insert(scores, Game.score(s, seat.id)) end
 		for i in Board.tiles do gates[i] = Game.gate(s, i) end
@@ -72,7 +78,7 @@ local function output()
 			short = s.short, long = s.long, last = s.last, motion = s.motion, standings = s.standings,
 		} else nil,
 		deadline = deadline, availableAt = availableAt, scores = scores, gates = gates,
-		variant = variant,
+		variant = variant, auction = auction,
 	}
 end
 
@@ -136,6 +142,12 @@ end
 local function clockTurn(s: Rules.Match, moved: boolean)
 	if s.phase == "final" then
 		deadline = 0
+		return
+	end
+	if s.phase == "auction" then
+		auctionToken = version + 1
+		local intro = if moved then 0.84 else MIN_ACTION_SECONDS
+		setClock(AUCTION_SECONDS + intro, intro)
 		return
 	end
 	local bot = s.seats[s.active].bot
@@ -202,7 +214,9 @@ end
 local function action(s: Rules.Match, verb: string, player: Player?)
 	local previousMotion, previousPhase = s.motion.serial, s.phase
 	local seat = s.seats[s.active]
-	if not Game.apply(s, seat.id, verb, if fast then function(a, _b) return a end else nextInteger) then return false end
+	local roll = if fast then function(a: number, _b: number) return a end else nextInteger
+	local accepted = if verb == "closeAuction" then Game.closeAuction(s, roll) else Game.apply(s, seat.id, verb, roll)
+	if not accepted then return false end
 	local moved = s.motion.serial ~= previousMotion
 	clockTurn(s, moved)
 	publish()
@@ -226,6 +240,14 @@ local function action(s: Rules.Match, verb: string, player: Player?)
 		end
 		if s.last.kind == "league" then Telemetry.event(player, "LeagueCompleted_v1", 1, mode, variant) end
 	end
+	if previousPhase == "auction" and s.last.amount < 0 then
+		local winner = Players:GetPlayerByUserId(s.last.who)
+		if winner then
+			Telemetry.event(winner, "ClubSigned_v1", -s.last.amount, mode, variant)
+			Telemetry.event(winner, "AuctionWon_v1", -s.last.amount, mode, variant)
+			if s.last.kind == "auctionLeague" then Telemetry.event(winner, "LeagueCompleted_v1", 1, mode, variant) end
+		end
+	end
 	if s.phase == "final" then
 		for _, attendee in s.seats do
 			local p = if attendee.bot then nil else Players:GetPlayerByUserId(attendee.id)
@@ -246,11 +268,23 @@ intent.OnServerEvent:Connect(function(player, verb, revision, value)
 		pushed:FireClient(player, output())
 		return
 	end
+	local s = match
+	if verb == "bid" then
+		if not s or not s.auction or revision ~= auctionToken or type(value) ~= "number" then return end
+		local now = workspace:GetServerTimeNow()
+		if now < availableAt or now >= deadline then return end
+		for _, bidder in s.seats do
+			if bidder.id == player.UserId and not bidder.bot and Game.bid(s, bidder.id, value) then
+				if Game.auctionReady(s) then action(s, "closeAuction", nil) else publish() end
+				break
+			end
+		end
+		return
+	end
 	if revision ~= version then
 		pushed:FireClient(player, output())
 		return
 	end
-	local s = match
 	local seat = lobby[player]
 	if verb == "start" then
 		local listed = seatList()
@@ -293,7 +327,7 @@ Players.PlayerRemoving:Connect(function(player)
 		for i, seat in s.seats do
 			if seat.id == player.UserId and not seat.bot then
 				seat.bot = true
-				if i == s.active then clockTurn(s, false) end
+				if i == s.active and s.phase ~= "auction" then clockTurn(s, false) end
 				break
 			end
 		end
@@ -304,7 +338,17 @@ for _, player in Players:GetPlayers() do joined(player) end
 
 while task.wait(if fast then 0.05 else 0.16) do
 	local s = match
-	if s and s.phase ~= "final" and workspace:GetServerTimeNow() >= deadline then
+	local now = workspace:GetServerTimeNow()
+	if s and s.auction then
+		if now >= availableAt then
+			local changed = Game.botBids(s)
+			if now >= deadline or Game.auctionReady(s) then
+				action(s, "closeAuction", nil)
+			elseif changed then
+				publish()
+			end
+		end
+	elseif s and s.phase ~= "final" and now >= deadline then
 		local seat = s.seats[s.active]
 		local verb = if seat.bot then Game.botAction(s) elseif s.phase == "move" then "short" elseif s.phase == "matchday" then "safe" else "skip"
 		local p = if seat.bot then nil else Players:GetPlayerByUserId(seat.id)

@@ -104,7 +104,11 @@ local ok, failure = pcall(function()
 		end
 	end
 	assert(hud:FindFirstChild("FootballerPreview", true), "No figure preview")
+	report:FireServer("READY")
 	if lobby.host == me.UserId then
+		local waitUntil = os.clock() + 24
+		while report:GetAttribute("ReadyCount") < expected and os.clock() < waitUntil do task.wait(.08) end
+		assert(report:GetAttribute("ReadyCount") == expected, "Clients not ready for kickoff")
 		if expected == 1 then
 			intent:FireServer("figure", lobby.version, 4)
 			lobby = await(function(data) return data.lobby[1].figure == 4 end, "figure update")
@@ -144,22 +148,47 @@ local ok, failure = pcall(function()
 		assert(seatOf(offer.match).position == 2)
 		button("SignClub")
 		task.wait(0.88)
-		intent:FireServer("buy", offer.version)
-		intent:FireServer("buy", offer.version)
-		local signed = await(function(data) return data.match.clubs[2].owner == me.UserId end, "one signing")
-		assert(seatOf(signed.match).cash == 540, "Duplicate buy was applied")
-		task.wait(.18)
-		assert(hud.Viewport.PlayResult.Visible, "Signing feedback not shown")
-	else
-		intent:FireServer("short", begun.version)
+		intent:FireServer("skip", offer.version)
 	end
+	local opened = await(function(data) return data.auction ~= nil end, "opening auction")
+	assert(opened.auction.tile == 2 and opened.auction.replies == nil and opened.match.auction == nil)
+	button("AuctionMinimum")
+	button("AuctionListPrice")
+	button("AuctionPass")
+	task.wait(math.max(.02, opened.availableAt - workspace:GetServerTimeNow() + .08))
+	local token = opened.auction.token
+	if begun.host == me.UserId then
+		intent:FireServer("bid", token - 1, 2)
+		intent:FireServer("bid", token, 99999)
+		local eligible = await(function(data)
+			if not data.auction or data.auction.token ~= token then return false end
+			for i = 2, #data.match.seats do if not data.auction.responded[i] then return false end end
+			return true
+		end, "other bids")
+		assert(not eligible.auction.responded[1] and eligible.version > opened.version, "Stale or malformed bid accepted")
+		assert(seatOf(eligible.match).cash == 700 and eligible.match.clubs[2].owner == 0, "Bid settled before the auction closed")
+		intent:FireServer("bid", token, 2)
+		intent:FireServer("bid", token, 2)
+	else
+		intent:FireServer("bid", token, 1)
+	end
+	local signed = await(function(data) return data.match.clubs[2].owner == begun.host end, "auction result")
+	assert(not signed.auction and signed.match.seats[1].cash == 700 - catalog.tiles[2].price)
+
 	local steps, visitedCup = 0, false
 	while last.match.phase ~= "final" do
 		local data = await(function(next)
 			local s = next.match
-			return s and (s.phase == "final" or s.seats[s.active].id == me.UserId)
+			return s and (s.phase == "final" or next.auction or s.seats[s.active].id == me.UserId)
 		end, "next personal turn", if expected == 6 then 34 else 12)
 		if data.match.phase == "final" then break end
+		if data.auction then
+			local token = data.auction.token
+			task.wait(math.max(.02, data.availableAt - workspace:GetServerTimeNow() + .07))
+			intent:FireServer("bid", token, 0)
+			await(function(newer) return not newer.auction or newer.auction.token ~= token end, "auction closed", 12)
+			continue
+		end
 		steps += 1
 		assert(steps < 20)
 		local verb
