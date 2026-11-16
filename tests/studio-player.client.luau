@@ -72,8 +72,8 @@ local ok, failure = pcall(function()
 			local tile = catalog.tiles[index]
 			local artwork = part.Artwork
 			assert(artwork.Value.Text ~= "", "Unlabelled board cell")
-			if tile.kind == "club" then
-				assert(artwork.ClubName.Text:gsub("\n", " ") == tile.name, "Wrong club on board cell " .. index)
+			if tile.price > 0 then
+				assert(artwork.PropertyName.Text:gsub("\n", " ") == tile.name, "Wrong club on board cell " .. index)
 				assert(artwork.Value.Text == tostring(tile.price) .. " CR", "Wrong club price on board cell " .. index)
 			else
 				assert(artwork.EventName.Text ~= "", "Missing event name")
@@ -126,7 +126,7 @@ local ok, failure = pcall(function()
 		assert(not figures[seat.figure], "Duplicate figure")
 		figures[seat.figure] = true
 	end
-	assert(begun.match.deck == nil, "Private tactics deck replicated")
+	assert(begun.match.decks == nil, "Private card decks replicated")
 	local own = seatOf(begun.match)
 	assert(own.position == 1 and own.cash == 700)
 	if begun.host == me.UserId then
@@ -175,7 +175,7 @@ local ok, failure = pcall(function()
 	local signed = await(function(data) return data.match.clubs[2].owner == begun.host end, "auction result")
 	assert(not signed.auction and signed.match.seats[1].cash == 700 - catalog.tiles[2].price)
 
-	local steps, visitedCup = 0, false
+	local steps, visitedCup, visitedBench, sold = 0, false, false, false
 	while last.match.phase ~= "final" do
 		local data = await(function(next)
 			local s = next.match
@@ -189,10 +189,26 @@ local ok, failure = pcall(function()
 			await(function(newer) return not newer.auction or newer.auction.token ~= token end, "auction closed", 12)
 			continue
 		end
+		if expected == 1 and not sold and data.match.phase == "move" then
+			task.wait(math.max(.04, data.availableAt - workspace:GetServerTimeNow() + .07))
+			intent:FireServer("sell", data.version, 2)
+			local receipt = await(function(next)
+				return next.match and next.match.soldThisTurn and next.match.last.kind == "sold"
+			end, "bank sale")
+			assert(receipt.match.clubs[2].owner == 0 and receipt.deadline == data.deadline)
+			assert(seatOf(receipt.match).cash == seatOf(data.match).cash + 96)
+			sold = true
+			continue
+		end
 		steps += 1
-		assert(steps < 20)
+		assert(steps < 27)
 		local verb
-		if data.match.phase == "matchday" then
+		if data.match.phase == "bench" then
+			button("BenchShort")
+			button("BenchRelease")
+			visitedBench = true
+			verb = if seatOf(data.match).cash >= catalog.benchFee then "release" else "short"
+		elseif data.match.phase == "matchday" then
 			button("Shoot")
 			button("SafePlay")
 			visitedCup = true
@@ -211,7 +227,7 @@ local ok, failure = pcall(function()
 	button("BackToLobby")
 	assert(hud:FindFirstChild("Rank1", true))
 	if final.host == me.UserId then
-		assert(visitedCup and seatOf(final.match).trophies > 0, "Host did not earn a cup")
+		assert(visitedBench and visitedCup and seatOf(final.match).trophies > 0, "Host did not exercise bench and cup gameplay")
 		assert(workspace.LocalTablePieces.Markers:FindFirstChild("Continental Cup"), "Cup visualization missing")
 		task.wait(if expected == 6 then 1.20 else 0.25)
 		intent:FireServer("lobby", final.version)

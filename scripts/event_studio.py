@@ -11,7 +11,7 @@ ROOT = Path(__file__).resolve().parents[1]
 SOURCE = ROOT / "content/continental-cup.json"
 GENERATED = ROOT / "src/shared/EventCards.luau"
 ID = re.compile(r"[a-z][a-z0-9_]{2,39}\Z")
-KINDS = {"transfer", "bonus", "penalty", "goal", "offside"}
+KINDS = {"transfer", "bonus", "penalty", "goal", "offside", "bench"}
 SHOT_RESULTS = {"goal", "save", "offside"}
 
 
@@ -72,7 +72,8 @@ def validate(edition):
         require(card["id"] not in seen, f"{path}: duplicate id")
         seen.add(card["id"])
         require(isinstance(card["kind"], str) and card["kind"] in KINDS, f"{path}: unknown kind")
-        lo, hi = (-100, -1) if card["kind"] in {"penalty", "offside"} else (0, 180)
+        lo, hi = ((0, 0) if card["kind"] == "bench" else
+                  (-100, -1) if card["kind"] in {"penalty", "offside"} else (0, 180))
         integer(card["amount"], lo, hi, f"{path}.amount")
         for key, limit in (("title", 42), ("ru", 42), ("body", 125), ("ruBody", 125)):
             localized(card[key], limit, f"{path}.{key}")

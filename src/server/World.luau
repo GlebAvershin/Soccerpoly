@@ -87,9 +87,9 @@ local function drawTile(tray: Instance, index: number, tile: Board.Tile)
 	local faceColor = if tile.league > 0 then paper else paper:Lerp(accent, .22)
 	frame(sg, .027, .037, .946, .926, faceColor, 16)
 	frame(sg, .027, .037, .946, .092, accent, 8)
-	if tile.kind == "club" then
+	if tile.price > 0 then
 		local title = string.gsub(tile.name, " ", "\n", 1)
-		label(sg, "ClubName", title, .064, .167, .872, .54, ink, Enum.Font.GothamBlack, true)
+		label(sg, "PropertyName", title, .064, .167, .872, .54, ink, Enum.Font.GothamBlack, true)
 		frame(sg, .125, .743, .20, .156, accent, 7)
 		label(sg, "Crest", tile.code, .134, .764, .182, .115, ink, Enum.Font.GothamBlack, true)
 		label(sg, "Value", tostring(tile.price) .. " CR", .366, .719, .51, .205, C("365367"), Enum.Font.GothamBold)
@@ -98,8 +98,7 @@ local function drawTile(tray: Instance, index: number, tile: Board.Tile)
 		label(sg, "Crest", Art.sign[tile.kind], .069, .327, .184, .37, ink, Enum.Font.GothamBlack, true)
 		label(sg, "EventName", Art.shortStop[tile.kind], .297, .203, .65, .34, ink, Enum.Font.GothamBlack)
 		local value = if tile.kind == "kickoff" then "+" .. Board.kickoffCash .. " CR"
-			elseif tile.kind == "tactics" then "Draw a card"
-			elseif tile.kind == "matchday" then "Play for a cup" else "+" .. tile.award .. " CR"
+			elseif tile.kind == "matchday" then "Play for a cup" else "Draw a card"
 		label(sg, "Value", value, .30, .555, .635, .255, C("365367"), Enum.Font.GothamBold)
 	end
 end

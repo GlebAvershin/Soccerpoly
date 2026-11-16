@@ -3,16 +3,16 @@
 type RNG = (number, number) -> number
 type Tile = {code: string, city: string, kind: string, name: string, league: number, price: number, gate: number, award: number}
 type Board = {
-	read tiles: {Tile}, read members: {{number}},
+	read tiles: {Tile}, read members: {{number}}, read assetGroups: {[string]: {number}},
 	read rounds: number, read maxSeats: number,
 	read startCash: number, read kickoffCash: number, read upgradeCost: number, read upgradeGate: number,
-	read maxLevel: number, read leagueValue: number,
+	read maxLevel: number, read leagueValue: number, read benchFee: number,
 }
 type Card = {read id: string, read kind: string, read title: string, read amount: number, read body: string, read ru: string, read ruBody: string}
 type Shot = {read result: string, read cash: number, read weight: number}
 type Edition = {read cards: {Card}, read shots: {Shot}, read safe_cash: number, read trophy_value: number}
 export type Entry = {id: number, name: string, figure: number, bot: boolean?}
-export type Seat = {id: number, name: string, figure: number, bot: boolean, cash: number, position: number, trophies: number}
+export type Seat = {id: number, name: string, figure: number, bot: boolean, cash: number, position: number, trophies: number, benched: boolean}
 export type Club = {owner: number, level: number}
 export type Story = {kind: string, title: string, who: number, tile: number, amount: number, card: number, crossed: boolean}
 export type Motion = {serial: number, who: number, from: number, steps: number}
@@ -20,7 +20,7 @@ export type Standing = {id: number, score: number}
 export type Auction = {tile: number, replies: {[number]: number}}
 export type Match = {
 	seats: {Seat}, clubs: {Club}, active: number, round: number, phase: string, short: number, long: number,
-	last: Story, motion: Motion, standings: {Standing}, deck: {number}, auction: Auction?,
+	last: Story, motion: Motion, standings: {Standing}, decks: {[string]: {number}}, auction: Auction?, soldThisTurn: boolean,
 }
 
 local function withBoard(board: Board, edition: Edition)
@@ -32,9 +32,15 @@ local function withBoard(board: Board, edition: Edition)
 	end
 	Rules.goalChance = goalWeight / shotWeight
 
-	local function draw(deck: {number}, rng: RNG): number
+	local families: {[string]: {number}} = {goalDeck = {}, offsideDeck = {}}
+	for i, card in edition.cards do
+		local family = if card.amount > 0 then families.goalDeck else families.offsideDeck
+		table.insert(family, i)
+	end
+
+	local function draw(deck: {number}, allowed: {number}, rng: RNG): number
 		if #deck == 0 then
-			for i in edition.cards do table.insert(deck, i) end
+			for _, index in allowed do table.insert(deck, index) end
 		end
 		local index = rng(1, #deck)
 		local result = deck[index]
@@ -43,7 +49,7 @@ local function withBoard(board: Board, edition: Edition)
 		return result
 	end
 	local function setComplete(s: Match, id: number, league: number): boolean
-		if id == 0 then return false end
+		if id == 0 or league == 0 then return false end
 		for _, index in board.members[league] do
 			if s.clubs[index].owner ~= id then return false end
 		end
@@ -51,9 +57,26 @@ local function withBoard(board: Board, edition: Edition)
 	end
 	Rules.setComplete = setComplete
 
+	local function group(tile: Tile): {number}
+		return if tile.league > 0 then board.members[tile.league] else board.assetGroups[tile.kind]
+	end
+
+	local function ownedCount(s: Match, id: number, tile: Tile): number
+		local count = 0
+		for _, index in group(tile) do
+			if s.clubs[index].owner == id then count += 1 end
+		end
+		return count
+	end
+
+	function Rules.sellValue(s: Match, index: number): number
+		return math.floor(board.tiles[index].price * 3 / 5) + math.floor(s.clubs[index].level * board.upgradeCost / 2)
+	end
+
 	function Rules.gate(s: Match, index: number): number
 		local tile, club = board.tiles[index], s.clubs[index]
-		if tile.kind ~= "club" or club.owner == 0 then return 0 end
+		if tile.price == 0 or club.owner == 0 then return 0 end
+		if tile.league == 0 then return tile.gate * ownedCount(s, club.owner, tile) end
 		return (tile.gate + club.level * board.upgradeGate) * (if setComplete(s, club.owner, tile.league) then 2 else 1)
 	end
 
@@ -94,13 +117,13 @@ local function withBoard(board: Board, edition: Edition)
 		for i, entry in entries do
 			assert(entry.id ~= 0 and not seen[entry.id], "Expected a unique seat")
 			seen[entry.id] = true
-			seats[i] = {id = entry.id, name = entry.name, figure = entry.figure, bot = entry.bot == true, cash = board.startCash, position = 1, trophies = 0}
+			seats[i] = {id = entry.id, name = entry.name, figure = entry.figure, bot = entry.bot == true, cash = board.startCash, position = 1, trophies = 0, benched = false}
 		end
 		for i in board.tiles do clubs[i] = {owner = 0, level = 0} end
 		local s: Match = {
 			seats = seats, clubs = clubs, active = 1, round = 1, phase = "move", short = 0, long = 0,
 			last = story("start", "Kickoff", seats[1].id, 1), motion = {serial = 0, who = 0, from = 1, steps = 0},
-			standings = {}, deck = {}, auction = nil,
+			standings = {}, decks = {goalDeck = {}, offsideDeck = {}}, auction = nil, soldThisTurn = false,
 		}
 		makeRoutes(s, rng)
 		return s
@@ -122,7 +145,8 @@ local function withBoard(board: Board, edition: Edition)
 		else
 			s.active += 1
 		end
-		s.phase = "move"
+		s.phase = if s.seats[s.active].benched then "bench" else "move"
+		s.soldThisTurn = false
 		makeRoutes(s, rng)
 	end
 
@@ -177,11 +201,8 @@ local function withBoard(board: Board, edition: Edition)
 		local minimum = Rules.auctionMinimum(auction.tile)
 		for _, seat in s.seats do
 			if seat.bot and seat.cash >= minimum and auction.replies[seat.id] == nil then
-				local partners = 0
-				for _, index in board.members[tile.league] do
-					if s.clubs[index].owner == seat.id then partners += 1 end
-				end
-				local choice = if partners == 2 and seat.cash >= tile.price then 2
+				local partners = ownedCount(s, seat.id, tile)
+				local choice = if partners == #group(tile) - 1 and seat.cash >= tile.price then 2
 					elseif partners >= 1 or (s.round <= board.rounds - 2 and seat.cash >= minimum + 130) then 1 else 0
 				if Rules.bid(s, seat.id, choice) then changed = true end
 			end
@@ -218,14 +239,35 @@ local function withBoard(board: Board, edition: Edition)
 
 	local function canUpgrade(s: Match, seat: Seat, index: number): boolean
 		local club = s.clubs[index]
-		return club.owner == seat.id and club.level < board.maxLevel and seat.cash >= board.upgradeCost
+		return board.tiles[index].league > 0 and club.owner == seat.id and club.level < board.maxLevel and seat.cash >= board.upgradeCost
 			and (club.level == 0 or setComplete(s, seat.id, board.tiles[index].league))
 	end
 
-	function Rules.apply(s: Match, id: number, action: string, rng: RNG): boolean
+	function Rules.apply(s: Match, id: number, action: string, rng: RNG, index: number?): boolean
 		local seat = s.seats[s.active]
 		if seat.id ~= id or s.phase == "final" then return false end
 		local current = seat.position
+		if action == "sell" then
+			if s.phase ~= "move" or s.soldThisTurn or not index or index % 1 ~= 0 or index < 1 or index > #board.tiles then return false end
+			local tile, holding = board.tiles[index], s.clubs[index]
+			if tile.price == 0 or holding.owner ~= id then return false end
+			local proceeds = Rules.sellValue(s, index)
+			seat.cash += proceeds
+			holding.owner, holding.level = 0, 0
+			s.soldThisTurn = true
+			s.last = story("sold", tile.name, id, index, proceeds)
+			return true
+		end
+		if s.phase == "bench" then
+			if action == "release" and seat.cash >= board.benchFee then
+				seat.cash -= board.benchFee
+				seat.benched, s.phase = false, "move"
+				s.last = story("release", board.tiles[current].name, id, current, -board.benchFee)
+				return true
+			end
+			if action ~= "short" then return false end
+			seat.benched, s.phase = false, "move"
+		end
 		if s.phase == "matchday" then
 			if action ~= "shoot" and action ~= "safe" then return false end
 			local amount, result = edition.safe_cash, "safe"
@@ -275,7 +317,7 @@ local function withBoard(board: Board, edition: Edition)
 		local tile, club = board.tiles[nextTile], s.clubs[nextTile]
 		local kind, title, amount, card = tile.kind, tile.name, tile.award, 0
 
-		if kind == "club" then
+		if tile.price > 0 then
 			if club.owner == 0 and seat.cash >= tile.price then
 				s.phase = "offer"
 				s.last = story("offer", title, id, nextTile, tile.price, 0, crossed)
@@ -297,9 +339,10 @@ local function withBoard(board: Board, edition: Edition)
 			else
 				kind = "visit"
 			end
-		elseif kind == "tactics" then
-			card = draw(s.deck, rng)
+		elseif kind == "goalDeck" or kind == "offsideDeck" then
+			card = draw(s.decks[kind], families[kind], rng)
 			local entry = edition.cards[card]
+			if entry.kind == "bench" then seat.benched = true end
 			title, amount = entry.title, entry.amount
 		elseif kind == "matchday" then
 			s.phase = "matchday"
@@ -316,6 +359,7 @@ local function withBoard(board: Board, edition: Edition)
 	function Rules.botAction(s: Match): string
 		local seat = s.seats[s.active]
 		if s.phase == "offer" then return "buy" end
+		if s.phase == "bench" then return "short" end
 		if s.phase == "matchday" then
 			return if seat.cash >= 200 or s.round >= board.rounds - 1 then "shoot" else "safe"
 		end
@@ -326,14 +370,14 @@ local function withBoard(board: Board, edition: Edition)
 			local index = Rules.target(seat.position, steps)
 			local tile, club = board.tiles[index], s.clubs[index]
 			local projected = if seat.position + steps > #board.tiles then board.kickoffCash else 0
-			if tile.kind == "tactics" then return projected + 46 end
+			if tile.kind == "goalDeck" then return projected + 95 end
+			if tile.kind == "offsideDeck" then return projected - 40 end
 			if tile.kind == "matchday" then return projected + 88 end
-			if tile.kind ~= "club" then return projected + tile.award end
+			if tile.price == 0 then return projected + tile.award end
 			if club.owner == seat.id then return projected + 12 end
 			if club.owner ~= 0 then return projected - Rules.gate(s, index) end
 			if seat.cash + projected < tile.price then return projected end
-			local owned = 0
-			for _, partner in board.members[tile.league] do if s.clubs[partner].owner == seat.id then owned += 1 end end
+			local owned = ownedCount(s, seat.id, tile)
 			return projected + 79 + tile.gate * 0.22 + owned * 55
 		end
 		return if value(s.long) >= value(s.short) then "long" else "short"

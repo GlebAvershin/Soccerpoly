@@ -19,14 +19,13 @@ Style.tileDepth = 9.95
 Style.tileTop = 0.69
 
 Style.stops = table.freeze({
-	kickoff = 0x6FCD91, tactics = 0xAC91E6, broadcast = 0x75BBEA,
-	sponsor = 0xF5C46F, matchday = 0x5FC7AE, whistle = 0xEE8B74,
+	kickoff = 0x6FCD91, goalDeck = 0x7FD2AF, offsideDeck = 0xEE8B74,
+	venue = 0x69BAC5, commercial = 0xE8C862, matchday = 0x5FC7AE,
 })
 Style.shortStop = table.freeze({
-	kickoff = "Kickoff", tactics = "Tactics", broadcast = "TV Rights",
-	sponsor = "Sponsor", matchday = "Matchday", whistle = "Added Time",
+	kickoff = "Kickoff", goalDeck = "Goal", offsideDeck = "Offside", matchday = "Matchday",
 })
-Style.sign = table.freeze({kickoff = "»", tactics = "?", broadcast = "TV", sponsor = "+", matchday = "★", whistle = "+T"})
+Style.sign = table.freeze({kickoff = "»", goalDeck = "+", offsideDeck = "!", matchday = "★"})
 
 function Style.accent(kind: string, league: number): Color3
 	return Style.hex(if league > 0 then Board.leagues[league].color else Style.stops[kind])

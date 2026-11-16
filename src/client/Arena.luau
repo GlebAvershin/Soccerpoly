@@ -262,8 +262,9 @@ function Arena.new(myId: number, root: Frame)
 		savedDecor(s)
 		local active = s.seats[s.active]
 		local first, second = 0, 0
-		if s.phase == "move" and active.id == myId and not active.bot then
-			first, second = Game.target(active.position, s.short), Game.target(active.position, s.long)
+		if (s.phase == "move" or s.phase == "bench") and active.id == myId and not active.bot then
+			first = Game.target(active.position, s.short)
+			if s.phase == "move" then second = Game.target(active.position, s.long) end
 		end
 		local nextCue = first .. "/" .. second
 		if nextCue ~= cue then
@@ -272,7 +273,7 @@ function Arena.new(myId: number, root: Frame)
 			table.clear(tagPositions)
 			if first > 0 then
 				tagPositions[1] = route(selection, first, Art.hex(Art.route[1]))
-				tagPositions[2] = route(selection, second, Art.hex(Art.route[2]))
+				if second > 0 then tagPositions[2] = route(selection, second, Art.hex(Art.route[2])) end
 			end
 		end
 	end

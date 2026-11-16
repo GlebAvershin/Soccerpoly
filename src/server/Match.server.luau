@@ -19,7 +19,7 @@ local bots = table.freeze({"Atlas", "Vega", "Nova"})
 local MAX_SEATS = #Board.figures
 local ALLOWED = table.freeze({
 	sync = true, start = true, lobby = true, figure = true, short = true, long = true,
-	buy = true, upgrade = true, skip = true, shoot = true, safe = true, bid = true,
+	buy = true, upgrade = true, skip = true, shoot = true, safe = true, bid = true, release = true, sell = true,
 })
 local LOOP_SECONDS, OFFER_SECONDS, AUCTION_SECONDS = 20, 13, 8
 local BOT_MOVE_SECONDS, BOT_OFFER_SECONDS = 1.7, 1.5
@@ -75,7 +75,7 @@ local function output()
 		version = version, serial = serial, lobby = listed, host = if listed[1] then listed[1].id else 0,
 		match = if s then {
 			seats = s.seats, clubs = s.clubs, active = s.active, round = s.round, phase = s.phase,
-			short = s.short, long = s.long, last = s.last, motion = s.motion, standings = s.standings,
+			short = s.short, long = s.long, last = s.last, motion = s.motion, standings = s.standings, soldThisTurn = s.soldThisTurn,
 		} else nil,
 		deadline = deadline, availableAt = availableAt, scores = scores, gates = gates,
 		variant = variant, auction = auction,
@@ -211,14 +211,14 @@ local function start()
 	publish()
 end
 
-local function action(s: Rules.Match, verb: string, player: Player?)
+local function action(s: Rules.Match, verb: string, player: Player?, index: number?)
 	local previousMotion, previousPhase = s.motion.serial, s.phase
 	local seat = s.seats[s.active]
 	local roll = if fast then function(a: number, _b: number) return a end else nextInteger
-	local accepted = if verb == "closeAuction" then Game.closeAuction(s, roll) else Game.apply(s, seat.id, verb, roll)
+	local accepted = if verb == "closeAuction" then Game.closeAuction(s, roll) else Game.apply(s, seat.id, verb, roll, index)
 	if not accepted then return false end
 	local moved = s.motion.serial ~= previousMotion
-	clockTurn(s, moved)
+	if verb ~= "sell" then clockTurn(s, moved) end
 	publish()
 	if player then
 		local funnel = funnels[player]
@@ -230,7 +230,8 @@ local function action(s: Rules.Match, verb: string, player: Player?)
 		end
 		if moved then Telemetry.event(player, "RouteChosen_v1", 1, mode, variant, verb) end
 		if previousPhase == "offer" and verb == "buy" then
-			Telemetry.event(player, "ClubSigned_v1", Board.tiles[seat.position].price, mode, variant)
+			local tile = Board.tiles[seat.position]
+			Telemetry.event(player, if tile.league > 0 then "ClubSigned_v1" else "AssetSigned_v1", tile.price, mode, variant)
 		end
 		if previousPhase == "matchday" then
 			Telemetry.event(player, "MatchdayResolved_v1", 1, mode, variant, s.last.kind)
@@ -243,7 +244,8 @@ local function action(s: Rules.Match, verb: string, player: Player?)
 	if previousPhase == "auction" and s.last.amount < 0 then
 		local winner = Players:GetPlayerByUserId(s.last.who)
 		if winner then
-			Telemetry.event(winner, "ClubSigned_v1", -s.last.amount, mode, variant)
+			local tile = Board.tiles[s.last.tile]
+			Telemetry.event(winner, if tile.league > 0 then "ClubSigned_v1" else "AssetSigned_v1", -s.last.amount, mode, variant)
 			Telemetry.event(winner, "AuctionWon_v1", -s.last.amount, mode, variant)
 			if s.last.kind == "auctionLeague" then Telemetry.event(winner, "LeagueCompleted_v1", 1, mode, variant) end
 		end
@@ -310,7 +312,7 @@ intent.OnServerEvent:Connect(function(player, verb, revision, value)
 		end
 	elseif s and s.phase ~= "final" and not s.seats[s.active].bot and s.seats[s.active].id == player.UserId then
 		local now = workspace:GetServerTimeNow()
-		if now >= availableAt and now < deadline then action(s, verb, player) end
+		if now >= availableAt and now < deadline then action(s, verb, player, if type(value) == "number" then value else nil) end
 	end
 end)
 
@@ -350,7 +352,7 @@ while task.wait(if fast then 0.05 else 0.16) do
 		end
 	elseif s and s.phase ~= "final" and now >= deadline then
 		local seat = s.seats[s.active]
-		local verb = if seat.bot then Game.botAction(s) elseif s.phase == "move" then "short" elseif s.phase == "matchday" then "safe" else "skip"
+		local verb = if seat.bot then Game.botAction(s) elseif s.phase == "move" or s.phase == "bench" then "short" elseif s.phase == "matchday" then "safe" else "skip"
 		local p = if seat.bot then nil else Players:GetPlayerByUserId(seat.id)
 		if p then Telemetry.event(p, "TurnTimedOut_v1", 1, mode, variant, s.phase) end
 		action(s, verb, nil)

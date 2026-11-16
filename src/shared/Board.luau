@@ -4,6 +4,10 @@ export type Tile = {kind: string, name: string, code: string, city: string, leag
 local function club(name: string, code: string, city: string, league: number, price: number, gate: number): Tile
 	return {kind = "club", name = name, code = code, city = city, league = league, price = price, gate = gate, award = 0}
 end
+local function asset(kind: string, name: string, code: string, city: string, price: number, gate: number): Tile
+	return {kind = kind, name = name, code = code, city = city, league = 0, price = price, gate = gate, award = 0}
+end
+
 local function stop(kind: string, name: string, code: string, award: number?): Tile
 	return {kind = kind, name = name, code = code, city = "", league = 0, price = 0, gate = 0, award = award or 0}
 end
@@ -19,36 +23,44 @@ Board.tiles = table.freeze({
 	stop("kickoff", "Kickoff", "KO"),
 	club("Atlético Madrid", "ATM", "Madrid", 1, 160, 55),
 	club("Olympique de Marseille", "OM", "Marseille", 5, 160, 55),
-	stop("tactics", "Tactics deck", "TAC"),
+	stop("goalDeck", "Goal deck", "GOL"),
 	club("Liverpool FC", "LIV", "Liverpool", 2, 160, 55),
 	club("Bayer Leverkusen", "B04", "Leverkusen", 3, 160, 55),
 	club("AC Milan", "ACM", "Milan", 4, 160, 55),
-	stop("sponsor", "Sponsor", "SP", 75),
+	asset("venue", "Old Trafford", "OT", "Manchester", 180, 45),
 	club("FC Barcelona", "FCB", "Barcelona", 1, 215, 75),
 	club("Manchester City", "MCI", "Manchester", 2, 215, 75),
 	club("Borussia Dortmund", "BVB", "Dortmund", 3, 215, 75),
 	stop("matchday", "Matchday", "MD"),
 	club("Inter Milan", "INT", "Milan", 4, 215, 75),
-	stop("tactics", "Tactics deck", "TAC"),
+	stop("offsideDeck", "Offside deck", "VAR"),
 	club("AS Monaco", "ASM", "Monaco", 5, 215, 75),
 	club("Manchester United", "MUN", "Manchester", 2, 270, 98),
 	club("Juventus", "JUV", "Turin", 4, 270, 98),
-	stop("broadcast", "TV rights", "TV", 105),
+	asset("commercial", "TV Rights", "TV", "", 145, 35),
 	club("Bayern Munich", "BAY", "Munich", 3, 270, 98),
-	stop("tactics", "Tactics deck", "TAC"),
+	asset("commercial", "Kit Deal", "KIT", "", 145, 35),
 	club("Paris Saint-Germain", "PSG", "Paris", 5, 270, 98),
 	stop("matchday", "Matchday", "MD"),
 	club("Real Madrid", "RMA", "Madrid", 1, 270, 98),
-	stop("whistle", "Added time", "+", 120),
+	asset("venue", "Santiago Bernabéu", "SB", "Madrid", 180, 45),
 })
 for _, tile in Board.tiles do table.freeze(tile) end
 local members: {{number}} = {}
+local assetGroups: {[string]: {number}} = {venue = {}, commercial = {}}
 for league in Board.leagues do members[league] = {} end
 for i, tile in Board.tiles do
-	if tile.league > 0 then table.insert(members[tile.league], i) end
+	if tile.league > 0 then
+		table.insert(members[tile.league], i)
+	elseif assetGroups[tile.kind] then
+		table.insert(assetGroups[tile.kind], i)
+	end
 end
 for _, league in members do table.freeze(league) end
 Board.members = table.freeze(members)
+for _, group in assetGroups do table.freeze(group) end
+Board.assetGroups = table.freeze(assetGroups)
+Board.benchFee = 50
 
 Board.figures = table.freeze({
 	table.freeze({name = "Mika Vale", role = "Playmaker", ru = "Плеймейкер", number = "08", color = 0x7BFAAA, dark = 0x193F37, skin = 0xC88D62, hair = 0x251820}),

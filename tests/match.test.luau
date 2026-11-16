@@ -120,16 +120,59 @@ s = start(low)
 s.seats[1].position = 11
 assert(Game.apply(s, 10, "short", low) and Game.apply(s, 10, "safe", low))
 assert(s.last.kind == "safe" and s.seats[1].cash == 700 + Edition.safe_cash)
-s = start(low)
-local seenCards: {[number]: boolean} = {}
-for i = 1, #Edition.cards + 1 do
-	local seat = s.seats[s.active]
-	seat.position = 3
-	assert(Game.apply(s, seat.id, "short", low))
-	assert(s.last.card > 0)
-	if i <= #Edition.cards then assert(not seenCards[s.last.card], "Duplicate card before reshuffle") end
-	seenCards[s.last.card] = true
+for _, family in {{index = 4, reward = true}, {index = 14, reward = false}} do
+	local deckSize = 0
+	for _, card in Edition.cards do if (card.amount > 0) == family.reward then deckSize += 1 end end
+	s = start(low)
+	local seenCards: {[number]: boolean} = {}
+	for draw = 1, deckSize + 1 do
+		local seat = s.seats[s.active]
+		seat.position = family.index - 1
+		assert(Game.apply(s, seat.id, "short", low))
+		local card = Edition.cards[s.last.card]
+		assert(card and (card.amount > 0) == family.reward)
+		if draw <= deckSize then assert(not seenCards[s.last.card], "Duplicate card before reshuffle") end
+		seenCards[s.last.card] = true
+	end
 end
+
+s = start(low)
+s.seats[1].position, s.seats[2].position = 13, 3
+assert(Game.apply(s, 10, "short", low) and s.seats[1].benched and s.active == 2)
+assert(Game.apply(s, 20, "short", low) and s.phase == "bench")
+assert(not Game.apply(s, 10, "long", low))
+local oldMotion = s.motion.serial
+assert(Game.apply(s, 10, "release", low) and s.phase == "move")
+assert(s.seats[1].cash == 700 - Board.benchFee and s.motion.serial == oldMotion)
+assert(not Game.apply(s, 10, "release", low))
+assert(Game.apply(s, 10, "long", low) and s.phase == "offer" and s.seats[1].position == 18)
+
+s = start(low)
+s.seats[1].position, s.seats[1].benched, s.phase = 14, true, "bench"
+s.seats[1].cash = 0
+assert(not Game.apply(s, 10, "release", low))
+assert(Game.apply(s, 10, "short", low) and not s.seats[1].benched and s.motion.steps == 1)
+
+s = start(low)
+local stadium, otherStadium = table.unpack(Board.assetGroups.venue)
+local commercial = Board.assetGroups.commercial[1]
+s.seats[1].position = stadium - 1
+assert(Game.apply(s, 10, "short", low) and Game.apply(s, 10, "buy", low))
+assert(s.clubs[stadium].owner == 10 and Game.gate(s, stadium) == 45)
+s.clubs[otherStadium].owner, s.clubs[commercial].owner = 10, 10
+assert(Game.gate(s, stadium) == 90 and Game.gate(s, commercial) == 35)
+assert(not Game.apply(s, 20, "sell", low, stadium))
+s.seats[2].position = stadium - 1
+assert(Game.apply(s, 20, "short", low) and s.last.amount == -90)
+assert(not Game.apply(s, 10, "sell", low, 10000) and not Game.apply(s, 10, "sell", low, stadium + 0.5))
+local beforeSale = s.seats[1].cash
+assert(Game.apply(s, 10, "sell", low, stadium))
+assert(s.seats[1].cash == beforeSale + 108 and s.clubs[stadium].owner == 0 and Game.gate(s, otherStadium) == 45)
+assert(not Game.apply(s, 10, "sell", low, commercial))
+s.seats[1].position = stadium - 1
+assert(Game.apply(s, 10, "short", low) and s.phase == "offer")
+assert(Game.apply(s, 10, "skip", low) and Game.bid(s, 20, 1) and Game.closeAuction(s, low))
+assert(s.clubs[stadium].owner == 20 and not s.soldThisTurn and s.last.kind == "auctionWon")
 
 print("Rule scenarios passed")
 local wins = {0, 0, 0, 0, 0, 0}
@@ -154,7 +197,7 @@ for seed = 1, 800 do
 			assert(Game.apply(match, match.seats[match.active].id, Game.botAction(match), rng))
 		end
 		actions += 1
-		assert(actions <= count * Board.rounds * 2, "Match did not terminate")
+		assert(actions <= count * Board.rounds * 3, "Match did not terminate")
 		for _, seat in match.seats do
 			assert(seat.cash >= 0 and seat.position >= 1 and seat.position <= #Board.tiles)
 		end

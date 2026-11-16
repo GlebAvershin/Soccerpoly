@@ -51,6 +51,15 @@
       "ruBody": "На дерби проданы все билеты."
     },
     {
+      "id": "bench_talk",
+      "kind": "bench",
+      "amount": 0,
+      "title": "Sent to the bench",
+      "ru": "На скамейку",
+      "body": "Next turn, take the short route or pay 50 CR to choose either route.",
+      "ruBody": "На следующем ходу выбери короткий маршрут или заплати 50 CR за оба варианта."
+    },
+    {
       "id": "repairs",
       "kind": "penalty",
       "amount": -45,

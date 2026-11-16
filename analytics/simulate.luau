@@ -90,8 +90,11 @@ for number = 1, 1200 do
 	result("TableAuctionSales", soldAtAuction)
 	for _, seat in match.seats do
 		local clubs, upgrades = 0, 0
-		for _, owned in match.clubs do
-			if owned.owner == seat.id then clubs += 1; upgrades += owned.level end
+		for index, owned in match.clubs do
+			if owned.owner == seat.id and Board.tiles[index].league > 0 then
+				clubs += 1
+				upgrades += owned.level
+			end
 		end
 		result("EndingCash", seat.cash, seat.id)
 		result("EndingValue", Game.score(match, seat.id), seat.id)

@@ -1,5 +1,6 @@
 # World Draft visual kit
 
+- **studio-bench.png** — Studio playtest capture showing the bench choice on the updated property board.
 - **studio-auction.png** — Studio playtest capture of the sealed transfer auction.
 - **studio-match.png** — Studio playtest capture, round 1 route selection on the Continental Cup board.
 

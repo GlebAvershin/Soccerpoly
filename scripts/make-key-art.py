@@ -87,9 +87,14 @@ for row in board.splitlines():
     if m := re.search(r'club\("[^"]+", "([^"]+)", "[^"]+", (\d+), (\d+),', row):
         code, group, price = m.groups()
         tiles.append((code, palette[int(group) - 1], price))
+    elif m := re.search(r'asset\("([^"]+)", "[^"]+", "([^"]+)", "[^"]*", (\d+),', row):
+        kind, code, price = m.groups()
+        tiles.append((code, {"venue": "#69bac5", "commercial": "#e8c862"}[kind], price))
     elif m := re.search(r'stop\("([^"]+)", "[^"]+", "([^"]+)"', row):
         kind, code = m.groups()
-        tiles.append((code, {"kickoff": MINT, "tactics": "#eb9df7", "whistle": "#f78c81"}.get(kind, "#ffd47a"), ""))
+        tiles.append((code, {"kickoff": MINT, "goalDeck": "#7fd2af", "offsideDeck": "#ee8b74",
+                             "matchday": "#5fc7ae"}[kind], ""))
+
 path = ([(i, 6) for i in range(7)] + [(6, 6-i) for i in range(1, 7)]
         + [(6-i, 0) for i in range(1, 7)] + [(0, i) for i in range(1, 6)])
 assert len(path) == len(tiles) == 24

@@ -134,10 +134,23 @@ local function preferencesLine(parent: Instance, name: string, label: string, pr
 	UI.button(parent, name, label, 42, press)
 end
 local render: () -> ()
+local function propertyGroup(tile: Board.Tile): string
+	if tile.league > 0 then
+		local league = Board.leagues[tile.league]
+		return if russian then league.ru else league.name
+	end
+	return t(if tile.kind == "venue" then "Independent stadiums" else "Commercial rights")
+end
+
+local function propertySummary(tile: Board.Tile, gate: number, level: number): string
+	if tile.league > 0 then return t("Price %d  /  Gate %d  /  Stadium %d", tile.price, gate, level) end
+	return t("Price %d  /  Fee %d", tile.price, gate)
+end
+
 local function drawDialog()
 	dialogShade.Visible = opened ~= ""
 	if opened == "" then return end
-	dialogTitle.Text = t(if opened == "rules" then "HOW TO PLAY" elseif opened == "cell" then "BOARD CELL" else "CLUB LEDGER")
+	dialogTitle.Text = t(if opened == "rules" then "HOW TO PLAY" elseif opened == "cell" then "BOARD CELL" else "PROPERTY LEDGER")
 	constraint.MaxSize = if opened == "cell" then Vector2.new(390, 290) else Vector2.new(530, 590)
 	local offset = dialogBody.CanvasPosition
 	dialogBody:ClearAllChildren()
@@ -153,30 +166,40 @@ local function drawDialog()
 		UI.pad(card, 14, 13)
 		UI.stack(card, 4)
 		UI.stroke(card, accent, 3)
-		if tile.kind == "club" then
-			local league = Board.leagues[tile.league]
-			UI.label(card, (if russian then league.ru else league.name) .. "  /  " .. tile.city, 13, {font = BOLD, color = colors.panel})
+		if tile.price > 0 then
+			local group = propertyGroup(tile)
+			if tile.city ~= "" then group ..= "  /  " .. tile.city end
+			UI.label(card, group, 13, {font = BOLD, color = colors.panel})
 		end
 		UI.label(card, t(tile.name), 23, {font = BLACK, color = colors.ink})
-		if tile.kind == "club" then
+		if tile.price > 0 then
 			local gate = if club.owner == 0 then tile.gate else snapshot.gates[inspected]
-			UI.label(card, t("Price %d  /  Gate %d  /  Stadium %d", tile.price, gate, club.level), 14, {color = colors.ink})
+			UI.label(card, propertySummary(tile, gate, club.level), 14, {color = colors.ink})
 			UI.label(card, if club.owner == 0 then t("Free") else t("Owner: %s", sessionName(club.owner)), 14, {font = BOLD, color = colors.panel})
-			if s and club.owner == Player.UserId and club.level == 1 and not Game.setComplete(s, club.owner, tile.league) then
+			if tile.league == 0 then
+				UI.label(card, t("Own both in this group to double the fee."), 13, {color = colors.ink})
+			elseif s and club.owner == Player.UserId and club.level == 1 and not Game.setComplete(s, club.owner, tile.league) then
 				UI.label(card, t("Complete the league to upgrade to level 2."), 13, {color = colors.ink})
 			end
+			if s and club.owner == Player.UserId and s.phase == "move" and s.seats[s.active].id == Player.UserId and not s.soldThisTurn then
+				local index = inspected
+				UI.button(dialogBody, "SellProperty", t("Sell to the bank · +%d CR", Game.sellValue(s, index)), 48,
+					function() send("sell", index) end, GOLD, colors.ink)
+			end
 		else
-			local text = if tile.kind == "tactics" then t("Draw a card from the tactics deck.")
+			local text = if tile.kind == "goalDeck" then t("Draw a reward from the Goal deck.")
+				elseif tile.kind == "offsideDeck" then t("Draw a penalty or bench card.")
 				elseif tile.kind == "matchday" then t("A goal wins a cup and a cash bonus. A safe play keeps your budget steady.")
-				elseif tile.kind == "kickoff" then t("Each move shows two destinations. Crossing Kickoff pays 140 CR.")
-				else string.format("+%d CR", tile.award)
+				else t("Each move shows two destinations. Crossing Kickoff pays 140 CR.")
 			UI.label(card, text, 14, {color = colors.ink})
 		end
 	elseif opened == "rules" then
 		local topics = {
 			{"1. Pick either route", "Each move shows two destinations. Crossing Kickoff pays 140 CR."},
 			{"2. Collect a league", "Own all three clubs to double fees and unlock level 2 stadiums."},
-			{"Club auctions", "When a club goes unsigned, each player can submit one sealed bid. The highest bid wins. In a tie, priority starts after the player who opened the auction."},
+			{"Auctions", "When an asset goes unsold, each player can submit one sealed bid. The highest bid wins. In a tie, priority starts after the player who opened the auction."},
+			{"Stadiums and rights", "Own both assets in a group to double their fees. Before moving, tap an asset you own to sell it to the bank once per turn."},
+			{"Goal, offside and bench", "The Goal deck pays bonuses. Offside can cost credits or send you to the bench. Next turn, take the short route or pay 50 CR for both choices."},
 			{"3. Beat the final whistle", "After 8 rounds, cash, clubs, stadiums, leagues and cups decide the winner. Everyone plays to the end."},
 		}
 		UI.label(dialogBody, t("Tap any cell to see its full details."), 14, {font = BOLD, color = colors.mint})
@@ -205,30 +228,36 @@ local function drawDialog()
 	else
 		UI.label(dialogBody, t("Complete three clubs for a 160 CR portfolio bonus."), 13, {color = colors.muted})
 		local match = snapshot and snapshot.match
-		for n, league in Board.leagues do
+		local function ledgerGroup(indices: {number})
+			local first = Board.tiles[indices[1]]
+			local group = propertyGroup(first)
 			local owned = 0
 			if match then
-				for _, index in Board.members[n] do
+				for _, index in indices do
 					if match.clubs[index].owner == Player.UserId then owned += 1 end
 				end
 			end
-			local group = if russian then league.ru else league.name
-			local progress = if match then t("%s · %d/%d owned", group, owned, #Board.members[n]) else group
-			UI.label(dialogBody, progress, 14, {font = BOLD, color = hex(league.color)})
-			for _, i in Board.members[n] do
+			local progress = if match then t("%s · %d/%d owned", group, owned, #indices) else group
+			UI.label(dialogBody, progress, 14, {font = BOLD, color = Art.accent(first.kind, first.league)})
+			for _, i in indices do
 				local tile = Board.tiles[i]
 				local club = if match then match.clubs[i] else {owner = 0, level = 0}
 				local card = UI.box(dialogBody, tile.code, colors.surface, 8)
 				card.Size, card.AutomaticSize = UDim2.new(1, 0, 0, 0), Enum.AutomaticSize.Y
 				UI.pad(card, 10, 8)
 				UI.stack(card, 3)
-				UI.label(card, tile.name .. "  /  " .. tile.city, 14, {font = BOLD})
+				local name = t(tile.name)
+				if tile.city ~= "" then name ..= "  /  " .. tile.city end
+				UI.label(card, name, 14, {font = BOLD})
 				local gate = if club.owner ~= 0 then snapshot.gates[i] else tile.gate
-				UI.label(card, t("Price %d  /  Gate %d  /  Stadium %d", tile.price, gate, club.level), 12, {color = colors.muted})
+				UI.label(card, propertySummary(tile, gate, club.level), 12, {color = colors.muted})
 				UI.label(card, if club.owner == 0 then t("Free") else t("Owner: %s", sessionName(club.owner)), 12,
 					{color = if club.owner == Player.UserId then colors.mint else colors.muted})
 			end
 		end
+		for _, indices in Board.members do ledgerGroup(indices) end
+		ledgerGroup(Board.assetGroups.venue)
+		ledgerGroup(Board.assetGroups.commercial)
 	end
 	dialogBody.CanvasPosition = offset
 end
@@ -274,14 +303,14 @@ end
 
 local function spendText(s: any, seat: any, index: number): string
 	local tile, club = Board.tiles[index], s.clubs[index]
-	if tile.kind == "club" then
+	if tile.price > 0 then
 		if club.owner == 0 then
 			local budget = seat.cash + (if index < seat.position then Board.kickoffCash else 0)
 			return if budget < tile.price then t("May go to auction") else t("Sign · %d CR", tile.price)
 		end
-		if club.owner == seat.id then return t("Your club") end
+		if club.owner == seat.id then return t(if tile.league > 0 then "Your club" else "Your asset") end
 		return t("Gate · −%d CR", snapshot.gates[index])
-	elseif tile.kind == "tactics" then
+	elseif tile.kind == "goalDeck" or tile.kind == "offsideDeck" then
 		return t("Draw a card")
 	elseif tile.kind == "matchday" then
 		return t("Play for a cup")
@@ -303,6 +332,7 @@ local function storyCard(s: any)
 		buy = "%s signed %s", league = "%s completed %s", upgrade = "%s invested in %s",
 		skip = "%s passed on %s", gate = "%s paid gate at %s",
 		auctionWon = "%s won the auction for %s", auctionLeague = "%s won the auction for %s",
+		sold = "%s sold %s", release = "%s returned from the bench",
 	})[last.kind] or "%s landed on %s"
 	if last.kind == "start" then
 		UI.label(card, t("The transfer window is open."), 14)
@@ -310,7 +340,8 @@ local function storyCard(s: any)
 		UI.label(card, t("%s is still available", tile.name), 14)
 	elseif last.card > 0 then
 		local info = Edition.cards[last.card]
-		UI.label(card, (if russian then info.ru else info.title) .. string.format("  /  %+d CR", last.amount), 14, {font = BOLD, color = if last.amount < 0 then colors.pink else GOLD})
+		local detail = if info.kind == "bench" then "" else string.format("  /  %+d CR", last.amount)
+		UI.label(card, (if russian then info.ru else info.title) .. detail, 14, {font = BOLD, color = if last.amount < 0 then colors.pink else GOLD})
 		UI.label(card, t("%s drew a card", name) .. " · " .. (if russian then info.ruBody else info.body), 12, {color = colors.muted})
 	elseif last.kind == "goal" or last.kind == "save" or last.kind == "offside" or last.kind == "safe" then
 		local outcome = ({goal = "Goal! Cup awarded", save = "Saved by the keeper", offside = "Offside · goal disallowed", safe = "Safe play"})[last.kind]
@@ -322,7 +353,7 @@ local function storyCard(s: any)
 		if last.kind == "league" then title = if russian then Board.leagues[tile.league].ru else Board.leagues[tile.league].name end
 		local delta = if last.amount == 0 then "" else string.format("  /  %+d CR", last.amount)
 		if last.kind == "offer" or last.kind == "invest" then delta = "" end
-		UI.label(card, t(template, name, title) .. delta, 14)
+		UI.label(card, (if last.kind == "release" then t(template, name) else t(template, name, title)) .. delta, 14)
 	end
 	if last.crossed then UI.label(card, t("%+d CR · KICKOFF", Board.kickoffCash), 12, {font = BOLD, color = colors.mint}) end
 end
@@ -454,14 +485,15 @@ end
 local function contractPanel(s: any, seat: any)
 	local offer = s.phase == "offer"
 	local tile, club = Board.tiles[seat.position], s.clubs[seat.position]
-	local league = Board.leagues[tile.league]
-	title(if offer then "Sign this club?" else "Upgrade your stadium?")
+	title(if offer then (if tile.league > 0 then "Sign this club?" else "Buy this asset?") else "Upgrade your stadium?")
 	local card = UI.box(body, "Contract", colors.surface, 9)
 	card.Size, card.AutomaticSize = UDim2.new(1, 0, 0, 0), Enum.AutomaticSize.Y
 	UI.pad(card, 10, 6)
 	UI.stack(card, 2)
-	UI.label(card, (if russian then league.ru else league.name) .. "  /  " .. tile.city, 11, {font = BOLD, color = hex(league.color)})
-	UI.label(card, tile.name, 21, {font = BLACK})
+	local group = propertyGroup(tile)
+	if tile.city ~= "" then group ..= "  /  " .. tile.city end
+	UI.label(card, group, 11, {font = BOLD, color = Art.accent(tile.kind, tile.league)})
+	UI.label(card, t(tile.name), 21, {font = BLACK})
 	UI.label(card, if offer then t("Gate +%d CR each visit from a rival.", tile.gate) else t("Level %d → %d · gate +%d CR", club.level,
 		club.level + 1, Board.upgradeGate * (if Game.setComplete(s, seat.id, tile.league) then 2 else 1)), 13, {color = colors.mint})
 	footer(50)
@@ -469,8 +501,21 @@ local function contractPanel(s: any, seat: any)
 	local b = UI.button(actions, if offer then "SignClub" else "Upgrade", t(if offer then "Sign · %d CR" else "Upgrade · %d CR",
 		if offer then tile.price else Board.upgradeCost), 50, primary, colors.mint, colors.ink)
 	b.Size = UDim2.new(0.67, -4, 0, 50)
-	local skip = UI.button(actions, "Skip", t(if offer then "Auction club" else "Pass"), 50, alternate)
+	local skip = UI.button(actions, "Skip", t(if offer then "Send to auction" else "Pass"), 50, alternate)
 	skip.Size, skip.Position = UDim2.new(0.33, -4, 0, 50), UDim2.new(0.67, 4, 0, 0)
+end
+
+local function benchPanel(s: any, seat: any)
+	title("On the bench")
+	local target = Board.tiles[Game.target(seat.position, s.short)]
+	UI.label(body, t("Short route to %s", t(target.name)), 14, {font = BOLD, color = colors.mint})
+	footer(52)
+	primary = function() send("short") end
+	if seat.cash >= Board.benchFee then alternate = function() send("release") end end
+	local short = UI.button(actions, "BenchShort", t("Take short route"), 52, primary, colors.mint, colors.ink)
+	local release = UI.button(actions, "BenchRelease", t("Pay %d CR for both routes", Board.benchFee), 52, alternate)
+	short.Size = UDim2.new(.5, -4, 0, 52)
+	release.Size, release.Position = UDim2.new(.5, -4, 0, 52), UDim2.new(.5, 4, 0, 0)
 end
 
 local function auctionPanel(s: any, auction: any)
@@ -532,9 +577,13 @@ local function finishPanel(s: any)
 	title(if sharedTitle then "League champions" else "Season champion", if sharedTitle then "Same team value: shared title" else "Season value")
 	for index, record in s.standings do
 		local seat = nil
-		local clubs = 0
+		local clubs, assets = 0, 0
 		for _, candidate in s.seats do if candidate.id == record.id then seat = candidate break end end
-		for _, club in s.clubs do if club.owner == record.id then clubs += 1 end end
+		for i, club in s.clubs do
+			if club.owner == record.id then
+				if Board.tiles[i].league > 0 then clubs += 1 else assets += 1 end
+			end
+		end
 		local winner = record.score == s.standings[1].score
 		local row = UI.box(body, "Rank" .. index, colors.surface, 9)
 		row.AutomaticSize, row.Size = Enum.AutomaticSize.Y, UDim2.new(1, 0, 0, 0)
@@ -544,6 +593,7 @@ local function finishPanel(s: any)
 		local rank = if winner then "01" else string.format("%02d", index)
 		UI.label(row, rank .. "  /  " .. (if seat then sessionName(record.id) else "—"), 17, {font = BLACK, color = if winner then GOLD else colors.text})
 		local summary = t("%d CR value", record.score) .. "  ·  " .. t(if clubs == 0 then "No clubs" else "%d clubs", clubs)
+		if assets > 0 then summary ..= "  ·  " .. t("%d assets", assets) end
 		if seat and seat.trophies > 0 then summary ..= "  ·  " .. t("%d cups", seat.trophies) end
 		UI.label(row, summary, 12, {color = colors.muted})
 	end
@@ -556,7 +606,7 @@ render = function()
 	primary, alternate = nil, nil
 	tagline.Text = if russian then Edition.ru else string.upper(Edition.name)
 	local wide = root.AbsoluteSize.X >= 420
-	rulesButton.Text, clubsButton.Text = if wide then t("Rules") else "?", t(if wide then "View clubs" else "Clubs")
+	rulesButton.Text, clubsButton.Text = if wide then t("Rules") else "?", t(if wide then "View holdings" else "Holdings")
 	closeButton.Text = t("Close")
 	body:ClearAllChildren()
 	body.CanvasPosition = Vector2.zero
@@ -584,6 +634,8 @@ render = function()
 		if seat.id == Player.UserId and not seat.bot then
 			if s.phase == "move" then
 				routePanel(s, seat)
+			elseif s.phase == "bench" then
+				benchPanel(s, seat)
 			elseif s.phase == "matchday" then
 				matchdayPanel()
 			else
@@ -641,7 +693,7 @@ remote = intent
 local outcomes = {
 	goal = "GOAL!", offside = "Offside", save = "Save",
 	buy = "Club signed", upgrade = "Stadium upgraded", league = "League complete",
-	auctionWon = "Club won at auction", auctionLeague = "League complete", auctionEmpty = "Club still available",
+	auctionWon = "Club won at auction", auctionLeague = "League complete", auctionEmpty = "Still available", sold = "Sold to the bank",
 }
 snapshots.OnClientEvent:Connect(function(data)
 	local old = snapshot
@@ -672,15 +724,21 @@ snapshots.OnClientEvent:Connect(function(data)
 		local name = sessionName(last.who)
 		local headline, caption, tint = outcomes[last.kind], name .. "  /  " .. t(Board.tiles[last.tile].name), colors.mint
 		local shot: string? = nil
+		if Board.tiles[last.tile].league == 0 and last.kind == "buy" then headline = "Asset acquired" end
+		if Board.tiles[last.tile].league == 0 and last.kind == "auctionWon" then headline = "Asset won at auction" end
 		if final and previous.phase ~= "auction" then
 			local tied = {}
 			for _, record in match.standings do
 				if record.score == match.standings[1].score then table.insert(tied, sessionName(record.id)) end
 			end
 			headline, caption, tint = "Final whistle", table.concat(tied, "  /  "), GOLD
+		elseif last.kind == "sold" then
+			caption = name .. "  /  " .. t(Board.tiles[last.tile].name) .. string.format("  /  +%d CR", last.amount)
 		elseif last.card > 0 then
 			local card = Edition.cards[last.card]
-			headline, caption, tint = if russian then card.ru else card.title, name .. string.format("  /  %+d CR", last.amount), colors.blue
+			headline = if russian then card.ru else card.title
+			caption = name .. (if card.kind == "bench" then "  /  " .. t("Next turn") else string.format("  /  %+d CR", last.amount))
+			tint = if card.kind == "bench" then GOLD else colors.blue
 		elseif last.kind == "goal" or last.kind == "save" or last.kind == "offside" then
 			shot = last.kind
 			caption = name .. string.format("  /  %+d CR", last.amount)

@@ -16,6 +16,7 @@ return table.freeze({
 		table.freeze({id = "scouting", kind = "transfer", amount = 80, title = "Scouting report", ru = "Отчёт скаута", body = "A new partner backs the academy.", ruBody = "Новый партнёр поддержал академию."}),
 		table.freeze({id = "clean_sheet", kind = "bonus", amount = 115, title = "Clean sheet", ru = "Сухой матч", body = "The defence earns a team bonus.", ruBody = "Защита заработала командную премию."}),
 		table.freeze({id = "derby", kind = "bonus", amount = 145, title = "Derby night", ru = "Вечер дерби", body = "A sold-out derby fills the stands.", ruBody = "На дерби проданы все билеты."}),
+		table.freeze({id = "bench_talk", kind = "bench", amount = 0, title = "Sent to the bench", ru = "На скамейку", body = "Next turn, take the short route or pay 50 CR to choose either route.", ruBody = "На следующем ходу выбери короткий маршрут или заплати 50 CR за оба варианта."}),
 		table.freeze({id = "repairs", kind = "penalty", amount = -45, title = "Pitch repairs", ru = "Ремонт газона", body = "The grounds crew needs new turf.", ruBody = "Стадиону нужно новое покрытие."}),
 		table.freeze({id = "away_support", kind = "bonus", amount = 100, title = "Away support", ru = "Выездная поддержка", body = "Fans turn out on the road.", ruBody = "Болельщики поддержали команду на выезде."}),
 		table.freeze({id = "travel_delay", kind = "penalty", amount = -35, title = "Travel delay", ru = "Задержка рейса", body = "The squad books another flight.", ruBody = "Команда забронировала другой рейс."}),
