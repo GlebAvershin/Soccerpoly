@@ -126,7 +126,7 @@ local function build()
 	local banner = plate(field, "World Draft wordmark", 0, 19.8, 0.17, 53, 8.2, 0.19, C("#112638"))
 	local word = surface(banner, Enum.NormalId.Top, 920, 160)
 	label(word, "F O O T B O L A P O L I A", 0.04, 0.08, 0.92, 0.58, C("#E3F2E7"), Enum.Font.GothamBlack)
-	label(word, "T H E   W O R L D   D R A F T      /      S E A S O N   0 1", 0.1, 0.71, 0.8, 0.19, C("#94D2B4"), Enum.Font.GothamMedium)
+	label(word, "T H E   W O R L D   D R A F T      /      C O N T I N E N T A L   C U P", 0.1, 0.71, 0.8, 0.19, C("#94D2B4"), Enum.Font.GothamMedium)
 	for _, mark in {{-30, 19.8}, {30, 19.8}} do
 		plate(field, "Pitch marking", mark[1], mark[2], 0.11, 2.8, 0.13, 0.10, mint, Enum.Material.Neon)
 	end

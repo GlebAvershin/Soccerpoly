@@ -49,7 +49,7 @@ game:GetService("StarterPlayer").StarterPlayerScripts.Footbolapolia["studio-play
     if args.launchservices:
         cmd = ["open", "-n", "-W", "-a", str(Path(args.studio).parents[2]), "--args"] + cmd[1:]
     try:
-        subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True, timeout=165 if args.players == 6 else 110)
+        subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True, timeout=210 if args.players == 6 else 110)
     finally:
         log = log_file.read_text() if log_file.exists() else ""
         print(log)

@@ -155,6 +155,27 @@ function Arena.new(myId: number)
 				end
 			end
 		end
+		for slot, seat in s.seats do
+			if seat.trophies > 0 then
+				local x, z = (slot - 3.5) * 4.4, 25
+				local function cupPart(name: string, size: Vector3, p: Vector3, color: Color3): Part
+					local part = addMark(markers, name, size)
+					part.Position, part.Color, part.Material = p, color, Enum.Material.Metal
+					return part
+				end
+				local gold = hex(0xFFE38E)
+				cupPart("Cup base", Vector3.new(1.7, 0.22, 1.5), Vector3.new(x, 0.22, z), colors[seat.id])
+				cupPart("Cup stem", Vector3.new(0.37, 0.65, 0.37), Vector3.new(x, 0.65, z), gold)
+				local bowl = cupPart("Continental Cup", Vector3.new(0.62, 1.0, 1.0), Vector3.new(x, 1.19, z), gold)
+				bowl.Shape = Enum.PartType.Cylinder
+				bowl.CFrame *= CFrame.Angles(0, 0, math.pi / 2)
+				for _, side in {-1, 1} do
+					local handle = cupPart("Cup handle", Vector3.new(0.30, 0.41, 0.26),
+						Vector3.new(x + 0.58 * side, 1.19, z), gold)
+					handle.CFrame *= CFrame.Angles(0, 0, side * 0.37)
+				end
+			end
+		end
 		local active = s.seats[s.active]
 		if s.phase == "move" and active.id == myId and not active.bot then
 			arrow(Game.target(active.position, s.short), 0xBFFF8A, "1")

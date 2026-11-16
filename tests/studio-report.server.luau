@@ -7,7 +7,7 @@ local players = game:GetService("Players")
 local report = Instance.new("RemoteEvent")
 report.Name = "StudioReport"
 report.Parent = net
-task.delay(if expected == 6 then 115 else 75, function() studio:EndTest("TIMEOUT") end)
+task.delay(if expected == 6 then 145 else 75, function() studio:EndTest("TIMEOUT") end)
 local checks = {}
 report.OnServerEvent:Connect(function(player, status)
 	if status ~= "PASS" then studio:EndTest(tostring(status)); return end

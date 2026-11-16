@@ -123,15 +123,24 @@ ground = '<ellipse cx="1135" cy="430" rx="640" ry="530" fill="url(#beam)"/>'
 shadow = '<path d="M623 643L1333 463L1540 596L839 824Z" fill="#01060c" opacity=".7"/>'
 platform = f'<g transform="matrix(1 -.27 .31 .76 678 236)">{rect(0,30,655,550,"#080f19",18)}{rect(0,15,655,550,"#234555",18)}{"".join(top)}</g>'
 tokens = [
+    token(*iso(310, 35), 0.62, "#f4d46b", "#39453f", "#cf9269", "#3b2a27", "CT"),
+    token(*iso(170, 169), 0.62, "#f588a5", "#402a49", "#bd785b", "#262132", "RF"),
     token(*iso(546, 122), 0.62, "#6cbfff", "#29315a", "#f4bd93", "#233653", "17"),
     token(*iso(107, 422), 0.86, "#ff9f69", "#57263b", "#ac6244", "#30182c", "09", True),
     token(*iso(345, 384), 1.09, "#7bfaaa", "#193f37", "#c88d62", "#251820", "08"),
     token(*iso(568, 453), 1.00, "#ebacff", "#492a67", "#885341", "#221c2c", "01"),
 ]
+cup = '''
+<g transform="translate(1148 563) scale(.83)">
+<ellipse cy="58" rx="52" ry="13" fill="#01060c" opacity=".45"/>
+<path d="M-20 1H-43Q-47 31-12 30M20 1H43Q47 31 12 30" fill="none" stroke="#ffc962" stroke-width="9"/>
+<path d="M-29-8H29L22 24Q18 37 5 38v11h14v9h-38v-9h14V38Q-18 37-22 24Z" fill="#ffe492"/>
+<path d="M-24-3H24" stroke="#fff4bb" stroke-width="4"/>
+</g>'''
 left = (
     shield(111, 133, 0.39)
     + label(174, 125, "FOOTBOLAPOLIA", 26, WHITE, 900, 'letter-spacing="3"')
-    + label(176, 151, "FOOTBALL STRATEGY  /  SEASON 01", 12, CYAN, 700, 'letter-spacing="2.2"')
+    + label(176, 151, "FOOTBALL STRATEGY  /  CONTINENTAL CUP", 12, CYAN, 700, 'letter-spacing="2.2"')
     + label(72, 361, "THE WORLD", 87, WHITE, 900, 'letter-spacing="-3"')
     + label(66, 495, "DRAFT", 145, MINT, 900, 'letter-spacing="-5"')
     + rect(76, 537, 66, 5, MINT, 2)
@@ -139,10 +148,10 @@ left = (
     + label(76, 626, "Build the winning portfolio.", 27, "#b3c9df", 500)
 )
 chips = ""
-for x, w, text in [(77, 111, "1–4 PLAYERS"), (199, 110, "8 ROUNDS"), (320, 113, "4 LEAGUES")]:
+for x, w, text in [(77, 111, "1–6 PLAYERS"), (199, 110, "8 ROUNDS"), (320, 113, "4 LEAGUES")]:
     chips += rect(x, 686, w, 37, "#162a39", 7, 'stroke="#45657a"') + label(x + w/2, 709, text, 12, MINT, 850, 'text-anchor="middle" letter-spacing=".8"')
 footer = rect(76, 802, 1448, 1, "#3b596d") + label(76, 836, "WORLD DRAFT  /  01", 12, "#9eb5c8", 700, 'letter-spacing="3"') + label(1524, 836, "FOOTBALL BOARD STRATEGY", 12, "#9eb5c8", 700, 'text-anchor="end" letter-spacing="3"')
-art = rect(0, 0, 1600, 900, "url(#night)") + ground + lines + shadow + platform + "".join(tokens) + left + chips + footer
+art = rect(0, 0, 1600, 900, "url(#night)") + ground + lines + shadow + platform + "".join(tokens) + cup + left + chips + footer
 (ART / "world-draft-thumb.svg").write_text(canvas(1920, 1080, 1600, 900, art, "Footbolapolia: The World Draft — cover"))
 icon = (
     rect(0, 0, 512, 512, "url(#night)")

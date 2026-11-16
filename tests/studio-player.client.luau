@@ -76,6 +76,7 @@ local ok, failure = pcall(function()
 	if begun.host == me.UserId then
 		button("RouteShort")
 		button("RouteLong")
+		assert((hud:FindFirstChild("CoachHint", true) ~= nil) == (begun.variant == "coach"), "First route hint does not match assignment")
 		task.wait(0.28)
 		intent:FireServer("long", begun.version - 1)
 		task.wait(0.20)
@@ -92,12 +93,12 @@ local ok, failure = pcall(function()
 	else
 		intent:FireServer("short", begun.version)
 	end
-	local steps = 0
+	local steps, visitedCup = 0, false
 	while last.match.phase ~= "final" do
 		local data = await(function(next)
 			local s = next.match
 			return s and (s.phase == "final" or s.seats[s.active].id == me.UserId)
-		end, "next personal turn")
+		end, "next personal turn", if expected == 6 then 34 else 12)
 		if data.match.phase == "final" then break end
 		steps += 1
 		assert(steps < 20)
@@ -105,6 +106,7 @@ local ok, failure = pcall(function()
 		if data.match.phase == "matchday" then
 			button("Shoot")
 			button("SafePlay")
+			visitedCup = true
 			verb = "shoot"
 		else
 			verb = if data.match.phase == "move" then "long" elseif data.match.phase == "offer" then "buy" else "upgrade"
@@ -120,7 +122,9 @@ local ok, failure = pcall(function()
 	button("BackToLobby")
 	assert(hud:FindFirstChild("Rank1", true))
 	if final.host == me.UserId then
-		task.wait(0.25)
+		assert(visitedCup and seatOf(final.match).trophies > 0, "Host did not earn a cup")
+		assert(workspace.LocalTablePieces.Markers:FindFirstChild("Continental Cup"), "Cup visualization missing")
+		task.wait(if expected == 6 then 1.20 else 0.25)
 		intent:FireServer("lobby", final.version)
 	end
 	await(function(data) return data.match == nil end, "replay lobby")
