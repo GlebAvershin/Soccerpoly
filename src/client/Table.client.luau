@@ -90,7 +90,24 @@ local opened = ""
 local primary: (() -> ())? = nil
 local alternate: (() -> ())? = nil
 local mode = "dock"
-local inspected = 0
+local inspected, tradePartner = 0, 0
+local tradeNotice: TextLabel? = nil
+local abilityNames = {
+	route = "Through pass", goal = "Clinical finish", kickoff = "Fast break",
+	gate = "Safe hands", upgrade = "Training plan", var = "VAR review",
+}
+local abilityDetails = {
+	route = "Change your short route by one step.",
+	goal = "Your next cup goal pays +%d CR.",
+	kickoff = "Your next crossing of Kickoff pays +%d CR.",
+	gate = "Cut the next visiting fee by up to %d CR.",
+	upgrade = "Save %d CR on your next stadium upgrade.",
+	var = "Cancel the next Offside card you draw.",
+}
+local function abilityText(power: string): string
+	local amount = Board.abilityAmounts[power]
+	return if amount then t(abilityDetails[power], amount) else t(abilityDetails[power])
+end
 local function playSound(mode: string)
 	if not soundOn then return end
 	local sound = Instance.new("Sound")
@@ -103,9 +120,16 @@ local function playSound(mode: string)
 	game:GetService("Debris"):AddItem(sound, 2)
 end
 
-local function send(verb: string, value: number?)
+type TradeIntent = {buyer: number, offered: number, requested: number, option: number}
+local function send(verb: string, value: (number | TradeIntent)?)
 	local channel, data = remote, snapshot
 	if not channel or not data then return end
+	if verb == "tradeAccept" or verb == "tradeDecline" then
+		if data.trade and workspace:GetServerTimeNow() < data.trade.expires then
+			channel:FireServer(verb, data.trade.token)
+		end
+		return
+	end
 	local revision = if verb == "bid" and data.auction then data.auction.token else data.version
 	local function dispatch()
 		if not snapshot then return end
@@ -148,17 +172,24 @@ local function propertySummary(tile: Board.Tile, gate: number, level: number): s
 end
 
 local function drawDialog()
+	local s = snapshot and snapshot.match
+	local inTrade = opened == "trade" or opened == "tradeClubs"
+	local myMove = s and s.phase == "move" and s.seats[s.active].id == Player.UserId
+	if (inTrade and (not myMove or s.tradeUsed)) or (opened == "tradeReply" and not (snapshot and snapshot.trade)) or (opened == "power" and (not myMove or s.seats[s.active].ability ~= "ready")) then
+		opened = ""
+	end
+	tradeNotice = nil
 	dialogShade.Visible = opened ~= ""
 	if opened == "" then return end
-	dialogTitle.Text = t(if opened == "rules" then "HOW TO PLAY" elseif opened == "cell" then "BOARD CELL" else "PROPERTY LEDGER")
-	constraint.MaxSize = if opened == "cell" then Vector2.new(390, 290) else Vector2.new(530, 590)
+	dialogTitle.Text = t(if opened == "rules" then "HOW TO PLAY" elseif opened == "cell" then "BOARD CELL"
+		elseif inTrade or opened == "tradeReply" then "CLUB DEAL" elseif opened == "power" then "FIGURE POWER" else "PROPERTY LEDGER")
+	constraint.MaxSize = if opened == "cell" or opened == "power" then Vector2.new(390, 320) else Vector2.new(530, 590)
 	local offset = dialogBody.CanvasPosition
 	dialogBody:ClearAllChildren()
 	UI.stack(dialogBody, 10)
 	UI.pad(dialogBody, 5, 2, 9)
 	if opened == "cell" then
 		local tile = Board.tiles[inspected]
-		local s = snapshot and snapshot.match
 		local club = if s then s.clubs[inspected] else {owner = 0, level = 0}
 		local accent = Art.accent(tile.kind, tile.league)
 		local card = UI.box(dialogBody, "CellDetails", colors.paper, 12)
@@ -181,10 +212,27 @@ local function drawDialog()
 			elseif s and club.owner == Player.UserId and club.level == 1 and not Game.setComplete(s, club.owner, tile.league) then
 				UI.label(card, t("Complete the league to upgrade to level 2."), 13, {color = colors.ink})
 			end
-			if s and club.owner == Player.UserId and s.phase == "move" and s.seats[s.active].id == Player.UserId and not s.soldThisTurn then
+			if myMove and club.owner == Player.UserId and not snapshot.trade then
 				local index = inspected
-				UI.button(dialogBody, "SellProperty", t("Sell to the bank · +%d CR", Game.sellValue(s, index)), 48,
-					function() send("sell", index) end, GOLD, colors.ink)
+				if not s.tradeUsed and tile.league > 0 then
+					if Game.canTransfer(s, Player.UserId, index) then
+						UI.button(dialogBody, "ClubDeal", t("Offer sale or swap"), 44, function()
+							opened, tradePartner = "trade", 0
+							dialogBody.CanvasPosition = Vector2.zero
+							drawDialog()
+						end, colors.mint, colors.ink)
+					else
+						UI.label(dialogBody, t("A stadium upgrade in this league blocks trades."), 13, {color = colors.muted})
+					end
+				end
+				if not s.soldThisTurn then
+					if club.level > 0 then
+						UI.button(dialogBody, "SellUpgrades", t("Sell upgrades · +%d CR", math.floor(club.level * Board.upgradeCost / 2)), 44,
+							function() send("sellUpgrades", index) end)
+					end
+					UI.button(dialogBody, "SellProperty", t("Sell to the bank · +%d CR", Game.sellValue(s, index)), 44,
+						function() send("sell", index) end, GOLD, colors.ink)
+				end
 			end
 		else
 			local text = if tile.kind == "goalDeck" then t("Draw a reward from the Goal deck.")
@@ -193,12 +241,98 @@ local function drawDialog()
 				else t("Each move shows two destinations. Crossing Kickoff pays 140 CR.")
 			UI.label(card, text, 14, {color = colors.ink})
 		end
+	elseif opened == "power" then
+		local seat = s.seats[s.active]
+		local power = Board.figureAbilities[seat.figure]
+		UI.label(dialogBody, t(abilityNames[power]), 22, {font = BLACK})
+		UI.label(dialogBody, abilityText(power), 16, {color = colors.text})
+		if power == "route" then
+			local destination = Board.tiles[Game.target(seat.position, Game.shortAfterPower(s.short))]
+			UI.label(dialogBody, t("New destination · %s", t(destination.name)), 14, {font = BOLD, color = colors.mint})
+		end
+		UI.label(dialogBody, t("One use per season."), 13, {color = colors.muted})
+		UI.button(dialogBody, "ActivatePower", t("Activate"), 44, function() send("ability") end, colors.mint, colors.ink)
+	elseif opened == "tradeClubs" then
+		UI.label(dialogBody, t("Choose a club to offer"), 17, {font = BOLD})
+		for i, tile in Board.tiles do
+			if Game.canTransfer(s, Player.UserId, i) then
+				UI.button(dialogBody, "TradeClub" .. i, t(tile.name), 44, function()
+					inspected, tradePartner, opened = i, 0, "trade"
+					dialogBody.CanvasPosition = Vector2.zero
+					drawDialog()
+				end)
+			end
+		end
+	elseif opened == "trade" then
+		local index = inspected
+		UI.label(dialogBody, t(Board.tiles[index].name), 22, {font = BLACK})
+		UI.label(dialogBody, t("Offers run for up to %d seconds and close when you move.", Board.tradeSeconds), 13, {color = colors.muted})
+		if tradePartner == 0 then
+			UI.label(dialogBody, t("Choose a player"), 14, {font = BOLD})
+			for _, seat in s.seats do
+				if seat.id ~= Player.UserId then
+					UI.button(dialogBody, "TradePlayer" .. seat.id, seat.name .. (if seat.bot then " · " .. t("Bot") else ""), 44, function()
+						tradePartner = seat.id
+						dialogBody.CanvasPosition = Vector2.zero
+						drawDialog()
+					end)
+				end
+			end
+		else
+			local buyer = tradePartner
+			local cash = 0
+			for _, seat in s.seats do if seat.id == buyer then cash = seat.cash break end end
+			local function propose(requested: number, option: number)
+				send("trade", {buyer = buyer, offered = index, requested = requested, option = option})
+			end
+			UI.button(dialogBody, "ChangeTradePlayer", t("Player · %s", sessionName(buyer)), 44, function()
+				tradePartner = 0
+				dialogBody.CanvasPosition = Vector2.zero
+				drawDialog()
+			end)
+			UI.label(dialogBody, t("Sell for credits"), 14, {font = BOLD})
+			local row = UI.box(dialogBody, "TradePrices")
+			row.Size = UDim2.new(1, 0, 0, 44)
+			local width = 1 / #Board.tradeRates
+			for option in Board.tradeRates do
+				local price = Game.tradePrice(index, option)
+				if price then
+					local button = UI.button(row, "TradePrice" .. option, string.format("%d CR", price), 44,
+						if cash >= price then function() propose(0, option) end else nil,
+						if cash >= price then colors.mint else colors.surface, if cash >= price then colors.ink else colors.muted)
+					button.Position, button.Size = UDim2.fromScale((option - 1) * width, 0), UDim2.new(width, -4, 1, 0)
+				end
+			end
+			for i, tile in Board.tiles do
+				if Game.canTransfer(s, buyer, i) then
+					UI.button(dialogBody, "TradeSwap" .. i, t("Swap for %s", t(tile.name)), 44, function() propose(i, 0) end)
+				end
+			end
+		end
+	elseif opened == "tradeReply" then
+		local deal = snapshot.trade
+		local terms = deal.terms
+		UI.label(dialogBody, t("Offer from %s", sessionName(terms.seller)), 14, {font = BOLD, color = colors.mint})
+		UI.label(dialogBody, t("You receive %s", t(Board.tiles[terms.offered].name)), 19, {font = BLACK})
+		local give = if terms.requested == 0 then string.format("%d CR", terms.price) else t(Board.tiles[terms.requested].name)
+		UI.label(dialogBody, t("You give %s", give), 16, {color = colors.text})
+		tradeNotice = UI.label(dialogBody, t("%d seconds left", math.max(0, math.ceil(deal.expires - workspace:GetServerTimeNow()))),
+			13, {font = BOLD, color = GOLD})
+		local row = UI.box(dialogBody, "TradeActions")
+		row.Size = UDim2.new(1, 0, 0, 44)
+		local accept = UI.button(row, "TradeAccept", t("Accept"), 44, function() send("tradeAccept") end, colors.mint, colors.ink)
+		accept.Size = UDim2.new(.5, -4, 1, 0)
+		local decline = UI.button(row, "TradeDecline", t("Decline"), 44, function() send("tradeDecline") end)
+		decline.Position, decline.Size = UDim2.new(.5, 4, 0, 0), UDim2.new(.5, -4, 1, 0)
+
 	elseif opened == "rules" then
 		local topics = {
 			{"1. Pick either route", "Each move shows two destinations. Crossing Kickoff pays 140 CR."},
 			{"2. Collect a league", "Own all three clubs to double fees and unlock level 2 stadiums."},
 			{"Auctions", "When an asset goes unsold, each player can submit one sealed bid. The highest bid wins. In a tie, priority starts after the player who opened the auction."},
 			{"Stadiums and rights", "Own both assets in a group to double their fees. Before moving, tap an asset you own to sell it to the bank once per turn."},
+			{"Club deals", "Before moving, offer one club for credits or another club. The other player must accept. A stadium upgrade in either league blocks a deal."},
+			{"Figure powers", "Each figure has one power per season. Activate it before moving. Most powers wait for their next eligible event."},
 			{"Goal, offside and bench", "The Goal deck pays bonuses. Offside can cost credits or send you to the bench. Next turn, take the short route or pay 50 CR for both choices."},
 			{"3. Beat the final whistle", "After 8 rounds, cash, clubs, stadiums, leagues and cups decide the winner. Everyone plays to the end."},
 		}
@@ -305,17 +439,19 @@ local function spendText(s: any, seat: any, index: number): string
 	local tile, club = Board.tiles[index], s.clubs[index]
 	if tile.price > 0 then
 		if club.owner == 0 then
-			local budget = seat.cash + (if index < seat.position then Board.kickoffCash else 0)
+			local kickoff = Board.kickoffCash + (if seat.ability == "armed" and Board.figureAbilities[seat.figure] == "kickoff" then Board.abilityAmounts.kickoff else 0)
+			local budget = seat.cash + (if index < seat.position then kickoff else 0)
 			return if budget < tile.price then t("May go to auction") else t("Sign · %d CR", tile.price)
 		end
 		if club.owner == seat.id then return t(if tile.league > 0 then "Your club" else "Your asset") end
-		return t("Gate · −%d CR", snapshot.gates[index])
+		local discount = if seat.ability == "armed" and Board.figureAbilities[seat.figure] == "gate" then Board.abilityAmounts.gate else 0
+		return t("Gate · −%d CR", math.max(0, snapshot.gates[index] - discount))
 	elseif tile.kind == "goalDeck" or tile.kind == "offsideDeck" then
 		return t("Draw a card")
 	elseif tile.kind == "matchday" then
 		return t("Play for a cup")
 	elseif tile.kind == "kickoff" then
-		return t("%+d CR · KICKOFF", Board.kickoffCash)
+		return t("%+d CR · KICKOFF", Board.kickoffCash + (if seat.ability == "armed" and Board.figureAbilities[seat.figure] == "kickoff" then Board.abilityAmounts.kickoff else 0))
 	end
 	return string.format("+%d CR", tile.award)
 end
@@ -332,12 +468,17 @@ local function storyCard(s: any)
 		buy = "%s signed %s", league = "%s completed %s", upgrade = "%s invested in %s",
 		skip = "%s passed on %s", gate = "%s paid gate at %s",
 		auctionWon = "%s won the auction for %s", auctionLeague = "%s won the auction for %s",
-		sold = "%s sold %s", release = "%s returned from the bench",
+		sold = "%s sold %s", soldUpgrades = "%s sold upgrades at %s", release = "%s returned from the bench",
 	})[last.kind] or "%s landed on %s"
 	if last.kind == "start" then
 		UI.label(card, t("The transfer window is open."), 14)
 	elseif last.kind == "auctionEmpty" then
 		UI.label(card, t("%s is still available", tile.name), 14)
+	elseif last.kind == "tradeSale" or last.kind == "tradeSwap" then
+		local received = if last.kind == "tradeSale" then string.format("%d CR", last.amount) else t(Board.tiles[last.otherTile].name)
+		UI.label(card, t("%s sent %s to %s for %s", name, t(tile.name), sessionName(last.other), received), 14, {font = BOLD})
+	elseif last.kind == "var" then
+		UI.label(card, t("%s canceled an Offside card", name), 14, {font = BOLD, color = colors.mint})
 	elseif last.card > 0 then
 		local info = Edition.cards[last.card]
 		local detail = if info.kind == "bench" then "" else string.format("  /  %+d CR", last.amount)
@@ -356,6 +497,9 @@ local function storyCard(s: any)
 		UI.label(card, (if last.kind == "release" then t(template, name) else t(template, name, title)) .. delta, 14)
 	end
 	if last.crossed then UI.label(card, t("%+d CR · KICKOFF", Board.kickoffCash), 12, {font = BOLD, color = colors.mint}) end
+	if last.power and last.kind ~= "var" then
+		UI.label(card, t("Power used · %s", t(abilityNames[last.power])), 12, {font = BOLD, color = colors.mint})
+	end
 end
 
 local function footer(height: number)
@@ -414,14 +558,15 @@ local function lobbyPanel(data: any)
 	local figure = Board.figures[selected]
 	local figureColor = hex(figure.color)
 	local feature = UI.box(body, "FootballerCard", colors.surface, 12)
-	feature.Size = UDim2.new(1, 0, 0, if mode == "dock" then 103 else 72)
+	feature.Size = UDim2.new(1, 0, 0, if mode == "dock" then 103 else 88)
 	UI.stroke(feature, figureColor:Lerp(colors.outline, 0.54))
 	local textArea = UI.box(feature, "FootballerDetails")
 	textArea.Position, textArea.Size = UDim2.new(0, 11, 0, if mode == "dock" then 16 else 5), UDim2.new(0.60, -11, 1, -16)
 	UI.stack(textArea, 3)
 	UI.label(textArea, "#" .. figure.number .. "  /  " .. t("Choose your figure"), 10, {font = BOLD, color = figureColor})
 	UI.label(textArea, figure.name, 20, {font = BLACK})
-	UI.label(textArea, if russian then figure.ru else figure.role, 13, {color = colors.muted})
+	UI.label(textArea, t(abilityNames[Board.figureAbilities[selected]]), 13, {font = BOLD, color = figureColor})
+	UI.label(body, abilityText(Board.figureAbilities[selected]), 13, {color = colors.muted})
 	local viewport = Instance.new("ViewportFrame")
 	viewport.Name = "FootballerPreview"
 	viewport.BackgroundTransparency = 1
@@ -452,6 +597,34 @@ local function lobbyPanel(data: any)
 end
 
 local function routePanel(s: any, seat: any)
+	local canOffer = false
+	if not s.tradeUsed then
+		for i in Board.tiles do
+			if Game.canTransfer(s, Player.UserId, i) then
+				canOffer = true
+				break
+			end
+		end
+	end
+	local power = Board.figureAbilities[seat.figure]
+	if canOffer or seat.ability == "ready" then
+		local row = UI.box(body, "RouteUtilities")
+		row.Size = UDim2.new(1, 0, 0, 44)
+		local split = canOffer and seat.ability == "ready"
+		if canOffer then
+			local deal = UI.button(row, "ClubDeals", t("Club deals"), 44, function() show("tradeClubs") end)
+			if split then deal.Size = UDim2.new(.5, -4, 1, 0) end
+		end
+		if seat.ability == "ready" then
+			local activate = UI.button(row, "FigurePower", t(abilityNames[power]), 44, function() show("power") end, colors.surface, colors.mint)
+			if split then activate.Position, activate.Size = UDim2.new(.5, 4, 0, 0), UDim2.new(.5, -4, 1, 0) end
+		end
+	end
+	if snapshot.trade then
+		UI.label(body, t("Offer sent. You can move now."), 13, {color = GOLD})
+	elseif seat.ability == "armed" then
+		UI.label(body, t("Armed · %s", t(abilityNames[power])), 12, {color = colors.mint})
+	end
 	title("Choose a route")
 	if snapshot.variant == "coach" and s.round == 1 then
 		UI.label(body, t("Coach tip: a free club pays you when rivals visit."), 13, {color = colors.mint, name = "CoachHint"})
@@ -499,7 +672,7 @@ local function contractPanel(s: any, seat: any)
 	footer(50)
 	primary, alternate = function() send(if offer then "buy" else "upgrade") end, function() send("skip") end
 	local b = UI.button(actions, if offer then "SignClub" else "Upgrade", t(if offer then "Sign · %d CR" else "Upgrade · %d CR",
-		if offer then tile.price else Board.upgradeCost), 50, primary, colors.mint, colors.ink)
+		if offer then tile.price else Game.upgradePrice(seat)), 50, primary, colors.mint, colors.ink)
 	b.Size = UDim2.new(0.67, -4, 0, 50)
 	local skip = UI.button(actions, "Skip", t(if offer then "Send to auction" else "Pass"), 50, alternate)
 	skip.Size, skip.Position = UDim2.new(0.33, -4, 0, 50), UDim2.new(0.67, 4, 0, 0)
@@ -644,6 +817,9 @@ render = function()
 		else
 			local watching = true
 			for _, entry in s.seats do if entry.id == Player.UserId and not entry.bot then watching = false end end
+			if data.trade and data.trade.terms.buyer == Player.UserId then
+				UI.button(body, "IncomingTrade", t("Review club offer"), 44, function() show("tradeReply") end, colors.mint, colors.ink)
+			end
 			title(t("%s's turn", seat.name), if watching then "Watch this season and join the next one." else nil)
 			storyCard(s)
 			footer(0)
@@ -682,6 +858,9 @@ task.spawn(function()
 	while gui.Parent do
 		local remaining = if snapshot and snapshot.deadline > 0 then math.max(0, math.ceil(snapshot.deadline - workspace:GetServerTimeNow())) else nil
 		countdown.Text = if remaining then string.format(":%02d", remaining) else ""
+		if tradeNotice and snapshot.trade then
+			tradeNotice.Text = t("%d seconds left", math.max(0, math.ceil(snapshot.trade.expires - workspace:GetServerTimeNow())))
+		end
 		task.wait(0.12)
 	end
 end)
@@ -693,12 +872,17 @@ remote = intent
 local outcomes = {
 	goal = "GOAL!", offside = "Offside", save = "Save",
 	buy = "Club signed", upgrade = "Stadium upgraded", league = "League complete",
+	tradeSale = "Club sold", tradeSwap = "Clubs swapped", var = "VAR review",
 	auctionWon = "Club won at auction", auctionLeague = "League complete", auctionEmpty = "Still available", sold = "Sold to the bank",
 }
 snapshots.OnClientEvent:Connect(function(data)
 	local old = snapshot
 	if old and data.version <= old.version then return end
 	snapshot = data
+	if data.trade and data.trade.terms.buyer == Player.UserId and (not old or not old.trade or old.trade.token ~= data.trade.token) then
+		opened = "tradeReply"
+		dialogBody.CanvasPosition = Vector2.zero
+	end
 	if data.auction and (not old or not old.auction or old.auction.token ~= data.auction.token) then
 		for _, seat in data.match.seats do
 			if seat.id == Player.UserId and not seat.bot and seat.cash >= Game.auctionMinimum(data.auction.tile) then
@@ -732,6 +916,11 @@ snapshots.OnClientEvent:Connect(function(data)
 				if record.score == match.standings[1].score then table.insert(tied, sessionName(record.id)) end
 			end
 			headline, caption, tint = "Final whistle", table.concat(tied, "  /  "), GOLD
+		elseif last.kind == "var" then
+			caption, tint = t("%s canceled an Offside card", name), colors.mint
+		elseif last.kind == "tradeSale" or last.kind == "tradeSwap" then
+			caption = t(Board.tiles[last.tile].name) .. "  /  " ..
+				(if last.kind == "tradeSwap" then t(Board.tiles[last.otherTile].name) else string.format("%d CR", last.amount))
 		elseif last.kind == "sold" then
 			caption = name .. "  /  " .. t(Board.tiles[last.tile].name) .. string.format("  /  +%d CR", last.amount)
 		elseif last.card > 0 then

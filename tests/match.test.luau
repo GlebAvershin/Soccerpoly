@@ -174,18 +174,99 @@ assert(Game.apply(s, 10, "short", low) and s.phase == "offer")
 assert(Game.apply(s, 10, "skip", low) and Game.bid(s, 20, 1) and Game.closeAuction(s, low))
 assert(s.clubs[stadium].owner == 20 and not s.soldThisTurn and s.last.kind == "auctionWon")
 
+-- Sales and swaps settle in place with bilateral approval and no replay.
+s = start(low)
+s.clubs[2].owner, s.clubs[5].owner = 10, 20
+assert(not Game.proposeTrade(s, 20, 10, 5, 0, 2))
+assert(not Game.proposeTrade(s, 10, 10, 2, 0, 2))
+assert(not Game.proposeTrade(s, 10, 20, 8, 0, 2))
+assert(not Game.proposeTrade(s, 10, 20, 2, 0, 4))
+assert(not Game.proposeTrade(s, 10, 20, 2.5, 0, 2))
+assert(not Game.proposeTrade(s, 10, 20, 2, 5, 2))
+assert(Game.proposeTrade(s, 10, 20, 2, 0, 3))
+assert(not Game.replyTrade(s, 10, true))
+assert(not Game.apply(s, 10, "sell", low, 2))
+assert(Game.replyTrade(s, 20, true) and not Game.replyTrade(s, 20, true))
+assert(s.trade == nil and s.clubs[2].owner == 20 and s.phase == "move" and s.motion.serial == 0)
+assert(s.seats[1].cash == 892 and s.seats[2].cash == 508 and s.last.kind == "tradeSale")
+assert(not Game.proposeTrade(s, 10, 20, 2, 0, 1))
+assert(Game.apply(s, 10, "short", low) and not s.tradeUsed and s.active == 2)
+
+s = start(low)
+s.clubs[2].owner, s.clubs[5].owner, s.clubs[9].owner = 10, 20, 10
+s.clubs[9].level = 1
+assert(not Game.proposeTrade(s, 10, 20, 2, 5, 0))
+assert(Game.apply(s, 10, "sellUpgrades", low, 9))
+assert(s.clubs[9].owner == 10 and s.clubs[9].level == 0 and s.seats[1].cash == 750)
+assert(Game.proposeTrade(s, 10, 20, 2, 5, 0) and Game.replyTrade(s, 20, true))
+assert(s.clubs[2].owner == 20 and s.clubs[5].owner == 10 and s.last.kind == "tradeSwap")
+assert(s.seats[1].cash == 750 and s.seats[2].cash == 700)
+
+for _, decline in {false, true} do
+	s = start(low)
+	s.clubs[2].owner, s.clubs[5].owner = 10, 20
+	assert(Game.proposeTrade(s, 10, 20, 2, 0, 2))
+	if decline then
+		assert(Game.replyTrade(s, 20, false))
+		assert(not Game.proposeTrade(s, 10, 20, 2, 5, 0))
+	else
+		assert(Game.apply(s, 10, "long", low))
+	end
+	assert(s.trade == nil and s.clubs[2].owner == 10 and not Game.replyTrade(s, 20, true))
+end
+s = start(low)
+s.clubs[2].owner, s.seats[2].cash = 10, 10
+assert(not Game.proposeTrade(s, 10, 20, 2, 0, 2))
+s.seats[2].cash = 700
+assert(Game.proposeTrade(s, 10, 20, 2, 0, 2))
+s.seats[2].cash = 10
+assert(Game.replyTrade(s, 20, true))
+assert(s.clubs[2].owner == 10 and s.seats[1].cash == 700 and s.last.kind == "start")
+
+for figure, power in Board.figureAbilities do
+	s = start(low)
+	local seat = s.seats[1]
+	seat.figure = figure
+	assert(not Game.apply(s, 20, "ability", low))
+	assert(Game.apply(s, 10, "ability", low) and not Game.apply(s, 10, "ability", low))
+	assert(s.phase == "move" and s.round == 1 and s.motion.serial == 0)
+	if power == "route" then
+		assert(s.short == 2 and s.long == 4)
+		assert(Game.apply(s, 10, "short", low) and s.motion.steps == 2)
+	elseif power == "goal" then
+		seat.position = 11
+		assert(Game.apply(s, 10, "short", low) and Game.apply(s, 10, "shoot", low))
+		assert(seat.cash == 900 and seat.trophies == 1)
+	elseif power == "kickoff" then
+		seat.position = 24
+		assert(Game.apply(s, 10, "short", low) and seat.cash == 890)
+	elseif power == "gate" then
+		s.clubs[2].owner, s.clubs[2].level = 20, 1
+		assert(Game.apply(s, 10, "short", low) and seat.cash == 660 and s.seats[2].cash == 740)
+	elseif power == "upgrade" then
+		s.clubs[2].owner, seat.cash = 10, 50
+		assert(Game.apply(s, 10, "short", low) and s.phase == "upgrade")
+		assert(Game.apply(s, 10, "upgrade", low) and seat.cash == 0 and s.clubs[2].level == 1)
+	elseif power == "var" then
+		seat.position = 13
+		assert(Game.apply(s, 10, "short", low) and s.last.kind == "var" and s.last.card > 0)
+		assert(not seat.benched and seat.cash == 700)
+	end
+	assert(seat.ability == "spent")
+	if power ~= "route" then assert(s.last.power == power) end
+end
+
 print("Rule scenarios passed")
 local wins = {0, 0, 0, 0, 0, 0}
 local leagueCount, longest = 0, 0
-for seed = 1, 800 do
+local baselineActions, transfersActions, completedSales, completedSwaps = 0, 0, 0, 0
+local function season(seed: number, entries: {Rules.Entry}, optional: boolean): (Rules.Match, number)
 	local x = seed
 	local function rng(a: number, b: number): number
 		x = (x * 16807) % 2147483647
 		return a + x % (b - a + 1)
 	end
-	local count = 2 + seed % (Board.maxSeats - 1)
-	local entries: {Rules.Entry} = {}
-	for i = 1, count do table.insert(entries, {id = i, name = tostring(i), figure = i, bot = true}) end
+	local count = #entries
 	local match = Game.new(entries, rng)
 	local actions = 0
 	while match.phase ~= "final" do
@@ -194,7 +275,27 @@ for seed = 1, 800 do
 			assert(Game.auctionReady(match))
 			assert(Game.closeAuction(match, rng))
 		else
-			assert(Game.apply(match, match.seats[match.active].id, Game.botAction(match), rng))
+			local seat = match.seats[match.active]
+			if optional and match.phase == "move" then
+				if seat.ability == "ready" then assert(Game.apply(match, seat.id, "ability", rng)) end
+				local buyer = match.seats[match.active % count + 1].id
+				local offered, requested = 0, 0
+				for index in Board.tiles do
+					if Game.canTransfer(match, seat.id, index) then offered = index end
+					if Game.canTransfer(match, buyer, index) then requested = index end
+				end
+				if (seed + match.round) % 2 == 0 then requested = 0 end
+				if Game.proposeTrade(match, seat.id, buyer, offered, requested, if requested == 0 then 2 else 0) then
+					local trade = assert(match.trade)
+					local accept = Game.botAcceptsTrade(match, trade)
+					assert(Game.replyTrade(match, buyer, accept))
+					if accept then
+						if requested == 0 then completedSales += 1 else completedSwaps += 1 end
+					end
+				end
+				assert(match.phase == "move", "Optional action added a mandatory phase")
+			end
+			assert(Game.apply(match, seat.id, Game.botAction(match), rng))
 		end
 		actions += 1
 		assert(actions <= count * Board.rounds * 3, "Match did not terminate")
@@ -202,9 +303,20 @@ for seed = 1, 800 do
 			assert(seat.cash >= 0 and seat.position >= 1 and seat.position <= #Board.tiles)
 		end
 	end
-	longest = math.max(actions, longest)
 	assert(match.round == Board.rounds and #match.standings == count)
 	assert(match.motion.serial == Board.rounds * count)
+	return match, actions
+end
+
+for seed = 1, 800 do
+	local count = 2 + seed % (Board.maxSeats - 1)
+	local entries: {Rules.Entry} = {}
+	for i = 1, count do table.insert(entries, {id = i, name = tostring(i), figure = i, bot = true}) end
+	local _, baseline = season(seed, entries, false)
+	local match, actions = season(seed, entries, true)
+	baselineActions += baseline
+	transfersActions += actions
+	longest = math.max(actions, longest)
 	for i, record in match.standings do
 		assert(record.score == Game.score(match, record.id))
 		if i > 1 then assert(record.score <= match.standings[i - 1].score) end
@@ -213,9 +325,13 @@ for seed = 1, 800 do
 	for i = 1, count do
 		for league in Board.members do if Game.setComplete(match, i, league) then leagueCount += 1 end end
 	end
-	assert(not Game.apply(match, match.seats[match.active].id, "short", rng))
+	assert(not Game.apply(match, match.seats[match.active].id, "short", low))
 end
-print(string.format("800 seeded seasons passed; max actions: %d, complete sets: %d, first place by seat: %s", longest, leagueCount, table.concat(wins, "/")))
+assert(completedSales > 0 and completedSwaps > 0)
+assert(transfersActions <= baselineActions * 1.05, "Required phase count grew by over 5%")
+print(string.format("800 paired seeds: %.2f vs %.2f required phase resolutions per season; %d sales, %d swaps; max phases: %d",
+	baselineActions / 800, transfersActions / 800, completedSales, completedSwaps, longest))
+print(string.format("Complete sets: %d; first place by seat: %s", leagueCount, table.concat(wins, "/")))
 
 local Experiment = require("../src/shared/Experiment")
 local coach = 0

@@ -175,11 +175,53 @@ local ok, failure = pcall(function()
 	local signed = await(function(data) return data.match.clubs[2].owner == begun.host end, "auction result")
 	assert(not signed.auction and signed.match.seats[1].cash == 700 - catalog.tiles[2].price)
 
+	-- Round two exercises both directions with two real connections.
+	if expected == 2 then
+		local seller = begun.host
+		local buyer = begun.match.seats[2].id
+		if me.UserId == buyer then
+			task.wait(math.max(.02, signed.availableAt - workspace:GetServerTimeNow() + .08))
+			intent:FireServer("long", signed.version)
+			local contract = await(function(data) return data.match.phase == "offer" and seatOf(data.match).position == 5 end, "second club")
+			task.wait(math.max(.02, contract.availableAt - workspace:GetServerTimeNow() + .08))
+			intent:FireServer("buy", contract.version)
+		else
+			local turn = await(function(data) return data.match.round == 2 and data.match.active == 1 end, "seller's round two")
+			task.wait(math.max(.02, turn.availableAt - workspace:GetServerTimeNow() + .08))
+			button("ClubDeals")
+			button("FigurePower")
+			intent:FireServer("ability", turn.version)
+			local powered = await(function(data) return seatOf(data.match).ability == "spent" end, "through pass")
+			assert(powered.deadline == turn.deadline and powered.availableAt == turn.availableAt and powered.match.short == 2)
+			intent:FireServer("trade", powered.version, {buyer = buyer, offered = 2, requested = 5, option = 0})
+		end
+		local privateSwap = await(function(data) return data.trade ~= nil end, "private swap offer")
+		assert(privateSwap.trade.expires <= privateSwap.deadline and privateSwap.trade.terms.requested == 5)
+		assert(privateSwap.trade.expires - workspace:GetServerTimeNow() <= catalog.tradeSeconds)
+		assert(privateSwap.match.trade == nil)
+		if me.UserId == seller then
+			intent:FireServer("tradeAccept", privateSwap.trade.token)
+		else
+			button("TradeAccept")
+			button("TradeDecline")
+			intent:FireServer("tradeAccept", privateSwap.trade.token - 1)
+			task.wait(.30)
+			assert(last.trade and last.match.clubs[2].owner == seller and last.match.clubs[5].owner == buyer)
+			intent:FireServer("tradeAccept", privateSwap.trade.token)
+			intent:FireServer("tradeAccept", privateSwap.trade.token)
+		end
+		local swapped = await(function(data) return data.match.last.kind == "tradeSwap" end, "swap confirmed")
+		assert(swapped.match.clubs[2].owner == buyer and swapped.match.clubs[5].owner == seller and not swapped.trade)
+		assert(swapped.deadline == privateSwap.deadline and swapped.availableAt == privateSwap.availableAt)
+		assert(swapped.match.seats[1].cash == privateSwap.match.seats[1].cash and swapped.match.seats[2].cash == privateSwap.match.seats[2].cash)
+	end
+
+	local directSale, soloPower = false, false
 	local steps, visitedCup, visitedBench, sold = 0, false, false, false
 	while last.match.phase ~= "final" do
 		local data = await(function(next)
 			local s = next.match
-			return s and (s.phase == "final" or next.auction or s.seats[s.active].id == me.UserId)
+			return s and (s.phase == "final" or next.auction or (next.trade and next.trade.terms.buyer == me.UserId) or s.seats[s.active].id == me.UserId)
 		end, "next personal turn", if expected == 6 then 34 else 12)
 		if data.match.phase == "final" then break end
 		if data.auction then
@@ -187,6 +229,49 @@ local ok, failure = pcall(function()
 			task.wait(math.max(.02, data.availableAt - workspace:GetServerTimeNow() + .07))
 			intent:FireServer("bid", token, 0)
 			await(function(newer) return not newer.auction or newer.auction.token ~= token end, "auction closed", 12)
+			continue
+		end
+		if expected == 2 and not directSale and data.match.round == 2 then
+			if data.trade and data.trade.terms.buyer == me.UserId then
+				button("TradeAccept")
+				intent:FireServer("tradeAccept", data.trade.token)
+			elseif me.UserId ~= begun.host and data.match.phase == "move" then
+				task.wait(math.max(.02, data.availableAt - workspace:GetServerTimeNow() + .08))
+				intent:FireServer("trade", data.version, {buyer = begun.host, offered = 2, requested = 0, option = 1})
+				data = await(function(next) return next.trade ~= nil end, "direct sale offer")
+			end
+			if data.trade and data.trade.terms.requested == 0 then
+				local receipt = await(function(next) return next.match.last.kind == "tradeSale" end, "direct sale")
+				assert(receipt.deadline == data.deadline and receipt.availableAt == data.availableAt)
+				local price = math.floor(catalog.tiles[2].price * .8)
+				assert(receipt.match.clubs[2].owner == begun.host and receipt.match.last.amount == price)
+				assert(receipt.match.seats[1].cash == data.match.seats[1].cash - price)
+				assert(receipt.match.seats[2].cash == data.match.seats[2].cash + price)
+				directSale = true
+				continue
+			end
+		end
+		if expected == 1 and not soloPower and data.match.phase == "move" then
+			task.wait(math.max(.04, data.availableAt - workspace:GetServerTimeNow() + .07))
+			local control = button("FigurePower")
+			if not device then
+				local virtual = game:GetService("UserInputService"):CreateVirtualInput()
+				local inset = game:GetService("GuiService"):GetGuiInset()
+				local function click(target)
+					local point = target.AbsolutePosition + target.AbsoluteSize * .5 + inset
+					virtual:SendMouseButton(point, Enum.UserInputType.MouseButton1, true, 0)
+					task.wait(.05)
+					virtual:SendMouseButton(point, Enum.UserInputType.MouseButton1, false, 0)
+					task.wait(.16)
+				end
+				click(control)
+				click(button("ActivatePower"))
+			else
+				intent:FireServer("ability", data.version)
+			end
+			local armed = await(function(next) return seatOf(next.match).ability == "armed" end, "keeper power")
+			assert(armed.deadline == data.deadline and armed.availableAt == data.availableAt)
+			soloPower = true
 			continue
 		end
 		if expected == 1 and not sold and data.match.phase == "move" then
@@ -221,6 +306,7 @@ local ok, failure = pcall(function()
 		await(function(newer) return newer.version > data.version end, "action accepted")
 	end
 	local final = last
+	assert(expected ~= 2 or directSale, "Direct sale not exercised")
 	assert(#final.match.standings == seats and final.match.round == 8)
 	assert(final.match.motion.serial == 8 * seats)
 	assert(final.match.standings[1].score >= final.match.standings[seats].score)

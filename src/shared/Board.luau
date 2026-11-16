@@ -71,6 +71,10 @@ Board.figures = table.freeze({
 	table.freeze({name = "Samira Noor", role = "Referee", ru = "Арбитр", number = "RF", color = 0xF588A5, dark = 0x402A49, skin = 0xBD785B, hair = 0x262132}),
 })
 
+Board.figureAbilities = table.freeze({"route", "goal", "kickoff", "gate", "upgrade", "var"})
+Board.abilityAmounts = table.freeze({goal = 60, kickoff = 50, gate = 60, upgrade = 50})
+Board.tradeSeconds = 8
+Board.tradeRates = table.freeze({80, 100, 120})
 Board.maxSeats = #Board.figures
 Board.rounds = 8
 Board.startCash = 700

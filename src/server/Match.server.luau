@@ -20,6 +20,7 @@ local MAX_SEATS = #Board.figures
 local ALLOWED = table.freeze({
 	sync = true, start = true, lobby = true, figure = true, short = true, long = true,
 	buy = true, upgrade = true, skip = true, shoot = true, safe = true, bid = true, release = true, sell = true,
+	sellUpgrades = true, trade = true, tradeAccept = true, tradeDecline = true, ability = true,
 })
 local LOOP_SECONDS, OFFER_SECONDS, AUCTION_SECONDS = 20, 13, 8
 local BOT_MOVE_SECONDS, BOT_OFFER_SECONDS = 1.7, 1.5
@@ -46,6 +47,7 @@ local funnels: {[Player]: Funnel} = {}
 local match: Rules.Match? = nil
 local startedAt, deadline, availableAt = 0, 0, 0
 local entryNumber, version, serial, auctionToken = 0, 0, 0, 0
+local tradeToken, tradeExpires, tradeBotAt = 0, 0, 0
 local mode, variant = "solo", "none"
 
 local function seatList(): {LobbySeat}
@@ -56,12 +58,15 @@ local function seatList(): {LobbySeat}
 	return result
 end
 
-local function output()
+local function output(viewer: Player?)
 	local listed = seatList()
 	local s = match
 	local scores = {}
 	local gates = {}
 	local auction = nil
+	local trade = s and s.trade
+	local privateTrade = if trade and viewer and (viewer.UserId == trade.buyer or viewer.UserId == trade.seller)
+		then {terms = trade, token = tradeToken, expires = tradeExpires} else nil
 	if s and s.auction then
 		local responded = {}
 		for i, seat in s.seats do responded[i] = s.auction.replies[seat.id] ~= nil end
@@ -75,16 +80,20 @@ local function output()
 		version = version, serial = serial, lobby = listed, host = if listed[1] then listed[1].id else 0,
 		match = if s then {
 			seats = s.seats, clubs = s.clubs, active = s.active, round = s.round, phase = s.phase,
-			short = s.short, long = s.long, last = s.last, motion = s.motion, standings = s.standings, soldThisTurn = s.soldThisTurn,
+			short = s.short, long = s.long, last = s.last, motion = s.motion, standings = s.standings, soldThisTurn = s.soldThisTurn, tradeUsed = s.tradeUsed,
 		} else nil,
 		deadline = deadline, availableAt = availableAt, scores = scores, gates = gates,
-		variant = variant, auction = auction,
+		variant = variant, auction = auction, trade = privateTrade,
 	}
 end
 
 local function publish()
 	version += 1
-	pushed:FireAllClients(output())
+	if match and match.trade then
+		for _, player in Players:GetPlayers() do pushed:FireClient(player, output(player)) end
+	else
+		pushed:FireAllClients(output())
+	end
 end
 
 local function step(player: Player, target: number, label: string)
@@ -218,7 +227,7 @@ local function action(s: Rules.Match, verb: string, player: Player?, index: numb
 	local accepted = if verb == "closeAuction" then Game.closeAuction(s, roll) else Game.apply(s, seat.id, verb, roll, index)
 	if not accepted then return false end
 	local moved = s.motion.serial ~= previousMotion
-	if verb ~= "sell" then clockTurn(s, moved) end
+	if verb ~= "sell" and verb ~= "sellUpgrades" and verb ~= "ability" then clockTurn(s, moved) end
 	publish()
 	if player then
 		local funnel = funnels[player]
@@ -264,13 +273,27 @@ local function action(s: Rules.Match, verb: string, player: Player?, index: numb
 	return true
 end
 
+local function integer(value: any): boolean
+	return type(value) == "number" and value % 1 == 0
+end
+
+local function replyTrade(s: Rules.Match, id: number, accept: boolean)
+	if Game.replyTrade(s, id, accept) then publish() end
+end
+
 intent.OnServerEvent:Connect(function(player, verb, revision, value)
 	if not lobby[player] or not consume(player) or type(verb) ~= "string" or not ALLOWED[verb] then return end
 	if verb == "sync" then
-		pushed:FireClient(player, output())
+		pushed:FireClient(player, output(player))
 		return
 	end
 	local s = match
+	if verb == "tradeAccept" or verb == "tradeDecline" then
+		if s and s.trade and revision == tradeToken and workspace:GetServerTimeNow() < tradeExpires then
+			replyTrade(s, player.UserId, verb == "tradeAccept")
+		end
+		return
+	end
 	if verb == "bid" then
 		if not s or not s.auction or revision ~= auctionToken or type(value) ~= "number" then return end
 		local now = workspace:GetServerTimeNow()
@@ -284,7 +307,7 @@ intent.OnServerEvent:Connect(function(player, verb, revision, value)
 		return
 	end
 	if revision ~= version then
-		pushed:FireClient(player, output())
+		pushed:FireClient(player, output(player))
 		return
 	end
 	local seat = lobby[player]
@@ -312,7 +335,18 @@ intent.OnServerEvent:Connect(function(player, verb, revision, value)
 		end
 	elseif s and s.phase ~= "final" and not s.seats[s.active].bot and s.seats[s.active].id == player.UserId then
 		local now = workspace:GetServerTimeNow()
-		if now >= availableAt and now < deadline then action(s, verb, player, if type(value) == "number" then value else nil) end
+		if now < availableAt or now >= deadline then return end
+		if verb == "trade" then
+			if type(value) ~= "table" or not integer(value.buyer) or not integer(value.offered)
+				or not integer(value.requested) or not integer(value.option) then return end
+			if Game.proposeTrade(s, player.UserId, value.buyer, value.offered, value.requested, value.option) then
+				tradeToken, tradeExpires = version + 1, math.min(now + Board.tradeSeconds, deadline)
+				tradeBotAt = now + (if fast then 0.15 else 0.65)
+				publish()
+			end
+		else
+			action(s, verb, player, if type(value) == "number" then value else nil)
+		end
 	end
 end)
 
@@ -326,6 +360,8 @@ Players.PlayerRemoving:Connect(function(player)
 	if next(lobby) == nil then
 		match, deadline = nil, 0
 	elseif s then
+		local trade = s.trade
+		if trade and (trade.seller == player.UserId or trade.buyer == player.UserId) then s.trade = nil end
 		for i, seat in s.seats do
 			if seat.id == player.UserId and not seat.bot then
 				seat.bot = true
@@ -341,6 +377,19 @@ for _, player in Players:GetPlayers() do joined(player) end
 while task.wait(if fast then 0.05 else 0.16) do
 	local s = match
 	local now = workspace:GetServerTimeNow()
+	local trade = s and s.trade
+	if s and trade and now < deadline then
+		if now >= tradeExpires then
+			replyTrade(s, trade.buyer, false)
+		elseif now >= tradeBotAt then
+			for _, seat in s.seats do
+				if seat.id == trade.buyer and seat.bot then
+					replyTrade(s, seat.id, Game.botAcceptsTrade(s, trade))
+					break
+				end
+			end
+		end
+	end
 	if s and s.auction then
 		if now >= availableAt then
 			local changed = Game.botBids(s)
@@ -352,6 +401,9 @@ while task.wait(if fast then 0.05 else 0.16) do
 		end
 	elseif s and s.phase ~= "final" and now >= deadline then
 		local seat = s.seats[s.active]
+		if seat.bot and s.phase == "move" and seat.ability == "ready" and not fast then
+			Game.apply(s, seat.id, "ability", nextInteger)
+		end
 		local verb = if seat.bot then Game.botAction(s) elseif s.phase == "move" or s.phase == "bench" then "short" elseif s.phase == "matchday" then "safe" else "skip"
 		local p = if seat.bot then nil else Players:GetPlayerByUserId(seat.id)
 		if p then Telemetry.event(p, "TurnTimedOut_v1", 1, mode, variant, s.phase) end
