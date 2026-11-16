@@ -8,8 +8,9 @@ local report = Instance.new("RemoteEvent")
 report.Name = "StudioReport"
 report:SetAttribute("ReadyCount", 0)
 report.Parent = net
-task.delay(if expected == 6 then 145 else 75, function() studio:EndTest("TIMEOUT") end)
+task.delay(if expected == 6 then 180 else 75, function() studio:EndTest("TIMEOUT") end)
 local checks, ready = {}, {}
+local metrics = ""
 report.OnServerEvent:Connect(function(player, status)
 	if status == "READY" then
 		if not ready[player] then
@@ -18,6 +19,7 @@ report.OnServerEvent:Connect(function(player, status)
 		end
 		return
 	end
+	if string.sub(status, 1, 7) == "METRIC " then metrics = " | " .. string.sub(status, 8); return end
 	if status ~= "PASS" then studio:EndTest(tostring(status)); return end
 	checks[player] = true
 	local total = 0
@@ -26,5 +28,5 @@ report.OnServerEvent:Connect(function(player, status)
 	assert(#players:GetPlayers() == total)
 	local arena = workspace:FindFirstChild("WorldDraftArena")
 	assert(arena and #arena:GetDescendants() > 300)
-	studio:EndTest("PASS " .. mode)
+	studio:EndTest("PASS " .. mode .. metrics)
 end)

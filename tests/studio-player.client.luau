@@ -4,18 +4,24 @@ local net = game:GetService("ReplicatedStorage"):WaitForChild("WorldDraft")
 local report, intent, pushes = net:WaitForChild("StudioReport"), net.Intent, net.Snapshot
 local hud = me:WaitForChild("PlayerGui"):WaitForChild("WorldDraftHUD", 8)
 local last
+local expected = script:GetAttribute("ExpectedPlayers") or 1
 pushes.OnClientEvent:Connect(function(snapshot) last = snapshot end)
 local function await(predicate, label, limit)
-	local deadline = os.clock() + (limit or 10)
+	local deadline = os.clock() + (limit or (if expected == 6 then 30 else 10))
 	repeat
 		if last and predicate(last) then return last end
 		task.wait(0.04)
 	until os.clock() > deadline
-	error("Waiting for " .. label)
+	local s = last and last.match
+	local detail = if s then string.format("round=%d seat=%d phase=%s move=%d version=%d", s.round, s.active, s.phase, s.motion.serial, last.version)
+		elseif last then "lobby=" .. #last.lobby else "no snapshot"
+	error("Waiting for " .. label .. " (" .. detail .. ")")
 end
 local function button(name)
 	local found = hud:FindFirstChild(name, true)
 	assert(found and found:IsA("GuiButton"), "Missing HUD button " .. name)
+	-- Studio can leave a background window without a drawable viewport while its client stays connected.
+	if expected == 6 and workspace.CurrentCamera.ViewportSize.X < 2 then return found end
 	assert(found.AbsoluteSize.X > 40 and found.AbsoluteSize.Y >= 40, "Button lacks touch target: " .. name)
 	local canvas = hud:FindFirstChild("Viewport")
 	local a, b = found.AbsolutePosition, found.AbsolutePosition + found.AbsoluteSize
@@ -40,7 +46,6 @@ local ok, failure = pcall(function()
 		assert((size.Y > size.X) == (device == "portrait"), "Device orientation failed: " .. tostring(size))
 		assert(size.X < 700, "Device was not emulated: " .. tostring(size))
 	end
-	local expected = script:GetAttribute("ExpectedPlayers") or 1
 	task.spawn(function()
 		while not last or #last.lobby < expected do
 			intent:FireServer("sync")
@@ -48,7 +53,7 @@ local ok, failure = pcall(function()
 		end
 	end)
 	intent:FireServer("sync")
-	local lobby = await(function(data) return data.match == nil and #data.lobby == expected end, "full test lobby", 42)
+	local lobby = await(function(data) return data.match == nil and #data.lobby == expected end, "full test lobby", if expected == 6 then 82 else 42)
 	task.wait(0.18)
 	button("StartSeason")
 	local board = workspace:WaitForChild("WorldDraftArena"):WaitForChild("Board")
@@ -56,19 +61,22 @@ local ok, failure = pcall(function()
 	local tileCount, indices = 0, {}
 	local camera = workspace.CurrentCamera
 	local cameraDeadline = os.clock() + 4
-	while camera.CameraType ~= Enum.CameraType.Scriptable and os.clock() < cameraDeadline do
+	while expected ~= 6 and camera.CameraType ~= Enum.CameraType.Scriptable and os.clock() < cameraDeadline do
 		task.wait(.05)
 		camera = workspace.CurrentCamera
 	end
-	assert(camera.CameraType == Enum.CameraType.Scriptable, "Board camera not active")
+	local drawable = camera.CameraType == Enum.CameraType.Scriptable
+	assert(drawable or expected == 6, "Board camera not active")
 	for _, part in board:GetDescendants() do
 		if part.Name == "Printed tile" then
 			local index = part:GetAttribute("BoardIndex")
 			assert(index and not indices[index], "Missing or duplicate board index")
 			tileCount += 1
 			indices[index] = true
-			local _, visible = camera:WorldToViewportPoint(part.Position + Vector3.yAxis * .11)
-			assert(visible, "Board camera loses cell " .. index .. " at " .. tostring(camera.ViewportSize))
+			if drawable then
+				local _, visible = camera:WorldToViewportPoint(part.Position + Vector3.yAxis * .11)
+				assert(visible, "Board camera loses cell " .. index .. " at " .. tostring(camera.ViewportSize))
+			end
 			local tile = catalog.tiles[index]
 			local artwork = part.Artwork
 			assert(artwork.Value.Text ~= "", "Unlabelled board cell")
@@ -117,6 +125,7 @@ local ok, failure = pcall(function()
 		intent:FireServer("start", lobby.version)
 	end
 	local begun = await(function(data) return data.match ~= nil end, "kickoff", 14)
+	local playStarted = workspace:GetServerTimeNow()
 	local seats = math.max(expected, 3)
 	assert(#begun.match.seats == seats)
 	assert(begun.match.seats[1].id == begun.host)
@@ -134,10 +143,10 @@ local ok, failure = pcall(function()
 			local route = button(action)
 			assert(route.Destination.Text ~= "" and route.Stake.Text ~= "", "Missing route information")
 		end
-		local shownBy = os.clock() + 4
+		local shownBy = os.clock() + (if expected == 6 then 0 else 4)
 		local viewport = hud.Viewport
 		while not (viewport.RouteBadge1.Visible and viewport.RouteBadge2.Visible) and os.clock() < shownBy do task.wait(.05) end
-		assert(viewport.RouteBadge1.Visible and viewport.RouteBadge2.Visible, "Route markers not shown")
+		assert(expected == 6 or (viewport.RouteBadge1.Visible and viewport.RouteBadge2.Visible), "Route markers not shown")
 		assert((hud:FindFirstChild("CoachHint", true) ~= nil) == (begun.variant == "coach"), "First route hint does not match assignment")
 		task.wait(0.28)
 		intent:FireServer("long", begun.version - 1)
@@ -160,63 +169,81 @@ local ok, failure = pcall(function()
 	if begun.host == me.UserId then
 		intent:FireServer("bid", token - 1, 2)
 		intent:FireServer("bid", token, 99999)
-		local eligible = await(function(data)
-			if not data.auction or data.auction.token ~= token then return false end
-			for i = 2, #data.match.seats do if not data.auction.responded[i] then return false end end
-			return true
-		end, "other bids")
-		assert(not eligible.auction.responded[1] and eligible.version > opened.version, "Stale or malformed bid accepted")
-		assert(seatOf(eligible.match).cash == 700 and eligible.match.clubs[2].owner == 0, "Bid settled before the auction closed")
+		if expected ~= 6 then
+			local eligible = await(function(data)
+				if not data.auction or data.auction.token ~= token then return false end
+				for i = 2, #data.match.seats do if not data.auction.responded[i] then return false end end
+				return true
+			end, "other bids")
+			assert(not eligible.auction.responded[1] and eligible.version > opened.version, "Stale or malformed bid accepted")
+			assert(seatOf(eligible.match).cash == 700 and eligible.match.clubs[2].owner == 0, "Bid settled before the auction closed")
+		end
 		intent:FireServer("bid", token, 2)
 		intent:FireServer("bid", token, 2)
 	else
-		intent:FireServer("bid", token, 1)
+		intent:FireServer("bid", token, if expected == 6 then 0 else 1)
 	end
 	local signed = await(function(data) return data.match.clubs[2].owner == begun.host end, "auction result")
 	assert(not signed.auction and signed.match.seats[1].cash == 700 - catalog.tiles[2].price)
 
-	-- Round two exercises both directions with two real connections.
-	if expected == 2 then
-		local seller = begun.host
-		local buyer = begun.match.seats[2].id
+	-- Round two exercises both directions. Other seats verify that terms stay private.
+	local seller, buyer = begun.host, begun.match.seats[2].id
+	local party = me.UserId == seller or me.UserId == buyer
+	if expected >= 2 then
 		if me.UserId == buyer then
-			task.wait(math.max(.02, signed.availableAt - workspace:GetServerTimeNow() + .08))
+			task.wait(math.max(.02, signed.availableAt - workspace:GetServerTimeNow() + .20))
 			intent:FireServer("long", signed.version)
 			local contract = await(function(data) return data.match.phase == "offer" and seatOf(data.match).position == 5 end, "second club")
-			task.wait(math.max(.02, contract.availableAt - workspace:GetServerTimeNow() + .08))
+			task.wait(math.max(.02, contract.availableAt - workspace:GetServerTimeNow() + .20))
 			intent:FireServer("buy", contract.version)
-		else
+		elseif me.UserId == seller then
 			local turn = await(function(data) return data.match.round == 2 and data.match.active == 1 end, "seller's round two")
-			task.wait(math.max(.02, turn.availableAt - workspace:GetServerTimeNow() + .08))
+			task.wait(math.max(.02, turn.availableAt - workspace:GetServerTimeNow() + .20))
 			button("ClubDeals")
 			button("FigurePower")
 			intent:FireServer("ability", turn.version)
 			local powered = await(function(data) return seatOf(data.match).ability == "spent" end, "through pass")
 			assert(powered.deadline == turn.deadline and powered.availableAt == turn.availableAt and powered.match.short == 2)
+			assert(seatOf(powered.match).cash == seatOf(turn.match).cash - catalog.abilityAmounts.route)
 			intent:FireServer("trade", powered.version, {buyer = buyer, offered = 2, requested = 5, option = 0})
-		end
-		local privateSwap = await(function(data) return data.trade ~= nil end, "private swap offer")
-		assert(privateSwap.trade.expires <= privateSwap.deadline and privateSwap.trade.terms.requested == 5)
-		assert(privateSwap.trade.expires - workspace:GetServerTimeNow() <= catalog.tradeSeconds)
-		assert(privateSwap.match.trade == nil)
-		if me.UserId == seller then
-			intent:FireServer("tradeAccept", privateSwap.trade.token)
 		else
-			button("TradeAccept")
-			button("TradeDecline")
-			intent:FireServer("tradeAccept", privateSwap.trade.token - 1)
-			task.wait(.30)
-			assert(last.trade and last.match.clubs[2].owner == seller and last.match.clubs[5].owner == buyer)
-			intent:FireServer("tradeAccept", privateSwap.trade.token)
-			intent:FireServer("tradeAccept", privateSwap.trade.token)
+			local turn = await(function(data)
+				return data.match.round == 1 and data.match.seats[data.match.active].id == me.UserId
+			end, "opening visit")
+			task.wait(math.max(.02, turn.availableAt - workspace:GetServerTimeNow() + .20))
+			intent:FireServer("short", turn.version)
 		end
+		local offered = await(function(data)
+			local s = data.match
+			return s.round == 2 and s.active == 1 and s.tradeUsed
+		end, "swap offered")
+		if party then
+			assert(offered.trade and offered.trade.expires <= offered.deadline and offered.trade.terms.requested == 5)
+			assert(offered.trade.expires - workspace:GetServerTimeNow() <= catalog.tradeSeconds)
+			if me.UserId == seller then
+				intent:FireServer("tradeAccept", offered.trade.token)
+			else
+				button("TradeAccept")
+				button("TradeDecline")
+				intent:FireServer("tradeAccept", offered.trade.token - 1)
+				task.wait(.60)
+				assert(last.trade and last.match.clubs[2].owner == seller and last.match.clubs[5].owner == buyer)
+				intent:FireServer("tradeAccept", offered.trade.token)
+				intent:FireServer("tradeAccept", offered.trade.token)
+			end
+		else
+			assert(not offered.trade and not hud:FindFirstChild("TradeAccept", true))
+			intent:FireServer("tradeAccept", offered.version)
+		end
+		assert(offered.match.trade == nil)
 		local swapped = await(function(data) return data.match.last.kind == "tradeSwap" end, "swap confirmed")
 		assert(swapped.match.clubs[2].owner == buyer and swapped.match.clubs[5].owner == seller and not swapped.trade)
-		assert(swapped.deadline == privateSwap.deadline and swapped.availableAt == privateSwap.availableAt)
-		assert(swapped.match.seats[1].cash == privateSwap.match.seats[1].cash and swapped.match.seats[2].cash == privateSwap.match.seats[2].cash)
+		assert(swapped.deadline == offered.deadline and swapped.availableAt == offered.availableAt)
+		assert(swapped.match.seats[1].cash == offered.match.seats[1].cash and swapped.match.seats[2].cash == offered.match.seats[2].cash)
 	end
 
-	local directSale, soloPower = false, false
+	local directSale, soloPower, expired, exercisedPower = false, false, false, false
+	local expiryBefore, expiryAfter = nil, nil
 	local steps, visitedCup, visitedBench, sold = 0, false, false, false
 	while last.match.phase ~= "final" do
 		local data = await(function(next)
@@ -231,7 +258,7 @@ local ok, failure = pcall(function()
 			await(function(newer) return not newer.auction or newer.auction.token ~= token end, "auction closed", 12)
 			continue
 		end
-		if expected == 2 and not directSale and data.match.round == 2 then
+		if expected >= 2 and party and not directSale and data.match.round == 2 then
 			if data.trade and data.trade.terms.buyer == me.UserId then
 				button("TradeAccept")
 				intent:FireServer("tradeAccept", data.trade.token)
@@ -243,13 +270,50 @@ local ok, failure = pcall(function()
 			if data.trade and data.trade.terms.requested == 0 then
 				local receipt = await(function(next) return next.match.last.kind == "tradeSale" end, "direct sale")
 				assert(receipt.deadline == data.deadline and receipt.availableAt == data.availableAt)
-				local price = math.floor(catalog.tiles[2].price * .8)
+				local price = math.floor(catalog.tiles[2].price * catalog.tradeRates[1] / 100)
 				assert(receipt.match.clubs[2].owner == begun.host and receipt.match.last.amount == price)
 				assert(receipt.match.seats[1].cash == data.match.seats[1].cash - price)
 				assert(receipt.match.seats[2].cash == data.match.seats[2].cash + price)
 				directSale = true
 				continue
 			end
+		end
+		if expected >= 2 and party and not expired and data.match.round == 3 then
+			if me.UserId == seller and data.match.phase == "move" then
+				task.wait(math.max(.02, data.availableAt - workspace:GetServerTimeNow() + .08))
+				intent:FireServer("trade", data.version, {buyer = buyer, offered = 2, requested = 0, option = 2})
+				data = await(function(next) return next.trade ~= nil end, "unanswered offer")
+			end
+			if data.trade then
+				local pending = data.trade
+				local closed = await(function(next) return not next.trade end, "trade timed out", catalog.tradeSeconds + 3)
+				assert(closed.deadline == data.deadline and closed.availableAt == data.availableAt)
+				assert(closed.match.motion.serial == data.match.motion.serial and closed.match.clubs[2].owner == seller)
+				assert(workspace:GetServerTimeNow() >= pending.expires)
+				expiryBefore, expiryAfter = pending.expires, workspace:GetServerTimeNow()
+				if me.UserId == buyer then
+					intent:FireServer("tradeAccept", pending.token)
+				else
+					task.wait(.45)
+					assert(last.version == closed.version, "Expired trade changed game state")
+					assert(last.match.seats[1].cash == data.match.seats[1].cash and last.match.seats[2].cash == data.match.seats[2].cash)
+				end
+				expired = true
+				continue
+			end
+		end
+		if expected == 6 and not exercisedPower and data.match.phase == "move" then
+			local before = seatOf(data.match)
+			if before.ability == "ready" then
+				task.wait(math.max(.02, data.availableAt - workspace:GetServerTimeNow() + .08))
+				button("FigurePower")
+				intent:FireServer("ability", data.version)
+				local powered = await(function(next) return seatOf(next.match).ability ~= "ready" end, "figure activated")
+				assert(powered.deadline == data.deadline and powered.availableAt == data.availableAt)
+				exercisedPower = true
+				continue
+			end
+			exercisedPower = true
 		end
 		if expected == 1 and not soloPower and data.match.phase == "move" then
 			task.wait(math.max(.04, data.availableAt - workspace:GetServerTimeNow() + .07))
@@ -306,7 +370,15 @@ local ok, failure = pcall(function()
 		await(function(newer) return newer.version > data.version end, "action accepted")
 	end
 	local final = last
-	assert(expected ~= 2 or directSale, "Direct sale not exercised")
+	assert(expected == 1 or not party or directSale, "Direct sale not exercised")
+	if expected >= 2 then
+		assert(not party or expired, "Trade expiration not exercised")
+		if final.host == me.UserId then
+			report:FireServer(string.format("METRIC %d clients, %d moves, %.1fs from kickoff, trade closed +%.2fs after offer expiry",
+				expected, final.match.motion.serial, workspace:GetServerTimeNow() - playStarted, expiryAfter - expiryBefore))
+		end
+	end
+	if expected == 6 then assert(exercisedPower and seatOf(final.match).ability ~= "ready") end
 	assert(#final.match.standings == seats and final.match.round == 8)
 	assert(final.match.motion.serial == 8 * seats)
 	assert(final.match.standings[1].score >= final.match.standings[seats].score)

@@ -188,7 +188,7 @@ assert(not Game.replyTrade(s, 10, true))
 assert(not Game.apply(s, 10, "sell", low, 2))
 assert(Game.replyTrade(s, 20, true) and not Game.replyTrade(s, 20, true))
 assert(s.trade == nil and s.clubs[2].owner == 20 and s.phase == "move" and s.motion.serial == 0)
-assert(s.seats[1].cash == 892 and s.seats[2].cash == 508 and s.last.kind == "tradeSale")
+assert(s.seats[1].cash == 876 and s.seats[2].cash == 524 and s.last.kind == "tradeSale")
 assert(not Game.proposeTrade(s, 10, 20, 2, 0, 1))
 assert(Game.apply(s, 10, "short", low) and not s.tradeUsed and s.active == 2)
 
@@ -201,6 +201,38 @@ assert(s.clubs[9].owner == 10 and s.clubs[9].level == 0 and s.seats[1].cash == 7
 assert(Game.proposeTrade(s, 10, 20, 2, 5, 0) and Game.replyTrade(s, 20, true))
 assert(s.clubs[2].owner == 20 and s.clubs[5].owner == 10 and s.last.kind == "tradeSwap")
 assert(s.seats[1].cash == 750 and s.seats[2].cash == 700)
+
+-- Cross-tier swaps settle the list difference in either direction and conserve both portfolios.
+for _, pair in {{2, 23}, {23, 2}} do
+	s = start(low)
+	local offered, requested = pair[1], pair[2]
+	s.clubs[offered].owner, s.clubs[requested].owner = 10, 20
+	local difference = Game.swapDifference(offered, requested)
+	assert(math.abs(difference) == 110)
+	local payer = if difference > 0 then s.seats[2] else s.seats[1]
+	payer.cash = 109
+	assert(not Game.proposeTrade(s, 10, 20, offered, requested, 0))
+	payer.cash = 110
+	assert(Game.proposeTrade(s, 10, 20, offered, requested, 0))
+	payer.cash = 109
+	assert(Game.replyTrade(s, 20, true))
+	assert(s.clubs[offered].owner == 10 and s.clubs[requested].owner == 20 and s.last.kind == "start")
+
+	s = start(low)
+	s.clubs[offered].owner, s.clubs[requested].owner = 10, 20
+	local sellerValue, buyerValue = Game.score(s, 10), Game.score(s, 20)
+	assert(Game.proposeTrade(s, 10, 20, offered, requested, 0) and Game.replyTrade(s, 20, true))
+	assert(s.last.amount == difference and s.seats[1].cash == 700 + difference and s.seats[2].cash == 700 - difference)
+	assert(Game.score(s, 10) == sellerValue and Game.score(s, 20) == buyerValue)
+end
+for i, tile in Board.tiles do
+	if tile.league > 0 then
+		for option in Board.tradeRates do
+			local price = assert(Game.tradePrice(i, option))
+			assert(math.abs(price - tile.price) <= math.ceil(tile.price / 10))
+		end
+	end
+end
 
 for _, decline in {false, true} do
 	s = start(low)
@@ -231,18 +263,18 @@ for figure, power in Board.figureAbilities do
 	assert(Game.apply(s, 10, "ability", low) and not Game.apply(s, 10, "ability", low))
 	assert(s.phase == "move" and s.round == 1 and s.motion.serial == 0)
 	if power == "route" then
-		assert(s.short == 2 and s.long == 4)
+		assert(s.short == 2 and s.long == 4 and seat.cash == 680)
 		assert(Game.apply(s, 10, "short", low) and s.motion.steps == 2)
 	elseif power == "goal" then
 		seat.position = 11
 		assert(Game.apply(s, 10, "short", low) and Game.apply(s, 10, "shoot", low))
-		assert(seat.cash == 900 and seat.trophies == 1)
+		assert(seat.cash == 885 and seat.trophies == 1)
 	elseif power == "kickoff" then
 		seat.position = 24
 		assert(Game.apply(s, 10, "short", low) and seat.cash == 890)
 	elseif power == "gate" then
 		s.clubs[2].owner, s.clubs[2].level = 20, 1
-		assert(Game.apply(s, 10, "short", low) and seat.cash == 660 and s.seats[2].cash == 740)
+		assert(Game.apply(s, 10, "short", low) and seat.cash == 650 and s.seats[2].cash == 750)
 	elseif power == "upgrade" then
 		s.clubs[2].owner, seat.cash = 10, 50
 		assert(Game.apply(s, 10, "short", low) and s.phase == "upgrade")
@@ -255,6 +287,38 @@ for figure, power in Board.figureAbilities do
 	assert(seat.ability == "spent")
 	if power ~= "route" then assert(s.last.power == power) end
 end
+
+s = start(low)
+s.seats[1].cash = 19
+assert(not Game.apply(s, 10, "ability", low) and s.short == 1 and s.seats[1].ability == "ready")
+
+s = start(low)
+s.seats[1].figure, s.seats[1].position = 2, 11
+assert(Game.apply(s, 10, "ability", low) and Game.apply(s, 10, "short", low))
+assert(Game.apply(s, 10, "shoot", function(a, b) return math.floor((a + b) / 2) + 1 end))
+assert(s.last.kind == "save" and s.last.power == "goal" and s.seats[1].ability == "spent" and s.seats[1].trophies == 0)
+
+for _, auction in {false, true} do
+	s = start(low)
+	s.seats[1].figure = 5
+	assert(Game.apply(s, 10, "ability", low) and Game.apply(s, 10, "short", low))
+	if auction then
+		assert(Game.apply(s, 10, "skip", low) and Game.bid(s, 10, 2) and Game.closeAuction(s, low))
+	else
+		assert(Game.apply(s, 10, "buy", low))
+	end
+	assert(s.seats[1].ability == "spent" and s.seats[1].cash == 570 and s.last.power == "upgrade")
+end
+
+s = start(low)
+s.seats[1].figure, s.seats[1].position = 6, 3
+assert(Game.apply(s, 10, "ability", low) and Game.apply(s, 10, "short", low))
+assert(s.last.kind == "goalDeck" and s.last.power == "var" and s.seats[1].cash == 780 + Board.abilityAmounts.var)
+
+s = start(low)
+s.seats[1].figure, s.seats[1].cash, s.clubs[2].owner = 4, 15, 20
+assert(Game.apply(s, 10, "ability", low) and Game.apply(s, 10, "short", low))
+assert(s.last.kind == "gate" and s.last.amount == 0 and s.seats[1].cash == 15 and s.seats[2].cash == 700)
 
 print("Rule scenarios passed")
 local wins = {0, 0, 0, 0, 0, 0}
@@ -277,7 +341,7 @@ local function season(seed: number, entries: {Rules.Entry}, optional: boolean): 
 		else
 			local seat = match.seats[match.active]
 			if optional and match.phase == "move" then
-				if seat.ability == "ready" then assert(Game.apply(match, seat.id, "ability", rng)) end
+				if Game.botUsesAbility(match) then assert(Game.apply(match, seat.id, "ability", rng)) end
 				local buyer = match.seats[match.active % count + 1].id
 				local offered, requested = 0, 0
 				for index in Board.tiles do

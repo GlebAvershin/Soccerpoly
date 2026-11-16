@@ -72,9 +72,10 @@ Board.figures = table.freeze({
 })
 
 Board.figureAbilities = table.freeze({"route", "goal", "kickoff", "gate", "upgrade", "var"})
-Board.abilityAmounts = table.freeze({goal = 60, kickoff = 50, gate = 60, upgrade = 50})
-Board.tradeSeconds = 8
-Board.tradeRates = table.freeze({80, 100, 120})
+Board.abilityAmounts = table.freeze({route = 20, goal = 45, kickoff = 50, gate = 50, upgrade = 50, signing = 30, var = 50})
+Board.tradeSeconds = 6
+Board.tradeMinimumReply = 3
+Board.tradeRates = table.freeze({90, 100, 110})
 Board.maxSeats = #Board.figures
 Board.rounds = 8
 Board.startCash = 700

@@ -5,7 +5,7 @@ type Tile = {code: string, city: string, kind: string, name: string, league: num
 type Board = {
 	read tiles: {Tile}, read members: {{number}}, read assetGroups: {[string]: {number}},
 	read rounds: number, read maxSeats: number, read figureAbilities: {string},
-	read abilityAmounts: {read goal: number, read kickoff: number, read gate: number, read upgrade: number},
+	read abilityAmounts: {read route: number, read goal: number, read kickoff: number, read gate: number, read upgrade: number, read signing: number, read var: number},
 	read tradeRates: {number},
 	read startCash: number, read kickoffCash: number, read upgradeCost: number, read upgradeGate: number,
 	read maxLevel: number, read leagueValue: number, read benchFee: number,
@@ -213,6 +213,17 @@ local function withBoard(board: Board, edition: Edition)
 		return changed
 	end
 
+	local function armed(seat: Seat, ability: string): boolean
+		return seat.ability == "armed" and board.figureAbilities[seat.figure] == ability
+	end
+
+	local function awardSigning(s: Match, seat: Seat, tile: Tile)
+		if tile.league > 0 and armed(seat, "upgrade") then
+			seat.cash += board.abilityAmounts.signing
+			seat.ability, s.last.power = "spent", "upgrade"
+		end
+	end
+
 	function Rules.closeAuction(s: Match, rng: RNG): boolean
 		local auction = s.auction
 		if s.phase ~= "auction" or not auction then return false end
@@ -232,6 +243,7 @@ local function withBoard(board: Board, edition: Edition)
 			club.owner = winner.id
 			local kind = if setComplete(s, winner.id, tile.league) then "auctionLeague" else "auctionWon"
 			s.last = story(kind, tile.name, winner.id, auction.tile, -price, 0, s.last.crossed)
+			awardSigning(s, winner, tile)
 		else
 			s.last = story("auctionEmpty", tile.name, s.seats[s.active].id, auction.tile, 0, 0, s.last.crossed)
 		end
@@ -261,6 +273,11 @@ local function withBoard(board: Board, edition: Edition)
 		return if rate and tile and tile.league > 0 then math.floor(tile.price * rate / 100) else nil
 	end
 
+	-- A positive difference is paid by the buyer. A negative difference is paid by the seller.
+	function Rules.swapDifference(offered: number, requested: number): number
+		return board.tiles[offered].price - board.tiles[requested].price
+	end
+
 	function Rules.proposeTrade(s: Match, id: number, buyerId: number, offered: number, requested: number, option: number): boolean
 		local buyer = participant(s, buyerId)
 		if s.phase ~= "move" or s.seats[s.active].id ~= id or s.tradeUsed or not buyer or buyerId == id
@@ -268,11 +285,13 @@ local function withBoard(board: Board, edition: Edition)
 		local price = 0
 		if requested == 0 then
 			local quote = Rules.tradePrice(offered, option)
-			if not quote or buyer.cash < quote then return false end
+			if not quote then return false end
 			price = quote
-		elseif option ~= 0 or not Rules.canTransfer(s, buyerId, requested) then
-			return false
+		else
+			if option ~= 0 or not Rules.canTransfer(s, buyerId, requested) then return false end
+			price = Rules.swapDifference(offered, requested)
 		end
+		if buyer.cash < price or s.seats[s.active].cash < -price then return false end
 		s.trade = {seller = id, buyer = buyerId, offered = offered, requested = requested, price = price}
 		s.tradeUsed = true
 		return true
@@ -284,7 +303,7 @@ local function withBoard(board: Board, edition: Edition)
 		s.trade = nil
 		if not accept then return true end
 		local seller, buyer = s.seats[s.active], participant(s, id)
-		if seller.id ~= trade.seller or not buyer or buyer.cash < trade.price
+		if seller.id ~= trade.seller or not buyer or buyer.cash < trade.price or seller.cash < -trade.price
 			or not Rules.canTransfer(s, seller.id, trade.offered)
 			or (trade.requested ~= 0 and not Rules.canTransfer(s, id, trade.requested)) then
 			return true
@@ -292,10 +311,9 @@ local function withBoard(board: Board, edition: Edition)
 		s.clubs[trade.offered].owner = id
 		if trade.requested ~= 0 then
 			s.clubs[trade.requested].owner = seller.id
-		else
-			seller.cash += trade.price
-			buyer.cash -= trade.price
 		end
+		seller.cash += trade.price
+		buyer.cash -= trade.price
 		s.last = story(if trade.requested == 0 then "tradeSale" else "tradeSwap", board.tiles[trade.offered].name, seller.id, trade.offered, trade.price)
 		s.last.other, s.last.otherTile = id, trade.requested
 		return true
@@ -312,12 +330,9 @@ local function withBoard(board: Board, edition: Edition)
 		local gain = value(trade.offered, buyer.id, false)
 		if trade.requested == 0 then return buyer.cash >= trade.price + 50 and gain >= trade.price end
 		local outgoing, incoming = board.tiles[trade.requested], board.tiles[trade.offered]
-		if outgoing.league == incoming.league then return incoming.price >= outgoing.price end
-		return gain >= value(trade.requested, buyer.id, true) and not setComplete(s, buyer.id, outgoing.league)
-	end
-
-	local function armed(seat: Seat, ability: string): boolean
-		return seat.ability == "armed" and board.figureAbilities[seat.figure] == ability
+		if trade.price > 0 and buyer.cash < trade.price + 50 then return false end
+		if outgoing.league == incoming.league then return true end
+		return gain - trade.price >= value(trade.requested, buyer.id, true) and not setComplete(s, buyer.id, outgoing.league)
 	end
 
 	function Rules.upgradePrice(seat: Seat): number
@@ -341,8 +356,12 @@ local function withBoard(board: Board, edition: Edition)
 		if action == "ability" then
 			if s.phase ~= "move" or seat.ability ~= "ready" then return false end
 			local ability = board.figureAbilities[seat.figure]
+			if ability == "route" then
+				if seat.cash < board.abilityAmounts.route then return false end
+				seat.cash -= board.abilityAmounts.route
+				s.short = Rules.shortAfterPower(s.short)
+			end
 			seat.ability = if ability == "route" then "spent" else "armed"
-			if ability == "route" then s.short = Rules.shortAfterPower(s.short) end
 			return true
 		end
 		if action == "sell" or action == "sellUpgrades" then
@@ -383,12 +402,10 @@ local function withBoard(board: Board, edition: Edition)
 				end
 			end
 			local power: string? = nil
-			if result == "goal" then
-				seat.trophies += 1
-				if armed(seat, "goal") then
-					seat.ability, power = "spent", "goal"
-					amount += board.abilityAmounts.goal
-				end
+			if result == "goal" then seat.trophies += 1 end
+			if (result == "goal" or result == "save") and armed(seat, "goal") then
+				seat.ability, power = "spent", "goal"
+				amount += board.abilityAmounts.goal
 			end
 			amount = math.max(-seat.cash, amount)
 			seat.cash += amount
@@ -406,6 +423,7 @@ local function withBoard(board: Board, edition: Edition)
 				seat.cash -= tile.price
 				club.owner = id
 				s.last = story(if setComplete(s, id, tile.league) then "league" else "buy", tile.name, id, current, -tile.price)
+				awardSigning(s, seat, tile)
 			elseif action == "upgrade" and s.phase == "upgrade" and canUpgrade(s, seat, current) then
 				local cost = Rules.upgradePrice(seat)
 				seat.cash -= cost
@@ -453,12 +471,12 @@ local function withBoard(board: Board, edition: Edition)
 				s.last.power = power
 				return true
 			elseif club.owner ~= 0 and club.owner ~= id then
-				local gate = Rules.gate(s, nextTile)
-				if gate > 0 and seat.cash > 0 and armed(seat, "gate") then
+				local gate = math.min(seat.cash, Rules.gate(s, nextTile))
+				if gate > 0 and armed(seat, "gate") then
 					seat.ability, power = "spent", "gate"
 					gate = math.max(0, gate - board.abilityAmounts.gate)
 				end
-				kind, amount = "gate", -math.min(seat.cash, gate)
+				kind, amount = "gate", -gate
 				for _, owner in s.seats do
 					if owner.id == club.owner then
 						owner.cash -= amount
@@ -476,6 +494,10 @@ local function withBoard(board: Board, edition: Edition)
 			else
 				if entry.kind == "bench" then seat.benched = true end
 				title, amount = entry.title, entry.amount
+				if kind == "goalDeck" and armed(seat, "var") then
+					seat.ability, power = "spent", "var"
+					amount += board.abilityAmounts.var
+				end
 			end
 		elseif kind == "matchday" then
 			s.phase = "matchday"
@@ -491,31 +513,46 @@ local function withBoard(board: Board, edition: Edition)
 		return true
 	end
 
+	local function routeValue(s: Match, seat: Seat, steps: number): number
+		local index = Rules.target(seat.position, steps)
+		local tile, club = board.tiles[index], s.clubs[index]
+		local projected = if seat.position + steps > #board.tiles
+			then board.kickoffCash + (if armed(seat, "kickoff") then board.abilityAmounts.kickoff else 0) else 0
+		if tile.kind == "goalDeck" then return projected + 95 + (if armed(seat, "var") then board.abilityAmounts.var else 0) end
+		if tile.kind == "offsideDeck" then return projected - (if armed(seat, "var") then 0 else 40) end
+		if tile.kind == "matchday" then return projected + 88 + (if armed(seat, "goal") then board.abilityAmounts.goal * .8 else 0) end
+		if tile.price == 0 then return projected + tile.award end
+		if club.owner == seat.id then return projected + (if armed(seat, "upgrade") and canUpgrade(s, seat, index) then 50 else 12) end
+		if club.owner ~= 0 then
+			local due = math.min(seat.cash + projected, Rules.gate(s, index))
+			return projected - math.max(0, due - (if armed(seat, "gate") then board.abilityAmounts.gate else 0))
+		end
+		if seat.cash + projected < tile.price then return projected end
+		local owned = ownedCount(s, seat.id, tile)
+		return projected + 79 + tile.gate * 0.22 + owned * 55
+	end
+
+	function Rules.botUsesAbility(s: Match): boolean
+		local seat = s.seats[s.active]
+		if s.phase ~= "move" or seat.ability ~= "ready" then return false end
+		if board.figureAbilities[seat.figure] ~= "route" then return true end
+		local price = board.abilityAmounts.route
+		local current = math.max(routeValue(s, seat, s.short), routeValue(s, seat, s.long))
+		return seat.cash >= price and routeValue(s, seat, Rules.shortAfterPower(s.short)) > current + price
+	end
+
 	function Rules.botAction(s: Match): string
 		local seat = s.seats[s.active]
 		if s.phase == "offer" then return "buy" end
 		if s.phase == "bench" then return "short" end
 		if s.phase == "matchday" then
-			return if seat.cash >= 200 or s.round >= board.rounds - 1 then "shoot" else "safe"
+			return if seat.cash >= 200 or s.round >= board.rounds - 1 or armed(seat, "goal") then "shoot" else "safe"
 		end
 		if s.phase == "upgrade" then
 			return if seat.cash >= Rules.upgradePrice(seat) + 100 and s.round < board.rounds then "upgrade" else "skip"
 		end
-		local function value(steps: number): number
-			local index = Rules.target(seat.position, steps)
-			local tile, club = board.tiles[index], s.clubs[index]
-			local projected = if seat.position + steps > #board.tiles then board.kickoffCash else 0
-			if tile.kind == "goalDeck" then return projected + 95 end
-			if tile.kind == "offsideDeck" then return projected - 40 end
-			if tile.kind == "matchday" then return projected + 88 end
-			if tile.price == 0 then return projected + tile.award end
-			if club.owner == seat.id then return projected + 12 end
-			if club.owner ~= 0 then return projected - Rules.gate(s, index) end
-			if seat.cash + projected < tile.price then return projected end
-			local owned = ownedCount(s, seat.id, tile)
-			return projected + 79 + tile.gate * 0.22 + owned * 55
-		end
-		return if value(s.long) >= value(s.short) then "long" else "short"
+
+		return if routeValue(s, seat, s.long) >= routeValue(s, seat, s.short) then "long" else "short"
 	end
 
 	return table.freeze(Rules)

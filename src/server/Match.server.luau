@@ -337,6 +337,7 @@ intent.OnServerEvent:Connect(function(player, verb, revision, value)
 		local now = workspace:GetServerTimeNow()
 		if now < availableAt or now >= deadline then return end
 		if verb == "trade" then
+			if deadline - now < Board.tradeMinimumReply then return end
 			if type(value) ~= "table" or not integer(value.buyer) or not integer(value.offered)
 				or not integer(value.requested) or not integer(value.option) then return end
 			if Game.proposeTrade(s, player.UserId, value.buyer, value.offered, value.requested, value.option) then
@@ -401,7 +402,7 @@ while task.wait(if fast then 0.05 else 0.16) do
 		end
 	elseif s and s.phase ~= "final" and now >= deadline then
 		local seat = s.seats[s.active]
-		if seat.bot and s.phase == "move" and seat.ability == "ready" and not fast then
+		if seat.bot and not fast and Game.botUsesAbility(s) then
 			Game.apply(s, seat.id, "ability", nextInteger)
 		end
 		local verb = if seat.bot then Game.botAction(s) elseif s.phase == "move" or s.phase == "bench" then "short" elseif s.phase == "matchday" then "safe" else "skip"
