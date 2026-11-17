@@ -2,7 +2,6 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local StarterGui = game:GetService("StarterGui")
-local Localize = game:GetService("LocalizationService")
 local GuiService = game:GetService("GuiService")
 local Input = game:GetService("UserInputService")
 
@@ -26,7 +25,8 @@ local colors = UI.color
 local GOLD, BOLD, BLACK = colors.gold, Enum.Font.BuilderSansBold, Enum.Font.BuilderSansExtraBold
 local CENTER, RIGHT = Enum.TextXAlignment.Center, Enum.TextXAlignment.Right
 local function hex(v: number): Color3 return Color3.fromHex(string.format("%06x", v)) end
-local russian = string.sub(string.lower(Localize.RobloxLocaleId), 1, 2) == "ru"
+local russian = Player:GetAttribute("TableLanguage") == "ru"
+local languageRevision = 0
 local soundOn, musicOn, reducePreference = true, true, false
 local function reduced(): boolean return reducePreference or GuiService.ReducedMotionEnabled end
 local function t(key: string, ...: any): string return copy(key, russian, ...) end
@@ -35,7 +35,7 @@ local remote: RemoteEvent? = nil
 
 local gui = Instance.new("ScreenGui")
 gui.Name = "WorldDraftHUD"
-gui.ResetOnSpawn = false
+gui.ResetOnSpawn, gui.AutoLocalize = false, false
 gui.ScreenInsets = Enum.ScreenInsets.CoreUISafeInsets
 gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 gui.Parent = Player:WaitForChild("PlayerGui")
@@ -143,7 +143,7 @@ end
 local function sessionName(id: number): string
 	if id == Player.UserId then return t("You") end
 	if snapshot and snapshot.match then
-		for _, seat in snapshot.match.seats do if seat.id == id then return seat.name end end
+		for _, seat in snapshot.match.seats do if seat.id == id then return if seat.bot then t(seat.name) else seat.name end end
 	end
 	return "—"
 end
@@ -152,6 +152,30 @@ local function preferencesLine(parent: Instance, name: string, label: string, pr
 	UI.button(parent, name, label, 42, press)
 end
 local render: () -> ()
+local picker: Frame
+local function chooseLanguage(lang: string, manual: boolean)
+	russian = lang == "ru"
+	languageRevision += 1
+	picker.Visible = false
+	resultBanner.hide()
+	tableView.relocalize()
+	if opened == "inspect" then opened = ""; propertyCard.hide() end
+	if manual then
+		task.spawn(function()
+			ReplicatedStorage:WaitForChild("WorldDraft"):WaitForChild("Language"):FireServer(lang)
+		end)
+	end
+	render()
+end
+picker = require(script.Parent.LanguagePicker)(root,function(lang) chooseLanguage(lang,true) end)
+picker.Visible = Player:GetAttribute("TableLanguage") == nil
+Player:GetAttributeChangedSignal("TableLanguage"):Connect(function()
+	local saved = Player:GetAttribute("TableLanguage")
+	if languageRevision == 0 and (saved == "ru" or saved == "en") then chooseLanguage(saved,false) end
+end)
+local languageButton = UI.button(root,"ChangeLanguage","",40,function() picker.Visible=true end,colors.panel)
+languageButton.AnchorPoint,languageButton.Position,languageButton.Size = Vector2.new(1,0),UDim2.new(1,-12,0,6),UDim2.fromOffset(106,40)
+
 local function propertyGroup(tile: Board.Tile): string
 	if tile.league > 0 then
 		local league = Board.leagues[tile.league]
@@ -258,7 +282,7 @@ local function drawDialog()
 			UI.label(dialogBody, t("Choose a player"), 14, {font = BOLD})
 			for _, seat in s.seats do
 				if seat.id ~= Player.UserId then
-					UI.button(dialogBody, "TradePlayer" .. seat.id, seat.name .. (if seat.bot then " · " .. t("Bot") else ""), 44, function()
+					UI.button(dialogBody, "TradePlayer" .. seat.id, sessionName(seat.id) .. (if seat.bot then " · " .. t("Bot") else ""), 44, function()
 						tradePartner = seat.id
 						dialogBody.CanvasPosition = Vector2.zero
 						drawDialog()
@@ -285,7 +309,7 @@ local function drawDialog()
 			for option in Board.tradeRates do
 				local price = Game.tradePrice(index, option)
 				if price then
-					local button = UI.button(row, "TradePrice" .. option, string.format("%d CR", price), 44,
+					local button = UI.button(row, "TradePrice" .. option, t("%d CR", price), 44,
 						if cash >= price then function() propose(0, option) end else nil,
 						if cash >= price then colors.mint else colors.surface, if cash >= price then colors.ink else colors.muted)
 					button.Position, button.Size = UDim2.fromScale((option - 1) * width, 0), UDim2.new(width, -4, 1, 0)
@@ -297,7 +321,7 @@ local function drawDialog()
 					local sellerCash = s.seats[s.active].cash
 					local affordable = cash >= difference and sellerCash >= -difference
 					local label = t("Swap for %s", t(tile.name))
-					if difference ~= 0 then label ..= string.format("  /  %+d CR", difference) end
+					if difference ~= 0 then label ..= t("  /  %+d CR", difference) end
 					UI.button(dialogBody, "TradeSwap" .. i, label, 44, if affordable then function() propose(i, 0) end else nil,
 						colors.surface, if affordable then colors.text else colors.muted)
 				end
@@ -308,10 +332,10 @@ local function drawDialog()
 		local terms = deal.terms
 		UI.label(dialogBody, t("Offer from %s", sessionName(terms.seller)), 14, {font = BOLD, color = colors.mint})
 		local receive = t(Board.tiles[terms.offered].name)
-		local give = if terms.requested == 0 then string.format("%d CR", terms.price) else t(Board.tiles[terms.requested].name)
+		local give = if terms.requested == 0 then t("%d CR", terms.price) else t(Board.tiles[terms.requested].name)
 		if terms.requested ~= 0 then
-			if terms.price < 0 then receive ..= string.format(" + %d CR", -terms.price) end
-			if terms.price > 0 then give ..= string.format(" + %d CR", terms.price) end
+			if terms.price < 0 then receive ..= t(" + %d CR", -terms.price) end
+			if terms.price > 0 then give ..= t(" + %d CR", terms.price) end
 		end
 		UI.label(dialogBody, t("You receive %s", receive), 19, {font = BLACK})
 		UI.label(dialogBody, t("You give %s", give), 16, {color = colors.text})
@@ -339,11 +363,7 @@ local function drawDialog()
 			UI.label(card, t(topic[1]), 15, {font = BOLD})
 			UI.label(card, t(topic[2]), 13, {color = colors.muted})
 		end
-		preferencesLine(dialogBody, "Language", if russian then "Language: Русский  /  EN" else "Language: English  /  RU", function()
-			russian = not russian
-			tableView.relocalize()
-			render()
-		end)
+		preferencesLine(dialogBody, "Language", t("Game language · English"), function() picker.Visible=true end)
 		preferencesLine(dialogBody, "Audio", t(if soundOn then "Sound: on" else "Sound: off"), function()
 			soundOn = not soundOn
 			audio.setEnabled(soundOn)
@@ -489,7 +509,7 @@ local function scorecards(s: any)
 		local name = UI.label(card, sessionName(seat.id), 12,
 			{font = BOLD, color = if active then tint else colors.muted, ellipsis = true, name = "PlayerName"})
 		name.Position, name.Size = UDim2.fromOffset(textInset, if compact then 2 else 6), textWidth
-		local money = UI.label(card, if seat.bankrupt then t("Bankrupt") else tostring(seat.cash) .. " CR", 15,
+		local money = UI.label(card, if seat.bankrupt then t("Bankrupt") else t("%d CR",seat.cash), 15,
 			{font = BLACK, color = colors.text, ellipsis = true, name = "Balance"})
 		money.Position, money.Size = UDim2.fromOffset(textInset, if compact then 18 else 26), textWidth
 		if compact then continue end
@@ -777,6 +797,7 @@ render = function()
 	local data = snapshot
 	local s = data and data.match
 	scorecards(s)
+	languageButton.Visible,languageButton.Text = s == nil, if russian then "Язык · RU" else "Language · EN"
 	matchClock.Visible = s ~= nil and s.phase ~= "final"
 	local now = workspace:GetServerTimeNow()
 	local waiting = s and now < data.availableAt
@@ -825,7 +846,14 @@ end)
 arrange()
 render()
 Input.InputBegan:Connect(function(input, captured)
-	if captured or Input:GetFocusedTextBox() then return end
+	if Input:GetFocusedTextBox() then return end
+	if picker.Visible then
+		if input.KeyCode == Enum.KeyCode.R then chooseLanguage("ru",true)
+		elseif input.KeyCode == Enum.KeyCode.E then chooseLanguage("en",true) end
+		return
+	end
+	if captured then return end
+	if input.KeyCode == Enum.KeyCode.L then picker.Visible=true return end
 	if opened ~= "" then
 		if input.KeyCode == Enum.KeyCode.Escape then
 			if opened == "inspect" then opened = ""; propertyCard.hide() else show(opened) end
@@ -943,10 +971,10 @@ snapshots.OnClientEvent:Connect(function(data)
 			caption, tint = t("%s canceled an Offside card", name), colors.mint
 		elseif last.kind == "tradeSale" or last.kind == "tradeSwap" then
 			caption = t(Board.tiles[last.tile].name) .. "  /  " ..
-				(if last.kind == "tradeSwap" then t(Board.tiles[last.otherTile].name) else string.format("%d CR", last.amount))
+				(if last.kind == "tradeSwap" then t(Board.tiles[last.otherTile].name) else t("%d CR", last.amount))
 		elseif last.kind == "goal" or last.kind == "save" or last.kind == "offside"
 			or last.kind == "safe" or last.kind == "sponsor" then
-			caption = name .. string.format("  /  %+d CR", last.amount)
+			caption = name .. t("  /  %+d CR", last.amount)
 			if last.kind == "goal" then
 				caption ..= "  /  " .. t("+1 trophy")
 				tint = GOLD
@@ -954,14 +982,14 @@ snapshots.OnClientEvent:Connect(function(data)
 				tint = colors.pink
 			end
 		elseif last.kind == "sold" then
-			caption = name .. "  /  " .. t(Board.tiles[last.tile].name) .. string.format("  /  +%d CR", last.amount)
+			caption = name .. "  /  " .. t(Board.tiles[last.tile].name) .. t("  /  +%d CR", last.amount)
 		elseif last.card > 0 then
 			local card = Edition.cards[last.card]
 			headline = if russian then card.ru else card.title
-			caption = name .. (if card.kind == "bench" then "  /  " .. t("Next turn") else string.format("  /  %+d CR", last.amount))
+			caption = name .. (if card.kind == "bench" then "  /  " .. t("Next turn") else t("  /  %+d CR", last.amount))
 			tint = if card.kind == "bench" then GOLD else colors.blue
 		elseif last.kind == "auctionWon" or last.kind == "auctionLeague" then
-			caption = name .. "  /  " .. t(Board.tiles[last.tile].name) .. string.format("  /  %d CR", -last.amount)
+			caption = name .. "  /  " .. t(Board.tiles[last.tile].name) .. t("  /  %d CR", -last.amount)
 			tint = GOLD
 		elseif last.kind == "auctionEmpty" then
 			caption, tint = t(Board.tiles[last.tile].name), colors.blue
@@ -972,10 +1000,12 @@ snapshots.OnClientEvent:Connect(function(data)
 		if moved and not animatedMove and snapshot.match.motion.serial == match.motion.serial then audio.play("land") end
 		if not headline then return end
 		if snapshot.version ~= data.version and (snapshot.match.last.who ~= last.who or snapshot.match.last.kind ~= last.kind or snapshot.match.last.tile ~= last.tile) then return end
+		local revision = languageRevision
 		local title = t(headline)
 		local exciting = final or last.kind == "goal" or last.kind == "league" or last.kind == "auctionLeague"
 		local shot = not final and last.card == 0 and (last.kind == "goal" or last.kind == "save" or last.kind == "offside")
 		local function reveal()
+			if revision ~= languageRevision then return end
 			if snapshot.serial ~= data.serial or not snapshot.match then return end
 			if not final and snapshot.match.phase == "final" then return end
 			if not final and not shot then

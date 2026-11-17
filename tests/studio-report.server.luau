@@ -27,6 +27,15 @@ report.OnServerEvent:Connect(function(player, status)
 	if total < expected then return end
 	assert(#players:GetPlayers() == total)
 	local arena = workspace:FindFirstChild("WorldDraftArena")
-	assert(arena and #arena:GetDescendants() > 300)
+	assert(arena and arena:FindFirstChild("Board") and arena:FindFirstChild("Continental Cup stadium"))
+	local indices = {}
+	for _, part in arena.Board:GetDescendants() do
+		local index = part:GetAttribute("BoardIndex")
+		if index then
+			assert(not indices[index] and part.Name=="Printed tile")
+			indices[index]=true
+		end
+	end
+	for index=1,32 do assert(indices[index],"Missing print surface "..index) end
 	studio:EndTest("PASS " .. mode .. metrics)
 end)

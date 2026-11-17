@@ -387,6 +387,7 @@ intent.OnServerEvent:Connect(function(player, verb, revision, value)
 end)
 
 buildWorld()
+require(script.Parent.LanguagePreference)(network)
 network.Parent = ReplicatedStorage
 Players.PlayerAdded:Connect(joined)
 Players.PlayerRemoving:Connect(function(player)

@@ -175,7 +175,7 @@ scene.cycles.use_denoising = True
 scene.render.resolution_x, scene.render.resolution_y = 1920, 700
 scene.render.resolution_percentage = 100
 scene.render.threads_mode, scene.render.threads = "FIXED", 6
-scene.render.filepath = "//blender-lineup-v0190.png"
+scene.render.filepath = "//blender-lineup-v0200.png"
 for screen in bpy.data.screens:
     for area in screen.areas:
         if area.type == "VIEW_3D":
@@ -184,5 +184,5 @@ for screen in bpy.data.screens:
             area.spaces.active.region_3d.view_perspective = "CAMERA"
 bpy.ops.object.select_all(action="DESELECT")
 bpy.context.preferences.filepaths.save_version = 0
-bpy.ops.wm.save_as_mainfile(filepath=str(root / "art" / "player-lineup-v0190.blend"), compress=True)
+bpy.ops.wm.save_as_mainfile(filepath=str(root / "art" / "player-lineup-v0200.blend"), compress=True)
 bpy.ops.render.render(write_still=True)

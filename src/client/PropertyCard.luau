@@ -3,7 +3,7 @@ local GuiService = game:GetService("GuiService")
 local shared = game:GetService("ReplicatedStorage"):WaitForChild("League")
 local Board = require(shared.TourBoard)
 local Art = require(shared.Presentation)
-local Meshes = require(script.Parent.MeshLibrary)
+local illustrate = require(script.Parent.Programme)
 local UI = require(script.Parent.Components)
 local C = Color3.fromHex
 local colors = UI.color
@@ -15,12 +15,6 @@ local function text(parent: Instance, content: string, height: number, y: number
 	local label = UI.label(parent, content, size, {font = Enum.Font.BuilderSans, color = color, align = CENTER, ellipsis = true})
 	label.Position, label.Size = UDim2.new(0, 10, 0, y), UDim2.new(1, -20, 0, height)
 	return label
-end
-
-local function gradient(obj: GuiObject, top: Color3, bottom: Color3)
-	local effect = Instance.new("UIGradient")
-	effect.Rotation, effect.Color = 90, ColorSequence.new(top, bottom)
-	effect.Parent = obj
 end
 
 local Card = {}
@@ -35,47 +29,11 @@ function Card.button(parent: Instance, name: string, label: string, press: () ->
 	return button
 end
 
-local function illustration(parent: Instance, index: number, level: number)
+local function illustration(parent: Instance, index: number)
 	local tile = Board.tiles[index]
 	local backing = UI.box(parent, "Illustration", Color3.new(1, 1, 1))
 	backing.Position, backing.Size = UDim2.fromOffset(12, 39), UDim2.new(1, -24, 0, 127)
-	gradient(backing, C("46466D"), C("211F37"))
-	UI.stroke(backing, colors.outline)
-	local view = Instance.new("ViewportFrame")
-	view.Name, view.BackgroundTransparency, view.Size = "ClubMiniature", 1, UDim2.fromScale(1, 1)
-	view.Ambient, view.LightColor, view.LightDirection = C("BBC8B5"), C("FFF3DC"), Vector3.new(-3, -5, -2)
-	view.Parent = backing
-	local world = Instance.new("WorldModel")
-	world.Parent = view
-	local function block(name: string, size: Vector3, position: Vector3, color: Color3): Part
-		local part = Instance.new("Part")
-		part.Name, part.Anchored, part.CanCollide = name, true, false
-		part.Material, part.Size, part.Position, part.Color = Enum.Material.SmoothPlastic, size, position, color
-		part.Parent = world
-		return part
-	end
-	block("Plinth", Vector3.new(11.5, .45, 11.5), Vector3.new(0, -.22, 0), C("8A8A80"))
-	block("Turf", Vector3.new(9.6, .23, 9.6), Vector3.new(0, .10, 0), C("A2BC54"))
-	local color = Art.accent(tile.kind, tile.league)
-	block("Club foundation", Vector3.new(5.2, .36, 3.80), Vector3.new(0, .41, .3), color:Lerp(INK, .14))
-	local height = 1.35 + level * .40
-	block("Club pavilion", Vector3.new(4.88, height, 3.44), Vector3.new(0, .55 + height * .5, .3), C("FFF1D9"))
-	local roof = block("Rounded roof", Vector3.new(5.35, .38, 3.89), Vector3.new(0, .74 + height, .3), color)
-	Meshes.apply("die", roof)
-	block("Club entry", Vector3.new(1.16, 1.05, .045), Vector3.new(.9, 1.07, 2.043), color:Lerp(INK, .55))
-	for _, side in {-1, 1} do
-		block("Box window", Vector3.new(.94, .54, .045), Vector3.new(side * 1.52, .70 + height * .64, 2.052), C("425B72"))
-	end
-	for _, x in {-4, 4} do
-		local stem = block("Tree trunk", Vector3.new(.22, 1.34, .22), Vector3.new(x, .87, -2.4), C("866336"))
-		stem.CastShadow = false
-		local leaf = block("Tree crown", Vector3.new(1.32, 1.42, 1.32), Vector3.new(x, 1.67, -2.4), C("87A52C"))
-		leaf.Shape = Enum.PartType.Ball
-	end
-	local camera = Instance.new("Camera")
-	camera.FieldOfView = 28
-	camera.CFrame = CFrame.lookAt(Vector3.new(15, 14, 15), Vector3.new(0, .64, 0))
-	camera.Parent, view.CurrentCamera = view, camera
+	illustrate(backing,tile)
 end
 
 export type Details = {
@@ -129,7 +87,7 @@ function Card.new(root: Frame)
 			exit.BackgroundTransparency, exit.TextSize = 1, 25
 			exit.Position, exit.Size = UDim2.new(1, -39, 0, 0), UDim2.fromOffset(39, 33)
 			for _, child in exit:GetChildren() do if child:IsA("UIStroke") then child:Destroy() end end
-			illustration(paper, info.index, info.level)
+			illustration(paper, info.index)
 			local summary = text(paper, info.summary, 30, 169, 14, colors.text)
 			summary.Font = Enum.Font.BuilderSansBold
 			if options then

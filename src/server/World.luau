@@ -32,24 +32,6 @@ local function mesh(parent: Instance, name: string, shape: string, size: Vector3
 	return marker
 end
 
-local function cornerProp(parent: Instance, index: number, pose: CFrame, accent: Color3)
-	pose *= CFrame.new(0, 0, -3.15)
-	if index == 1 then
-		for _, side in {-1, 1} do
-			part(parent, "Kickoff chevron", Vector3.new(2.5, .12, .68),
-				pose * CFrame.new(side*.92, .12, -2.7) * CFrame.Angles(0, side*.58, 0), C("345A49")).CastShadow = false
-		end
-	elseif index == 9 then
-		mesh(parent, "Football", "ball", Vector3.one * 4.3, pose * CFrame.new(0, 2.35, -1))
-		part(parent, "Terminal", Vector3.new(5.85, .36, 5.85), pose * CFrame.new(0, .18, -1), accent:Lerp(Art.ink, .25))
-	elseif index == 17 then
-		mesh(parent, "Continental Cup arena", "champions", Vector3.new(6.4, 2.55, 5.2), pose * CFrame.new(0, 1.39, -1.12))
-		part(parent, "Championship podium", Vector3.new(6.05, .36, 5.0), pose * CFrame.new(0, .18, -1.12), C("84A042"))
-	else
-		mesh(parent, "Substitutes' bench", "dugout", Vector3.new(8.0, 3.97, 4.6), pose * CFrame.new(0, 2, -1))
-	end
-end
-
 local function drawTile(tray: Folder, index: number, tile: Board.Tile)
 	local at = Geometry.cells[index]
 	local yaw = Geometry.tileYaw(index)
@@ -58,46 +40,18 @@ local function drawTile(tray: Folder, index: number, tile: Board.Tile)
 	local pose = CFrame.new(at.X, Art.tileTop, at.Z) * CFrame.Angles(0, yaw, 0)
 	local accent = Art.accent(tile.kind, tile.league)
 	local cell = folder(tray, string.format("%02d %s", index, tile.name))
-	local isCorner = (index - 1) % 8 == 0
-	local ground = if tile.league > 0 then C("17303D"):Lerp(accent, .068) else C("F1E8D4")
-	mesh(cell, "Molded tile case", "tile_case", Vector3.new(width, .64, depth),
-		pose * CFrame.new(0, -.34, 0), C("121E2B"))
-	local face = mesh(cell, "Porcelain face", "tile_enamel", Vector3.new(width - .22, .29, depth - .22),
-		pose * CFrame.new(0, -.13, 0), ground)
+	mesh(cell, "Molded tile case", "tile_case", Vector3.new(width, .62, depth),
+		pose * CFrame.new(0, -.33, 0), accent:Lerp(C("202C32"), .55))
+	local face = mesh(cell, "Porcelain face", "tile_enamel", Vector3.new(width-.22,.28,depth-.22),
+		pose * CFrame.new(0,-.12,0), C("EDE0C7"))
 	face.CastShadow = false
-	if tile.league > 0 then
-		-- A continuous enamel rail makes each league readable across adjoining clubs.
-		mesh(cell, "League enamel rail", "tile_enamel", Vector3.new(width-.90, .080, 1.62),
-			pose * CFrame.new(0, .045, -depth*.5+1.08), accent).CastShadow = false
-		part(cell, "Brass keyline", Vector3.new(width-1.45,.032,.13),
-			pose * CFrame.new(0,.041,depth*.5-.59), C("9FAFAD")).CastShadow = false
-	else
-		mesh(cell, "Medallion enamel", "tile_enamel", Vector3.new(width-.77,.078,depth*.34),
-			pose * CFrame.new(0,.041,-depth*.30), accent:Lerp(C("F2E2C4"),.27)).CastShadow = false
-	end
-	local printLayer = part(cell, "Printed tile", Vector3.new(width, .02, depth), pose * CFrame.new(0, .045, 0), Art.paper)
-	printLayer.CastShadow, printLayer.Transparency = false, 1
-	printLayer:SetAttribute("BoardIndex", index)
-	if tile.league > 0 then return end
-	local prop = Instance.new("Model")
-	prop.Name, prop.Parent = "Landmark", cell
-	if isCorner then
-		cornerProp(prop, index, pose, accent)
-	elseif tile.kind == "chance" then
-		mesh(prop, "Chance cards", "event_card", Vector3.new(4.2, .48, 3.45),
-			pose * CFrame.new(0, .36, -5.31)).CastShadow = false
-	elseif tile.kind == "tax" then
-		for page = 1, 3 do
-			part(prop, "Tax notice", Vector3.new(2.95, .12, 3.30), pose * CFrame.new(0, .16 + page * .09, -5.17)
-				* CFrame.Angles(0, -.22 + page * .08, 0), if page == 3 then C("D78C64") else C("A95F4B"))
-		end
-	elseif tile.kind == "venue" then
-		mesh(prop, "Miniature stadium", "arena", Vector3.new(4.35, 1.75, 3.25), pose * CFrame.new(0, 1.01, -5.14), accent)
-	end
-	local center, extent = prop:GetBoundingBox()
-	printLayer:SetAttribute("LandmarkPose", center)
-	printLayer:SetAttribute("LandmarkSize", extent)
-
+	-- Local +Z is the face normal and local +Y points north on the pitch.
+	local sideways = math.floor((index-1)/8)%2 == 0
+	local sheet = part(cell, "Printed tile", Vector3.new(if sideways then depth-.72 else width-.72,
+		if sideways then width-.72 else depth-.72,.03),
+		CFrame.new(at.X, Art.tileTop+.060, at.Z)*CFrame.Angles(-math.pi/2,0,0), Art.paper)
+	sheet.Transparency, sheet.CastShadow = 1, false
+	sheet:SetAttribute("BoardIndex",index)
 end
 
 local function pitch(stage: Folder)
@@ -136,6 +90,7 @@ end
 local function ribbon(parent: Folder, name: string, pose: CFrame, width: number)
 	local board = part(parent, name, Vector3.new(width, 2.08, .15), pose, C("181B2B"))
 	local surface = Instance.new("SurfaceGui")
+	surface.AutoLocalize = false
 	surface.Face, surface.LightInfluence, surface.CanvasSize = Enum.NormalId.Back, 0, Vector2.new(640, 56)
 	surface.SizingMode, surface.Parent = Enum.SurfaceGuiSizingMode.FixedSize, board
 	local word = Instance.new("TextLabel")
@@ -150,6 +105,7 @@ local function surroundings(stage: Folder)
 	local back = plate(scene, "Night backdrop", 0, -8.5, 0, 2048, .35, 2048, C("191824"))
 	back.CastShadow = false
 	local surface = Instance.new("SurfaceGui")
+	surface.AutoLocalize = false
 	surface.Face, surface.CanvasSize = Enum.NormalId.Top, Vector2.new(1024, 1024)
 	surface.SizingMode, surface.LightInfluence, surface.MaxDistance = Enum.SurfaceGuiSizingMode.FixedSize, 0, 5000
 	surface.Parent = back

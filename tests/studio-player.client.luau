@@ -41,34 +41,56 @@ local ok, err = pcall(function()
 	local closeup = script:GetAttribute("VerifyBlenderArt") == true
 	local verifyMatchday = script:GetAttribute("VerifyMatchday") == true
 	local stage = workspace:WaitForChild("WorldDraftArena")
-	local printLayer = hud.Viewport:WaitForChild("BoardPrint")
-	assert(#printLayer:GetChildren() == 32)
+	local printLayer = player.PlayerGui:WaitForChild("BoardPrint")
+	waitFor(function() return #printLayer:GetChildren() == #board.tiles end, "all printed cards")
 	local camera = waitFor(function()
 		local current = workspace.CurrentCamera
 		return current and current.CameraType == Enum.CameraType.Scriptable and current.ViewportSize.X > 2 and current
 	end, "scriptable play camera", 8)
-	waitFor(function()
-		local title = printLayer.Cell1["Club name"]
-		return title.AbsoluteSize.X >= 8 and title.AbsoluteSize.Y <= 22 and title.Position.X.Offset > 0
-	end, "projected board print")
+	local input = assert(game:GetService("UserInputService"):CreateVirtualInput())
+	local function press(key)
+		input:SendKey(true,key,false)
+		task.wait(.08)
+		input:SendKey(false,key,false)
+	end
+	local target = script:GetAttribute("Edition") or "en"
+	local picker = hud.Viewport:WaitForChild("LanguagePicker")
+	local sample = printLayer.Cell1["Printed programme"]["Club name"]
+	assert(picker.Visible and not hud.AutoLocalize)
+	for _,lang in {if target=="ru" then "en" else "ru",target} do
+		if not picker.Visible then press(Enum.KeyCode.L) end
+		waitFor(function() return picker.Visible end,"language choice")
+		press(if lang=="ru" then Enum.KeyCode.R else Enum.KeyCode.E)
+		waitFor(function()
+			return not picker.Visible and player:GetAttribute("TableLanguage")==lang
+				and sample.Text==(if lang=="ru" then "Старт" else "Kickoff")
+				and hud.Viewport.MatchPanel.Phase.Text==(if lang=="ru" then "ВЫБОР ФИГУРКИ" else "SELECT A FIGURE")
+		end,"explicit language on board and HUD")
+	end
 	local function verifyPrint()
-		local occupied = {}
-		local shown = 0
-		for _, cell in printLayer:GetChildren() do
-			for _, name in {"Club name", "Club cost"} do
-				local label = cell[name]
-				if not label.Visible then continue end
-				local a, b = label.AbsolutePosition, label.AbsolutePosition + label.AbsoluteSize
-				assert(label.Text ~= "" and label.TextFits, "Clipped print " .. cell.Name .. " " .. label.Text)
-				for _, other in occupied do
-					assert(a.X >= other.b.X or a.Y >= other.b.Y or b.X <= other.a.X or b.Y <= other.a.Y,
-						"Overlapping print " .. cell.Name .. " and " .. other.name)
-				end
-				table.insert(occupied, {a=a, b=b, name=cell.Name})
-				if name == "Club name" then shown += 1 end
+		for index,tile in board.tiles do
+			local cell=printLayer["Cell"..index]
+			assert(cell.Adornee:GetAttribute("BoardIndex")==index and not cell.AlwaysOnTop and not cell.AutoLocalize)
+			local paper=cell["Printed programme"]
+			local poster,title,cost=paper["Programme illustration"],paper["Club name"],paper["Club cost"]
+			assert(poster:FindFirstChild("Lithograph"), "Missing illustrated print "..tile.name)
+			assert(title:FindFirstChild("Ink") and title.Ink.ImageRectSize==Vector2.new(256,64) and title.Text~="" and title.TextFits, "Clipped title "..title.Text)
+			assert(poster.Size.Y.Scale<=title.Position.Y.Scale and title.Position.Y.Scale+title.Size.Y.Scale<=1)
+			local ink=hud.Viewport["Programme typography"][cell.Name]["Club name"]
+			assert(ink.Text==title.Text)
+			if ink.Visible then
+				local v=title.Position.Y.Scale+title.Size.Y.Scale*.5
+				local at=camera:WorldToScreenPoint(cell.Adornee.Position+cell.Adornee.CFrame.UpVector*cell.Adornee.Size.Y*(.5-v))
+				assert(math.abs(ink.Position.X.Offset-at.X)<4 and math.abs(ink.Position.Y.Offset-at.Y)<4,
+					"Title moved away from its band on "..cell.Name)
+				assert(not title.Visible,"Double print on "..cell.Name)
+			end
+
+			if tile.price>0 then
+				assert(title.Position.Y.Scale+title.Size.Y.Scale<=cost.Position.Y.Scale and cost.TextFits and cost.Text~="")
+				assert(cost.Position.Y.Scale+cost.Size.Y.Scale<=1)
 			end
 		end
-		assert(shown >= 4, "Board print visibility")
 	end
 	verifyPrint()
 	for _, part in stage.Board:GetDescendants() do
@@ -93,7 +115,8 @@ local ok, err = pcall(function()
 				local head = figure and figure:FindFirstChild("Face", true)
 				local jersey = figure and figure:FindFirstChild("Jersey", true)
 				if not (head and head:IsA("MeshPart") and head:GetAttribute("PaintedAtlas")
-					and jersey and jersey:IsA("MeshPart") and jersey:GetAttribute("PaintedAtlas")) then return false end
+					and jersey and jersey:IsA("MeshPart") and jersey:GetAttribute("PaintedAtlas")
+					and figure:FindFirstChild("Ribbed sock",true):IsA("MeshPart")) then return false end
 			end
 			return true
 		end, "six portrait sculpts and six match kits")
@@ -125,8 +148,8 @@ local ok, err = pcall(function()
 			local sole = hud:FindFirstChild("Molded outsole", true)
 			local plinth = stage.Board:FindFirstChild("Octagonal arena plinth")
 			local stencil = stage:FindFirstChild("Footbolapolia field stencil", true)
-			local deck = stage.Board:FindFirstChild("Chance cards", true)
-			return deck and deck:IsA("MeshPart") and enamel and enamel:IsA("MeshPart") and sole and sole:IsA("MeshPart")
+			local deck = printLayer.Cell5:FindFirstChild("Lithograph", true)
+			return deck and deck:IsA("ImageLabel") and enamel and enamel:IsA("MeshPart") and sole and sole:IsA("MeshPart")
 				and plinth and plinth:IsA("MeshPart") and stencil and stencil:IsA("MeshPart")
 		end, "Blender arena, tile and outsole")
 		dispatch("format", 2)
@@ -142,6 +165,17 @@ local ok, err = pcall(function()
 	end
 	waitFor(function() return snapshot and snapshot.match end, "kickoff")
 	assert(#snapshot.match.seats == board.maxSeats)
+	if verifyMatchday then
+		for _,lang in {if target=="ru" then "en" else "ru",target} do
+			press(Enum.KeyCode.L)
+			waitFor(function() return picker.Visible end,"in-match language settings")
+			press(if lang=="ru" then Enum.KeyCode.R else Enum.KeyCode.E)
+			waitFor(function()
+				return player:GetAttribute("TableLanguage")==lang and sample.Text==(if lang=="ru" then "Старт" else "Kickoff")
+					and hud.Viewport.Scoreboard.Seat1.PlayerName.Text==(if lang=="ru" then "Ты" else "You")
+			end,"in-match language on board and scoreboard")
+		end
+	end
 	if closeup and camera.ViewportSize.X < camera.ViewportSize.Y * .86 then
 		local cameraButton = hud.Viewport:FindFirstChild("BoardCamera")
 		waitFor(function()
@@ -153,10 +187,10 @@ local ok, err = pcall(function()
 			local point, visible = camera:WorldToViewportPoint(actor:GetPivot().Position)
 			local a = camera:WorldToViewportPoint(Vector3.new(-63, art.tileTop, 54))
 			local b = camera:WorldToViewportPoint(Vector3.new(63, art.tileTop, 54))
-			local title = printLayer.Cell1["Club name"]
+			local title = printLayer.Cell1["Printed programme"]["Club name"]
 			return visible and point.Y > camera.ViewportSize.Y * .18 and point.Y < camera.ViewportSize.Y * .81
 				and math.abs(b.X - a.X) > camera.ViewportSize.X * 1.33
-				and title.Visible and title.Rotation == 0 and title.TextFits
+				and printLayer.Cell1.Enabled and title.TextFits
 		end, "portrait turn close-up and horizontal type", 3)
 		local input = assert(game:GetService("UserInputService"):CreateVirtualInput())
 		local function toggleCamera()
@@ -214,7 +248,7 @@ local ok, err = pcall(function()
 		if verifyMatchday and replay and s.last.who == player.UserId and not replaySeen then
 			replaySeen = true
 			assert(s.last.kind == "goal" and s.last.amount == 140, "Expected a goal and its reward")
-			waitFor(function() return not printLayer.Visible and camera.FieldOfView > art.boardFov + 2 end, "shot camera", 1)
+			waitFor(function() return not printLayer.Cell1.Enabled and camera.FieldOfView > art.boardFov + 2 end, "shot camera", 1)
 			capture("strike")
 			local ball = effects["Motion effects"]:FindFirstChild("Matchday ball")
 			assert(ball and ball.PrimaryPart and replay:FindFirstChild("Goalkeeper") and replay:FindFirstChild("Striker"))
@@ -232,7 +266,7 @@ local ok, err = pcall(function()
 			waitFor(function() return ribbon and ribbon:FindFirstChild("Message", true).Text ~= "FOOTBOLAPOLIA" end, "live goal ribbon", 1)
 			task.wait(.25)
 			capture("goal")
-			waitFor(function() return printLayer.Visible and math.abs(camera.FieldOfView - art.boardFov) < .1 end, "board camera restored", 3)
+			waitFor(function() return printLayer.Cell1.Enabled and math.abs(camera.FieldOfView - art.boardFov) < .1 end, "board camera restored", 3)
 		end
 		local moving = effects and effects["Motion effects"]:FindFirstChild("Travel shadow")
 		if verifyMatchday and moving and s.motion.who == player.UserId and not runSeen then
@@ -286,12 +320,13 @@ local ok, err = pcall(function()
 			if verifyMatchday then
 				local scoreboard = hud.Viewport.Scoreboard
 				local lowerRight = scoreboard.AbsolutePosition + scoreboard.AbsoluteSize
-				for _, cell in printLayer:GetChildren() do
-					local label = cell["Club name"]
-					if not label.Visible then continue end
-					local center = label.AbsolutePosition + label.AbsoluteSize * .5
-					assert(center.Y > lowerRight.Y or center.X < scoreboard.AbsolutePosition.X or center.X > lowerRight.X,
-						"Scoreboard obscures " .. label.Text)
+				for _,cell in printLayer:GetChildren() do
+					local point, shown = camera:WorldToViewportPoint(cell.Adornee.Position)
+					if shown and (camera.ViewportSize.X >= camera.ViewportSize.Y or cell.Adornee:GetAttribute("BoardIndex")==s.seats[s.active].position) then
+						point=camera:WorldToScreenPoint(cell.Adornee.Position)
+						assert(point.Y < scoreboard.AbsolutePosition.Y or point.Y > lowerRight.Y or point.X < scoreboard.AbsolutePosition.X or point.X > lowerRight.X,
+							"Scoreboard obscures "..cell.Name)
+					end
 				end
 			end
 			capture("table")

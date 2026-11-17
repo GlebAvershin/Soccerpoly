@@ -365,6 +365,37 @@ def jersey(name):
     return model
 
 
+def football_sock():
+    # Ankle tapers below the shin pad. Twisted vertical ribs blend into a
+    # folded cuff, with extra calf volume at the back of the leg.
+    from math import tau
+    from blender_export import blender
+    profile=[(-.50,.25),(-.45,.31),(-.36,.34),(-.21,.35),(-.05,.40),
+             (.12,.47),(.22,.495),(.31,.49),(.34,.48),(.36,.505),
+             (.40,.51),(.425,.49),(.44,.51),(.485,.505),(.50,.46)]
+    count=64
+    verts=[]
+    faces=[]
+    for j,(y,r) in enumerate(profile):
+        for k in range(count):
+            a=tau*k/count
+            rib=.012*cos(16*a+2*y)*(1 if y>.32 else .42)
+            depth=.94+.10*max(0,-cos(a))*max(0,1-abs(y-.17)*3)
+            verts.append(blender(((r+rib)*sin(a),y,(r+rib)*cos(a)*depth)))
+            if j:
+                v=j*count+k
+                n=j*count+(k+1)%count
+                faces.append((v-count,n-count,n,v))
+    faces.extend([tuple(reversed(range(count))),tuple(range(len(verts)-count,len(verts)))])
+    mesh=bpy.data.meshes.new("Ribbed match stocking")
+    mesh.from_pydata(verts,[],faces)
+    mesh.update()
+    for poly in mesh.polygons: poly.use_smooth=len(poly.vertices)==4
+    obj=bpy.data.objects.new("match_sock",mesh)
+    bpy.context.collection.objects.link(obj)
+    return obj
+
+
 def build():
     bpy.ops.wm.read_factory_settings(use_empty=True)
     from painted_heads import head
@@ -382,6 +413,9 @@ def build():
     boot = match_boot()
     boot.location = (1.5, 0, -2.95)
     models.append(boot)
+    sock = football_sock()
+    sock.location=(-1.5,0,-2.95)
+    models.append(sock)
     from mathutils import Euler
     for screen in bpy.data.screens:
         for area in screen.areas:
@@ -396,6 +430,6 @@ def build():
     return models
 
 
-names = [*PLAYERS, *(name + "_jersey" for name in PLAYERS), "goalkeeper", "match_boot"]
+names = [*PLAYERS, *(name + "_jersey" for name in PLAYERS), "goalkeeper", "match_boot", "match_sock"]
 models = [bpy.context.scene.objects[name] for name in names] if "--export" in sys.argv else build()
 export_shapes(models, "src/client/PlayerSculptData.luau", include_bounds=True)

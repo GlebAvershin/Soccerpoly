@@ -4,6 +4,7 @@ from math import cos, sin, pi, tau
 import bpy
 import bmesh
 from mathutils import Vector
+from mathutils.bvhtree import BVHTree
 from blender_export import ROOT, blender
 
 DIR = ROOT / "art/portraits"
@@ -83,6 +84,55 @@ def head(name, topology):
         rim=new
     pole=vertex(point(origin,.45,-.744),(.5+.5*origin,.55))
     faces.extend((rim[k-1],rim[k],pole) for k in range(len(rim)))
+
+    # Comb tapered locks over the actual fitted scalp. Each profile has its own
+    # direction, length, wave and relief. Cast from outside so the roots follow
+    # the skull at grazing angles in the overhead camera.
+    scalp = BVHTree.FromPolygons(coords, faces)
+    count, sweep, wave, relief = {
+        "messi": (23, .48, .06, .026), "ronaldo": (20, -.64, .04, .030),
+        "mbappe": (28, .14, .035, .009), "yamal": (29, .22, .20, .037),
+        "vinicius": (26, -.18, .16, .031), "haaland": (22, .76, .025, .020),
+    }[name]
+    center = Vector((0,.11,.18))
+    for lock in range(count):
+        az = tau*lock/count
+        path = []
+        for seg in range(8):
+            t = seg/7
+            angle = az + sweep*t + wave*sin(tau*t+lock*1.8)
+            elevation = .24 + 1.07*t + .055*sin(lock*4.1)
+            direction = Vector((cos(angle)*sin(elevation), sin(angle)*sin(elevation), cos(elevation)))
+            hit, normal, _, _ = scalp.ray_cast(center+direction*3, -direction, 4)
+            if hit is None: break
+            # Keep sculpted strands behind the photographed fringe. Front
+            # forehead and fade take their colour from the registered portrait.
+            front_v = chin - (hit.z+.64)/scale
+            if hit.y<.06 and front_v>pts[10][1]-.045:
+                break
+            if normal.dot(direction)<0: normal.negate()
+            lateral = Vector((-sin(angle), cos(angle), 0))
+            lateral = (lateral - normal*lateral.dot(normal)).normalized()
+            path.append((hit,normal,lateral))
+        previous=[]
+        for seg,(hit,normal,lateral) in enumerate(path):
+            if len(path)<3: break
+            t=seg/(len(path)-1)
+            taper=sin(pi*t)**.75
+            width=(.002+.036*taper)*(1 if name!="mbappe" else .58)
+            ring=[]
+            for offset, rise in ((-1,-.003),(0,relief*taper),(1,-.003)):
+                co=hit+lateral*width*offset+normal*rise
+                u=origin+co.x/scale
+                v=chin-(co.z+.64)/scale
+                # Register pigment to the scalp. Dark ends sampled from an
+                # unrelated swatch read as hard lines across a player's fringe.
+                panel=0 if hit.y<.082 else .5
+                ring.append(vertex(co,(panel+.5*u,1-v)))
+            if previous:
+                for edge in (0,1):
+                    faces.append((previous[edge],previous[edge+1],ring[edge+1],ring[edge]))
+            previous=ring
 
     if name == "haaland":
         # Tied-back hair gathers into a knot at the occiput, visible from the board camera.

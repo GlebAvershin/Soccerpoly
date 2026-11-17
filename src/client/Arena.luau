@@ -157,14 +157,14 @@ function Arena.new(myId: number, root: Frame, translate: (string) -> string, pla
 	local reduced = GuiService.ReducedMotionEnabled
 	local oldSize: Vector2? = nil
 	local oldRoot: Vector2? = nil
-	local projected: CFrame? = nil
 	local overview: CFrame? = nil
 	local portraitCamera = false
 	local followTurn = true
 	local focusOrbit = Vector3.zero
 	local focusDistance = 0
 	local boardPose: CFrame? = nil
-	local lastPrint = -1
+	local lastInkPose: CFrame? = nil
+	local lastInkTime = 0
 
 	local function finishFlight()
 		local flight = activeFlight
@@ -181,8 +181,8 @@ function Arena.new(myId: number, root: Frame, translate: (string) -> string, pla
 		local fov = Art.boardFov
 		local tangent = math.tan(math.rad(fov) * .5)
 		portraitCamera = aspect < .86
-		local angle = math.rad(if portraitCamera then 53 else 33.2)
-		local azimuth = if portraitCamera then math.rad(9) else Art.boardYaw
+		local angle = math.rad(if portraitCamera then 53 else 40)
+		local azimuth = if portraitCamera then math.rad(9) else math.rad(22)
 		local heading = Vector3.new(math.sin(azimuth), 0, math.cos(azimuth))
 		local orbit = heading * math.cos(angle) + Vector3.yAxis * math.sin(angle)
 		local span = Geometry.width * (heading.X + heading.Z)
@@ -196,8 +196,8 @@ function Arena.new(myId: number, root: Frame, translate: (string) -> string, pla
 		local centerY = (near.Y / -near.Z + far.Y / -far.Z) * .5
 		local targetY = if portraitCamera then .07 else -.071
 		overview = base * CFrame.new(0, (centerY - targetY * tangent) * distance, 0)
-		focusOrbit, focusDistance = orbit, distance * .58
-		projected, boardPose = nil, nil
+		focusOrbit, focusDistance = orbit, distance * .55
+		boardPose = nil
 		oldSize, oldRoot, camera.FieldOfView = size, root.AbsoluteSize, fov
 	end
 
@@ -278,7 +278,6 @@ function Arena.new(myId: number, root: Frame, translate: (string) -> string, pla
 	local function sync(snapshot: any)
 		local s = snapshot.match
 		labels.update(snapshot)
-		projected = nil
 		if s == nil then
 			replay.clear()
 			activeId, cheerId = 0, 0
@@ -393,26 +392,21 @@ function Arena.new(myId: number, root: Frame, translate: (string) -> string, pla
 			boardPose = if (last.Position - target.Position).Magnitude < .08 or reduced
 				then target else last:Lerp(target, 1 - math.exp(-dt * 9))
 			camera.CFrame, camera.Focus, camera.FieldOfView = boardPose :: CFrame, CFrame.identity, Art.boardFov
-			if projected ~= camera.CFrame or (entry and clock-lastPrint >= .06) then
-				lastPrint = clock
-				local masks = {}
-				for _, playerModel in models do
-					-- Use the actual head and feet so letters never print over a moving figure.
-					local foot = playerModel:GetPivot().Position + Vector3.yAxis * 1.05
-					local head = playerModel:FindFirstChild("Head")
-					if not head or not head:IsA("Model") then continue end
-					local face = head:FindFirstChild("Face")
+			if camera.CFrame~=lastInkPose or clock-lastInkTime>=.09 then
+				lastInkPose,lastInkTime=camera.CFrame,clock
+				local silhouettes={}
+				for _,model in models do
+					local at=model:GetPivot().Position
+					local face=model:FindFirstChild("Head") and model.Head:FindFirstChild("Face")
 					if not face or not face:IsA("BasePart") then continue end
-					local cap = face.Position + Vector3.yAxis * face.Size.Y * .52
-					local top = camera:WorldToScreenPoint(cap)
-					local base = camera:WorldToScreenPoint(foot)
-					local side = camera:WorldToScreenPoint(foot + camera.CFrame.RightVector * 3.65)
-					local half = math.abs(side.X-base.X)+1
-					table.insert(masks, Rect.new(math.min(base.X,top.X)-half, math.min(top.Y,base.Y)-1,
-						math.max(base.X,top.X)+half, math.max(top.Y,base.Y)+1))
+					local top=camera:WorldToScreenPoint(face.Position+Vector3.yAxis*face.Size.Y*.55)
+					local foot=camera:WorldToScreenPoint(at)
+					local side=camera:WorldToScreenPoint(at+camera.CFrame.RightVector*3.4)
+					local extent=math.abs(side.X-foot.X)
+					table.insert(silhouettes,Rect.new(math.min(top.X,foot.X)-extent,math.min(top.Y,foot.Y),
+						math.max(top.X,foot.X)+extent,math.max(top.Y,foot.Y)))
 				end
-				labels.project(camera, portraitCamera, focus ~= nil, masks)
-				projected = camera.CFrame
+				labels.layout(camera,silhouettes)
 			end
 		end
 		local portrait = portraitModel
@@ -527,8 +521,9 @@ function Arena.new(myId: number, root: Frame, translate: (string) -> string, pla
 			end)
 		end,
 		relocalize = function()
+			ribbonVersion += 1
+			if ribbonText then ribbonText.Text, ribbonText.TextColor3 = "FOOTBOLAPOLIA", Art.mint end
 			labels.translate()
-			projected = nil
 		end,
 		playShot = function(outcome: string, figure: number, impact: () -> ())
 			replay.play(outcome, figure, impact, reduced)

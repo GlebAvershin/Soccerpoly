@@ -1,5 +1,26 @@
 --!strict
 local ru: {[string]: string} = {
+	["Atlas"]="Атлас", ["Nova"]="Нова", ["Vega"]="Вега",
+	["Game language · English"] = "Язык игры · Русский",
+	["Atlético Madrid"] = "Атлетико Мадрид",
+	["FC Barcelona"] = "Барселона",
+	["Real Madrid"] = "Реал Мадрид",
+	["Santiago Bernabéu"] = "Сантьяго Бернабеу",
+	["Liverpool FC"] = "Ливерпуль",
+	["Manchester City"] = "Манчестер Сити",
+	["Manchester United"] = "Манчестер Юнайтед",
+	["Old Trafford"] = "Олд Траффорд",
+	["AC Milan"] = "Милан",
+	["Inter Milan"] = "Интер",
+	["Juventus"] = "Ювентус",
+	["Bayer Leverkusen"] = "Байер Леверкузен",
+	["Borussia Dortmund"] = "Боруссия Дортмунд",
+	["Bayern Munich"] = "Бавария",
+	["Olympique de Marseille"] = "Олимпик Марсель",
+	["AS Monaco"] = "Монако",
+	["Paris Saint-Germain"] = "Пари Сен-Жермен",
+	["Sent to the bench"] = "На скамейку запасных",
+
 	["Draw a card, earn a sponsor bonus, protect a club or shoot on goal."] = "Вытащи карту, получи бонус спонсора, защити клуб или пробей по воротам.",
 	["Quick · 20 min"] = "Быстрая · 20 мин",
 	["Long · 60 min"] = "Длинная · 60 мин",
@@ -205,6 +226,7 @@ local ru: {[string]: string} = {
 
 return function(key: string, russian: boolean, ...: any): string
 	local phrase = if russian then (ru[key] or key) else key
+	if russian then phrase = (string.gsub(phrase, " CR", " кр.")) end
 	if select("#", ...) > 0 then return string.format(phrase, ...) end
 	return phrase
 end

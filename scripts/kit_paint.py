@@ -40,5 +40,18 @@ def kit_paint(name):
         draw.text((cx,top),str(number),font=bold(height),anchor="mt",fill="#"+ink,
                   stroke_width=1,stroke_fill="#"+main)
     draw.text((768,131),surname,font=bold(34),anchor="mt",fill="#"+ink)
-    draw.text((305,134),country,font=bold(21),anchor="mt",fill="#"+ink)
+    # Woven shield, cuff-to-collar stitching and twin-needle hem.
+    rim, field = "#"+ink, "#"+alt
+    draw.polygon([(285,113),(334,113),(331,148),(310,162),(289,147)],fill=rim)
+    draw.polygon([(290,118),(329,118),(326,145),(310,155),(294,145)],fill=field)
+    draw.text((309,124),country,font=bold(19),anchor="mt",fill=rim)
+    for x0 in (114,398,625,910):
+        sign = 1 if x0 in (114,625) else -1
+        for step in range(28):
+            y0=18+step*5
+            sx=x0+int(sign*31*(1-step/28)**2)
+            draw.line((sx,y0,sx+1,y0+2),fill=rim,width=2)
+    for hem in (477,483):
+        for stitch in range(0,1024,9):
+            draw.line((stitch,hem,stitch+4,hem),fill=field,width=2)
     return image

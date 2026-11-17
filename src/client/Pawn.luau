@@ -82,7 +82,7 @@ function Pawn.make(figure: number, parent: Instance, onPitch: boolean?, uniform:
 		thighs[i] = thigh
 		local knee = joint(prefix .. "knee", x, 1.419, .014, 4 + i)
 		soft("Knee", .50, .44, .52, x * 1.07, 1.53, .03, skin)
-		Meshes.apply("sock", soft("Ribbed sock", .48, .91, .53, x * 1.08, 1.125, .045, kit))
+		Meshes.apply("match_sock", soft("Ribbed sock", .48, .91, .53, x * 1.08, 1.125, .045, kit))
 		for i = 0, 1 do
 			soft("Sock cuff stripe", .492, .054, .55, x * 1.08, 1.405 - i * .077, .045, accent)
 		end
