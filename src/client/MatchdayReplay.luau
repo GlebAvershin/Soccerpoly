@@ -1,4 +1,5 @@
 --!strict
+local TweenService = game:GetService("TweenService")
 local shared = game:GetService("ReplicatedStorage"):WaitForChild("League")
 local Art = require(shared.Presentation)
 local Pawn = require(script.Parent.Pawn)
@@ -62,6 +63,52 @@ local function goal(actors: Folder)
 	decorated(actors, "Matchday goal", "goal", Vector3.new(5.4, 7.65, 18.5), Vector3.new(40.1, 4.10, 0), fallback)
 end
 
+local function kickMarks(parent: Instance)
+	local origin = SHOT_START - Vector3.yAxis * 1.13
+	for i = 1, 7 do
+		local angle = i * TAU / 7
+		local direction = Vector3.new(math.cos(angle) - .65, 0, math.sin(angle))
+		local chip = part(parent, "Boot impact", Vector3.new(.30, .062, .15), origin + direction * .50, Art.mint)
+		chip.Transparency = .20
+		TweenService:Create(chip, TweenInfo.new(.29, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+			{Position = origin + direction * (1.1 + i % 3 * .5) + Vector3.yAxis * .51, Transparency = 1}):Play()
+		task.delay(.31, function() chip:Destroy() end)
+	end
+end
+
+local function netImpact(parent: Instance, at: Vector3, saved: boolean)
+	local effect = Instance.new("Folder")
+	effect.Name, effect.Parent = if saved then "Glove impact" else "Goal net burst", parent
+	local warm, cool = if saved then C("83DDF6") else Art.gold, if saved then Art.paper else Art.mint
+	-- Paint the impact on the plane of the net. A fan of shallow dashes avoids covering the ball.
+	local center = Vector3.new(at.X - .27, math.max(at.Y, 1.65), at.Z)
+	for i = 1, 12 do
+		local angle = i * TAU / 12
+		local ray = Vector3.new(0, math.sin(angle), math.cos(angle))
+		local lamp = part(effect, "Impact streak", Vector3.new(.055, .055, if saved then .57 else .97),
+			center + ray * .83, if i % 3 == 0 then cool else warm, Enum.Material.Neon)
+		lamp.CFrame = CFrame.lookAt(lamp.Position, lamp.Position + ray)
+		TweenService:Create(lamp, TweenInfo.new(.37, Enum.EasingStyle.Quart, Enum.EasingDirection.Out),
+			{Position = center + ray * (if saved then 2.15 else 3.08), Transparency = 1}):Play()
+	end
+	if saved then return end
+	for i = 1, 18 do
+		local angle = i * TAU / 18
+		local scatter = Vector3.new(-.62 - (i % 3) * .16, 0, math.sin(angle)) * (2.8 + i % 5)
+		local chip = part(effect, "Goal streamer", Vector3.new(.11, .68, .25), center + Vector3.yAxis * 1.18,
+			if i % 4 == 0 then C("B797FF") elseif i % 3 == 0 then warm else cool, Enum.Material.Neon)
+		local target = center + scatter + Vector3.yAxis * (2.3 + i % 4 * .76)
+		TweenService:Create(chip, TweenInfo.new(.38, Enum.EasingStyle.Quart, Enum.EasingDirection.Out),
+			{CFrame = CFrame.new(target) * CFrame.Angles(angle, angle * .73, i * .21)}):Play()
+		task.delay(.34, function()
+			if chip.Parent then
+				TweenService:Create(chip, TweenInfo.new(.40, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
+					{Position = target + scatter * .38 - Vector3.yAxis * 2.4, Transparency = 1}):Play()
+			end
+		end)
+	end
+end
+
 return function(effects: Folder, playSound: (string) -> ())
 	local shot: Shot? = nil
 	local function clear()
@@ -108,9 +155,10 @@ return function(effects: Folder, playSound: (string) -> ())
 		top.Parent, bottom.Parent = pivot, pivot
 		local trail = Instance.new("Trail")
 		trail.Name, trail.Attachment0, trail.Attachment1 = "Ball flight", top, bottom
-		trail.Lifetime, trail.MinLength, trail.FaceCamera = .16, .18, true
-		trail.Color = ColorSequence.new(Art.gold, Art.paper)
-		trail.Transparency = NumberSequence.new(.25, 1)
+		trail.Lifetime, trail.MinLength, trail.FaceCamera = .14, .16, true
+		trail.Color = ColorSequence.new(Art.paper, Art.mint)
+		trail.Transparency = NumberSequence.new(.14, 1)
+		trail.WidthScale = NumberSequence.new(.86, .07)
 		trail.Enabled, trail.Parent = false, pivot
 		ball:PivotTo(CFrame.new(SHOT_START))
 		local shadow = medallion(actors, "Ball contact shadow", Vector3.new(SHOT_START.X, .411, SHOT_START.Z), 2.6, .02, Art.ink)
@@ -130,11 +178,13 @@ return function(effects: Folder, playSound: (string) -> ())
 				replay.released = true
 				replay.trail.Enabled = not reduced
 				playSound("kick")
+				if not reduced then kickMarks(replay.actors) end
 			end
 			if (reduced or elapsed >= SHOT_IMPACT) and not replay.resolved then
 				replay.resolved = true
 				replay.trail.Enabled = false
 				playSound(replay.outcome)
+				if not reduced and not offside then netImpact(replay.actors, target, saved) end
 				replay.impact()
 			end
 			if reduced or elapsed >= SHOT_END then

@@ -59,10 +59,11 @@ local function drawTile(tray: Folder, index: number, tile: Board.Tile)
 	local accent = Art.accent(tile.kind, tile.league)
 	local cell = folder(tray, string.format("%02d %s", index, tile.name))
 	local isCorner = (index - 1) % 8 == 0
+	local surfaceColor = if tile.league > 0 then Art.tile:Lerp(accent, .09) else Art.tile
 	mesh(cell, "Molded tile case", "tile_case", Vector3.new(width, .53, depth),
 		pose * CFrame.new(0, -.31, 0), accent:Lerp(Art.ink, .70))
-	local face = mesh(cell, "Porcelain face", "tile_enamel", Vector3.new(width - .15, .26, depth - .15),
-		pose * CFrame.new(0, -.10, 0), Art.tile)
+	local face = mesh(cell, "Porcelain face", "tile_enamel", Vector3.new(width - .26, .26, depth - .25),
+		pose * CFrame.new(0, -.10, 0), surfaceColor)
 	face.CastShadow = false
 	local insetDepth = if isCorner then depth * .66 elseif tile.price > 0 and tile.league > 0 then depth * .23 else depth * .56
 	local insetOffset = -.5 * depth + .5 * insetDepth + .17
@@ -70,8 +71,10 @@ local function drawTile(tray: Folder, index: number, tile: Board.Tile)
 	mesh(cell, "League enamel inlay", "tile_enamel", Vector3.new(width - .33, .066, insetDepth),
 		pose * CFrame.new(0, .061, insetOffset), insetTint).CastShadow = false
 	if tile.league > 0 then
-		part(cell, "League stripe", Vector3.new(width - .7, .045, .17),
-			pose * CFrame.new(0, .043, insetOffset + insetDepth * .5 + .19), accent).CastShadow = false
+		for _, side in {-1, 1} do
+			part(cell, "League trim", Vector3.new(width * .19, .045, .135),
+				pose * CFrame.new(side * width * .36, .043, insetOffset + insetDepth * .5 + .18), accent).CastShadow = false
+		end
 	end
 	local printLayer = part(cell, "Printed tile", Vector3.new(width, .02, depth), pose * CFrame.new(0, .045, 0), Art.paper)
 	printLayer.CastShadow, printLayer.Transparency = false, 1
@@ -79,9 +82,8 @@ local function drawTile(tray: Folder, index: number, tile: Board.Tile)
 	if isCorner then
 		cornerProp(cell, index, pose, accent)
 	elseif tile.kind == "chance" then
-		local disc = mesh(cell, "Chance wheel", "chance", Vector3.new(6.45, .31, 6.45), pose * CFrame.new(0, .175, -2.9))
-		disc.CastShadow = false
-
+		mesh(cell, "Chance cards", "event_card", Vector3.new(5.9, .71, 6.20),
+			pose * CFrame.new(0, .43, -2.95)).CastShadow = false
 	elseif tile.kind == "tax" then
 		for page = 1, 3 do
 			part(cell, "Tax notice", Vector3.new(2.95, .12, 3.30), pose * CFrame.new(0, .16 + page * .09, -2.55)

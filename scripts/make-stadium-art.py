@@ -16,7 +16,7 @@ from blender_export import ROOT, blender, export_shapes
 
 NAMES = (
     "table", "enamel", "stand", "tunnel", "dugout", "goal", "lights",
-    "cup", "ball", "academy", "arena", "curls", "sweep", "cap", "crest", "die", "chance", "champions", "tile_case", "tile_enamel", "fade", "arena_plinth", "night_stand", "pitch_mark",
+    "cup", "ball", "academy", "arena", "curls", "sweep", "cap", "crest", "die", "chance", "champions", "tile_case", "tile_enamel", "fade", "arena_plinth", "night_stand", "pitch_mark", "braid", "quiff", "event_card",
 )
 INK, NAVY, SLATE = "23334A", "254671", "3C6BA1"
 TEAL, MINT, GOLD = "2679BB", "76CFE2", "EAB561"
@@ -308,7 +308,7 @@ def hair(style):
                 ellipsoid((x, crown_height, z - abs(x) * .16),
                           (.27, .22 + .034 * sin(column * 2.1 + row), .29), None, .18 * sin(column))
         return
-    ellipsoid((0, -.045, -.07), (1.0, .43, 1.0), None)
+    ellipsoid((0, .018, -.11), (1.0, .54, 1.0), None)
     for i in range(7):
         x = (i - 3) * .122
         ellipsoid((x, .08 - i * .024, .25 - abs(x) * .42),
@@ -385,6 +385,34 @@ def pitch_mark():
 
 
 
+def braided_hair():
+    for row in range(8):
+        y = (row - 3.5) * .187
+        offset = .042 * sin(row * .75)
+        for side in (-1, 1):
+            ellipsoid((offset + side * .072, y, side * .032),
+                      (.32 - row * .012, .27 - row * .009, .29 - row * .009), None, side * .31)
+
+
+def swept_quiff():
+    ellipsoid((0, .020, -.08), (1.02, .56, .98), None)
+    for strand in range(7):
+        x = (strand - 3) * .108
+        ellipsoid((x, .06 + .027 * strand, .14 - abs(x) * .27),
+                  (.32, .24 + .016 * strand, .56 - strand * .019), None, -.49)
+
+
+def event_card():
+    for layer in range(3):
+        card = block((0, layer * .15, 0), (3.2, .16, 4.4),
+                     ("383550", "555184", "9C79E6")[layer], .11, 3)
+        card.rotation_euler.z = radians(14 - layer * 13)
+    for x in (-.24, .24):
+        glyph = block((x, .405, 0), (.18, .04, 1.36), "ECE1FF", .017, 2)
+        glyph.rotation_euler.z = radians(25)
+
+
+
 def build_scene():
     bpy.ops.wm.read_factory_settings(use_empty=True)
     builders = (
@@ -396,7 +424,7 @@ def build_scene():
         chance_wheel, champions_arena,
         lambda: block((0, 0, 0), (12, .60, 14), radius=.27, segments=4),
         lambda: block((0, 0, 0), (12, .32, 14), radius=.145, segments=4),
-        lambda: hair("fade"), arena_plinth, night_stand, pitch_mark,
+        lambda: hair("fade"), arena_plinth, night_stand, pitch_mark, braided_hair, swept_quiff, event_card,
     )
     objects = []
     for name, build in zip(NAMES, builders):

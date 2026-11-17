@@ -14,7 +14,10 @@ local rigs: {[Model]: Rig} = setmetatable({}, {__mode = "k"}) :: any
 function Pawn.make(figure: number, parent: Instance, onPitch: boolean?, uniform: Color3?): Model
 	local def = Board.figures[figure]
 	local kit, trim, skin, hair = uniform or Art.hex(def.color), Art.hex(def.dark), Art.hex(def.skin), Art.hex(def.hair)
-	local ivory, rubber = C("F2F5E4"), C("152528")
+	local ivory, rubber = C("F2F5E4"), C("232436")
+	local accent = if figure == 6 then C("F7D269") elseif figure == 4 then C("E2FF86") else ivory
+	local sleeveColor = if figure == 5 then trim elseif figure == 6 then trim:Lerp(kit, .4) else kit
+	local stripeColor = kit:Lerp(trim, .69)
 	local model = Instance.new("Model")
 	model.Name = def.name
 	local container: Instance = model
@@ -41,8 +44,8 @@ function Pawn.make(figure: number, parent: Instance, onPitch: boolean?, uniform:
 	local root = piece("Root", .08, .08, .08, 0, 0, 0, rubber)
 	root.Transparency, root.CastShadow, model.PrimaryPart = 1, false, root
 	if not onPitch then
-		for i, ring in {{.19, 2.88, .12}, {.10, 2.98, .25}, {.08, 2.74, .34}} do
-			local color = if i == 1 then trim elseif i == 2 then kit else C("FAE7B3")
+		for i, ring in {{.18, 3.16, .10}, {.08, 3.22, .23}, {.15, 3.00, .337}, {.025, 2.79, .424}} do
+			local color = if i == 1 then rubber elseif i == 2 then kit elseif i == 3 then trim else trim:Lerp(kit, .42)
 			local base = piece("Turntable " .. i, ring[1], ring[2], ring[2], 0, ring[3], 0, color, Enum.PartType.Cylinder, math.pi * .5)
 			if i == 1 then base.Material = Enum.Material.Metal end
 		end
@@ -52,15 +55,23 @@ function Pawn.make(figure: number, parent: Instance, onPitch: boolean?, uniform:
 	for _, side in {-1, 1} do
 		local x = side * .43
 		local leg = joint(if side < 0 then "Left leg" else "Right leg", x, 2.09, 0)
-		Meshes.apply("shorts", soft("Tailored short", .88, .95, .91, x, 2.03, .005, trim, side * .07))
+		Meshes.apply("shorts", soft("Tailored short", .88, .95, .91, x, 2.01, .005, trim, side * .055))
 		soft("Knee", .62, .62, .64, x * 1.10, 1.63, .03, if figure == 5 then trim else skin)
 		Meshes.apply("sock", soft("Ribbed sock", .59, 1.05, .64, x * 1.13, 1.18, .045, if figure == 5 then trim else kit))
-		soft("Sock band", .58, .15, .65, x * 1.13, 1.46, .05, ivory)
+		for i = 0, 1 do
+			soft("Sock cuff stripe", .606, .055, .667, x * 1.13, 1.49 - i * .078, .045, accent)
+		end
+		if figure ~= 5 then
+			piece("Short side braid", .072, .43, .20, x + side * .395, 2.02, .19, stripeColor, nil, side * .07)
+		end
 		Meshes.apply("outsole", soft("Molded outsole", .78, .18, 1.11, x * 1.15, .50, .25, rubber))
 		for _, stud in {-.13, .37} do
 			soft("Cleat", .42, .12, .25, x * 1.15, .44, .28 + stud, kit)
 		end
-		Meshes.apply("boot", soft("Leather boot", .74, .49, 1.06, x * 1.15, .69, .24, trim:Lerp(rubber, .35)))
+		local boot = soft("Leather boot", .75, .49, 1.12, x * 1.15, .69, .26, trim:Lerp(rubber, .46))
+		Meshes.apply("boot", boot)
+		Meshes.apply("bootpanel", soft("Boot toe inlay", .48, .22, .10, x * 1.15, .692, .747, kit))
+		piece("Heel counter", .35, .20, .055, x * 1.15, .68, -.216, stripeColor).CastShadow = false
 		for seam = 1, 3 do
 			soft("Boot lace", .29, .04, .067, x * 1.15, .92 - seam * .032, .22 + seam * .13, ivory).CastShadow = false
 		end
@@ -70,43 +81,56 @@ function Pawn.make(figure: number, parent: Instance, onPitch: boolean?, uniform:
 
 	local body = joint("Torso", 0, 2.18, 0)
 	soft("Waist", 1.67, .90, 1.04, 0, 2.34, .005, trim)
-	Meshes.apply("jersey", soft("Jersey", 2.23, 1.72, 1.36, 0, 3.01, 0, kit))
-	soft("Collar ribbing", .87, .27, .80, 0, 3.82, 0, trim)
-	soft("Neck", .56, .48, .61, 0, 3.94, 0, skin)
+	Meshes.apply("jersey", soft("Jersey", 2.24, 1.74, 1.32, 0, 3.00, 0, kit))
+	soft("Neck", .61, .53, .67, 0, 3.90, -.015, skin)
+	Meshes.apply("collar", soft("Woven collar", 1.10, .51, .36, 0, 3.64, .517, if figure == 5 then trim else accent))
+	soft("Back neckline", 1.01, .20, .72, 0, 3.77, -.08, trim)
 	if figure == 1 or figure == 3 then
-		soft("Two-tone sash", .34, 1.21, .108, .06, 3.11, .638, trim:Lerp(kit, .22), if figure == 1 then .48 else -.48)
-		soft("Sash stitch", .058, 1.14, .11, -.15, 3.15, .646, ivory, if figure == 1 then .48 else -.48)
+		soft("Two-tone sash", .31, 1.16, .095, .07, 3.08, .627, stripeColor, if figure == 1 then .49 else -.49)
+		piece("Sash piping", .053, .92, .024, .25, 3.12, .666, accent, nil, if figure == 1 then .49 else -.49).CastShadow = false
 	elseif figure == 2 or figure == 4 then
 		for _, height in {3.35, 3.21} do
-			soft("Chest stripe", 1.47, .123, .14, 0, height, .596, trim:Lerp(kit, .28))
+			soft("Chest stripe", 1.47, .116, .14, 0, height, .595, stripeColor)
 		end
 	else
 		soft("Zip seam", .067, .96, .12, 0, 3.29, .618, trim)
 		soft("Zip pull", .106, .17, .09, 0, 3.63, .652, ivory)
 	end
-	soft("Woven crest", .25, .33, .10, -.50, 3.24, .626, trim)
-	soft("Crest embroidery", .13, .12, .025, -.50, 3.30, .686, Art.gold).CastShadow = false
-	local tag = piece("Player number", .68, .52, .04, .21, 3.08, .669, kit)
-	tag.Transparency, tag.CastShadow = 1, false
-	local gui = Instance.new("SurfaceGui")
-	gui.Face, gui.SizingMode, gui.CanvasSize = Enum.NormalId.Back, Enum.SurfaceGuiSizingMode.FixedSize, Vector2.new(256, 192)
-	gui.LightInfluence, gui.Parent = 0, tag
-	local text = Instance.new("TextLabel")
-	text.Size, text.BackgroundTransparency = UDim2.fromScale(1, 1), 1
-	text.Font, text.TextScaled, text.TextColor3, text.Text = Enum.Font.BuilderSansExtraBold, true, trim, def.number
-	text.Parent = gui
+	Meshes.apply("crest", soft("Woven crest", .25, .34, .043, -.50, 3.25, .620, trim))
+	piece("Crest stitch", .073, .134, .025, -.50, 3.26, .654, accent, nil, -.22).CastShadow = false
+	for _, front in {true, false} do
+		local width, height = if front then .57 else .96, if front then .36 else .72
+		local tag = piece(if front then "Front kit number" else "Back kit number", width, height, .02,
+			if front then .39 else 0, if front then 3.14 else 3.10, if front then .688 else -.683, kit)
+		tag.Transparency, tag.CastShadow = 1, false
+		local gui = Instance.new("SurfaceGui")
+		gui.Face = if front then Enum.NormalId.Back else Enum.NormalId.Front
+		gui.SizingMode, gui.CanvasSize = Enum.SurfaceGuiSizingMode.FixedSize, Vector2.new(192, 192)
+		gui.LightInfluence, gui.Parent = 0, tag
+		local number = Instance.new("TextLabel")
+		number.Size, number.BackgroundTransparency = UDim2.fromScale(1, 1), 1
+		number.Font, number.TextScaled = Enum.Font.BuilderSansExtraBold, true
+		number.TextColor3, number.Text = if front then trim else ivory, def.number
+		number.Parent = gui
+	end
 	body.model.WorldPivot = body.rest
 
 	for _, side in {-1, 1} do
 		local arm = joint(if side < 0 then "Left arm" else "Right arm", side * .96, 3.45, 0)
 		local glove, coach = figure == 4, figure == 5
-		Meshes.apply("sleeve", soft("Sleeve", .90, .87, .93, side * 1.10, 3.30, .005, kit:Lerp(ivory, .05), side * .27))
-		soft("Contrast piping", .69, .10, .72, side * 1.24, 3.12, .02, ivory, side * .27)
-		soft("Sleeve cuff", .69, .19, .72, side * 1.25, 3.03, .010, trim, side * .28)
+		Meshes.apply("sleeve", soft("Sleeve", .90, .87, .93, side * 1.10, 3.30, .005, sleeveColor, side * .27))
+		soft("Contrast piping", .69, .067, .72, side * 1.24, 3.11, .02, accent, side * .27)
+		soft("Sleeve cuff", .69, .16, .72, side * 1.25, 3.035, .010, trim, side * .28)
 		Meshes.apply("forearm", soft("Bent forearm", .50, .83, .58, side * 1.30, 2.73, .13, if coach then kit else skin, side * .23))
 		local hand = soft("Palm", if glove then .71 else .53, .55, .60, side * 1.37, 2.42, .23, if glove then ivory else skin)
+		Meshes.apply(if glove then "glove" else "hand", hand)
+		if figure == 1 and side == -1 then
+			soft("Captain armband", .70, .157, .76, -1.15, 3.29, .008, accent, -.27)
+		elseif figure == 3 then
+			soft("Wrist tape", .43, .104, .50, side * 1.347, 2.58, .188, accent, side * .23)
+		end
 		if glove then
-			Meshes.apply("glove", hand)
+			Meshes.apply("glovepad", soft("Keeper palm shield", .38, .34, .072, side * 1.35, 2.425, .516, trim))
 			soft("Glove cuff", .59, .22, .58, side * 1.35, 2.62, .21, trim, side * .22)
 			soft("Thumb padding", .22, .29, .31, side * 1.60, 2.48, .35, ivory, side * .26)
 		end
@@ -125,16 +149,16 @@ function Pawn.make(figure: number, parent: Instance, onPitch: boolean?, uniform:
 	local chin = soft("Chin", 1.27, .82, 1.22, 0, 4.25, .12, skin)
 	local nose = soft("Nose", .28, .31, .29, 0, 4.47, .766, skin:Lerp(ivory, .17))
 	Meshes.apply("head", face, {chin, nose})
-	soft("Smile", .43, .084, .092, 0, 4.25, .726, skin:Lerp(rubber, .58))
+	Meshes.apply("smile", soft("Smile", .47, .12, .094, .020, 4.302, .738, skin:Lerp(rubber, .71)))
 	for _, side in {-1, 1} do
-		local x = side * .377
-		soft("Ear", .32, .44, .36, side * .819, 4.53, .06, skin)
-		local eyeHeight = if figure == 4 or figure == 5 then .20 else .235
-		soft("Lid", .365, eyeHeight + .048, .135, x, 4.659, .706, skin:Lerp(hair, .45), side * .065)
-		soft("Eyes", .324, eyeHeight, .127, x, 4.647, .741, ivory, side * .065)
-		soft("Iris", .157, eyeHeight * .82, .084, x + .031, 4.643, .798, trim:Lerp(rubber, .58))
-		soft("Catchlight", .056, .060, .027, x + .060, 4.680, .838, ivory).CastShadow = false
-		soft("Eyebrow", .29, .087, .08, x, 4.875, .678, hair, -side * .11)
+		local x = side * .365
+		Meshes.apply("ear", soft("Ear", .34, .44, .38, side * .808, 4.55, .07, skin, side * .16))
+		local eyeHeight = if figure == 4 or figure == 5 then .188 else .214
+		soft("Lid", .365, eyeHeight + .048, .135, x, 4.65, .701, skin:Lerp(hair, .45), side * .065)
+		soft("Eyes", .324, eyeHeight, .127, x, 4.642, .713, ivory, side * .065)
+		soft("Iris", .157, eyeHeight * .82, .084, x + .026, 4.641, .769, trim:Lerp(rubber, .58))
+		soft("Catchlight", .056, .060, .027, x + .048, 4.680, .809, ivory).CastShadow = false
+		soft("Eyebrow", .29, .087, .08, x, 4.837, .680, hair, -side * .11)
 	end
 	if figure == 5 then
 		local cap = soft("Cap crown", 1.93, .69, 1.61, 0, 5.13, -.035, trim)
@@ -142,11 +166,15 @@ function Pawn.make(figure: number, parent: Instance, onPitch: boolean?, uniform:
 		Meshes.apply("cap", cap, {brim})
 		soft("Embroidered cap crest", .28, .21, .08, 0, 5.22, .706, Art.gold)
 	elseif figure == 2 or figure == 6 then
-		local crown = soft("Side part", 1.83, .83, 1.57, 0, 5.018, -.08, hair)
+		local crown = soft("Side part", 1.84, .83, 1.65, 0, 5.132, -.011, hair)
 		local fringe = soft("Swept fringe", 1.10, .46, .58, -.36, 5.02, .60, hair, -.20)
 		Meshes.apply("sweep", crown, {fringe})
-		soft(if figure == 2 then "Ponytail" else "Bun", .74, if figure == 2 then 1.38 else .82, .76, .42, 4.69, -.68, hair, .29)
-		soft("Hair tie", .64, .15, .67, .37, 5.00, -.51, kit)
+		if figure == 2 then
+			Meshes.apply("braid", soft("Sculpted braid", .48, 1.46, .56, .43, 4.49, -.70, hair, .22))
+			soft("Hair tie", .46, .14, .51, .41, 5.04, -.59, accent)
+		else
+			Meshes.apply("braid", soft("Braided bun", .67, .61, .69, .35, 5.10, -.72, hair, -.16))
+		end
 	elseif figure == 4 then
 		Meshes.apply("fade", soft("Keeper fade", 1.78, .60, 1.62, 0, 5.105, -.065, hair))
 		soft("Keeper band", 1.78, .16, 1.59, 0, 4.99, -.01, kit:Lerp(ivory, .42))
@@ -159,15 +187,15 @@ function Pawn.make(figure: number, parent: Instance, onPitch: boolean?, uniform:
 		end
 		Meshes.apply("curls", crown, curls)
 	else
-		local crown = soft("Tapered hair", 1.86, .70, 1.53, 0, 5.02, -.13, hair)
+		local crown = soft("Tapered hair", 1.88, .72, 1.65, 0, 5.133, -.021, hair)
 		local fringe: {Instance} = {}
 		for i = 0, 2 do
 			table.insert(fringe, soft("Sculpted fringe", 1.03 - i * .13, .40, .54, -.31 + .25 * i, 5.04 + i * .041, .59, hair, -.26))
 		end
-		Meshes.apply("sweep", crown, fringe)
+		Meshes.apply("quiff", crown, fringe)
 	end
 	head.model.WorldPivot = head.rest
-	head.model:ScaleTo(if figure == 4 then 1.12 else 1.16)
+	head.model:ScaleTo(if figure == 4 then .94 elseif figure == 5 then .98 else 1.01)
 	rigs[model] = {body, head, arms[1], arms[2], legs[1], legs[2]}
 	model.Parent = parent
 	return model

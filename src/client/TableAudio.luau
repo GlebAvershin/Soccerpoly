@@ -9,6 +9,8 @@ local cues: {[string]: Cue} = {
 	step = {asset = "rbxassetid://9119983236", volume = .19, speed = 1.06, cap = .17},
 	land = {asset = "rbxassetid://9119322058", volume = .36, speed = 1.1, cap = .46},
 	card = {asset = "rbxassetid://9118104432", volume = .26, cap = .78},
+	dice = {asset = "rbxassetid://9114072654", volume = .32, speed = 1.12, cap = .92},
+	goalMotif = {asset = "rbxassetid://9038650772", volume = .24, cap = 2.55},
 	sign = {asset = "rbxassetid://9039637670", volume = .33, cap = 1.70},
 	kick = {asset = "rbxassetid://9119326824", volume = .57, cap = .75},
 	save = {asset = "rbxassetid://9119340059", volume = .53},
@@ -37,12 +39,16 @@ local function new()
 		sound.Parent = bus
 		return sound
 	end
-	local score = make(music, "Feel That Move", "rbxassetid://9044946039")
+	local lobbyScore = make(music, "Feel That Move", "rbxassetid://9044946039")
+	local matchScore = make(music, "Plug In and Party (match underscore)", "rbxassetid://9038650387")
 	local stadium = make(crowd, "Stadium Crowd", "rbxassetid://9119562311")
-	score.Looped, stadium.Looped = true, true
-	score.Volume, stadium.Volume = 1, 1
+	lobbyScore.Looped, matchScore.Looped, stadium.Looped = true, true, true
+	lobbyScore.Volume, matchScore.Volume, stadium.Volume = 0, 0, 1
+	local ambienceEQ = Instance.new("EqualizerSoundEffect")
+	ambienceEQ.HighGain, ambienceEQ.MidGain, ambienceEQ.LowGain = -6, -2, -3
+	ambienceEQ.Parent = crowd
 	local samples: {[string]: Sound} = {}
-	local preload: {Instance} = {score, stadium}
+	local preload: {Instance} = {lobbyScore, matchScore, stadium}
 	for name, cue in cues do
 		local sound = make(effects, name, cue.asset)
 		samples[name] = sound
@@ -56,6 +62,8 @@ local function new()
 	local tweens: {[Instance]: Tween} = {}
 	local musicEnabled, enabled, inMatch = true, true, false
 	local duckUntil, duckSerial = 0, 0
+	local musicRevision = 0
+	local currentScore: Sound? = nil
 	local stepSide = false
 	local rng = Random.new()
 	local function fade(object: Sound | SoundGroup, value: number, seconds: number)
@@ -72,13 +80,28 @@ local function new()
 	end
 
 	local function mix(time: number)
-		local duck = if os.clock() < duckUntil then 8 else 0
-		fade(music, if enabled and musicEnabled then gain((if inMatch then -23 else -20) - duck) else 0, time)
-		fade(crowd, if enabled and inMatch then gain(-29 - duck * .5) else 0, time)
+		local ducking = os.clock() < duckUntil
+		local wanted = if enabled and musicEnabled then (if inMatch then matchScore else lobbyScore) else nil
+		if wanted ~= currentScore then
+			musicRevision += 1
+			local revision = musicRevision
+			currentScore = wanted
+			if wanted and not wanted.IsPlaying then wanted:Play() end
+			for _, track in {lobbyScore, matchScore} do
+				fade(track, if track == wanted then 1 else 0, time)
+			end
+			local function pauseInactive()
+				if musicRevision ~= revision then return end
+				for _, track in {lobbyScore, matchScore} do
+					if track ~= wanted then track:Pause() end
+				end
+			end
+			if time == 0 then pauseInactive() else task.delay(time + .03, pauseInactive) end
+		end
+		local duck = if ducking then 9 else 0
+		fade(music, if enabled and musicEnabled then gain((if inMatch then -20 else -20.5) - duck) else 0, time)
+		fade(crowd, if enabled and inMatch then gain(if ducking then -31 else -27.5) else 0, time)
 		effects.Volume = if enabled then gain(-3) else 0
-		if enabled and musicEnabled then
-			if not score.IsPlaying then score:Play() end
-		else score:Pause() end
 		if enabled and inMatch then
 			if not stadium.IsPlaying then stadium:Play() end
 		elseif time == 0 then stadium:Stop() end
@@ -107,6 +130,7 @@ local function new()
 				task.delay(.10, function() if generations[sound] == id then sound:Stop() end end)
 			end)
 		end
+		if name == "goal" and musicEnabled then play("goalMotif") end
 		if name == "goal" or name == "final" or name == "offside" then
 			local duration = if name == "final" then 2.8 elseif name == "goal" then 1.65 else .55
 			duckUntil = math.max(duckUntil, os.clock() + duration)
@@ -138,6 +162,7 @@ local function new()
 		end,
 		setMusic = function(value: boolean)
 			musicEnabled = value
+			if not value then samples.goalMotif:Stop() end
 			mix(0)
 		end,
 	}

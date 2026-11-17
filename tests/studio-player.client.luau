@@ -61,11 +61,14 @@ local ok, err = pcall(function()
 	if script:GetAttribute("VerifyBlenderArt") then
 		waitFor(function()
 			local preview = hud:FindFirstChild("FootballerPreview", true)
-			return preview and preview:FindFirstChild("Face", true) and preview:FindFirstChild("Face", true):IsA("MeshPart")
+			local face = preview and preview:FindFirstChild("Face", true)
+			local collar = preview and preview:FindFirstChild("Woven collar", true)
+			local hand = preview and preview:FindFirstChild("Palm", true)
+			return face and face:IsA("MeshPart") and collar and collar:IsA("MeshPart") and hand and hand:IsA("MeshPart")
 		end, "Blender figure")
 		waitFor(function()
 			local music = game:GetService("SoundService"):FindFirstChild("Footbolapolia Music")
-			local sound = music and music:FindFirstChildOfClass("Sound")
+			local sound = music and music:FindFirstChild("Feel That Move")
 			return sound and sound.IsLoaded and sound.IsPlaying
 		end, "music")
 	end
@@ -75,7 +78,8 @@ local ok, err = pcall(function()
 			local sole = hud:FindFirstChild("Molded outsole", true)
 			local plinth = stage.Board:FindFirstChild("Octagonal arena plinth")
 			local stencil = stage:FindFirstChild("Footbolapolia field stencil", true)
-			return enamel and enamel:IsA("MeshPart") and sole and sole:IsA("MeshPart")
+			local deck = stage.Board:FindFirstChild("Chance cards", true)
+			return deck and deck:IsA("MeshPart") and enamel and enamel:IsA("MeshPart") and sole and sole:IsA("MeshPart")
 				and plinth and plinth:IsA("MeshPart") and stencil and stencil:IsA("MeshPart")
 		end, "Blender arena, tile and outsole")
 		dispatch("format", 2)
@@ -91,6 +95,13 @@ local ok, err = pcall(function()
 	end
 	waitFor(function() return snapshot and snapshot.match end, "kickoff")
 	assert(#snapshot.match.seats == board.maxSeats)
+	if verifyMatchday then
+		waitFor(function()
+			local music = game:GetService("SoundService")["Footbolapolia Music"]
+			local score = music:FindFirstChild("Plug In and Party (match underscore)")
+			return score and score.IsLoaded and score.IsPlaying and score.Volume > .90 and not music["Feel That Move"].IsPlaying
+		end, "crossfade to match music")
+	end
 	local diceSeen, cardSeen, boardSeen = false, false, false
 	local previous, captured = -1, {}
 	local replaySeen = false
@@ -112,8 +123,10 @@ local ok, err = pcall(function()
 				return sounds.kick.IsLoaded and sounds.kick.IsPlaying and (ball:GetPivot().Position - from).Magnitude > 4
 			end, "kick sound and moving ball", 1)
 			waitFor(function()
-				return sounds.goal.IsLoaded and sounds.goal.IsPlaying and replay:FindFirstChild("Matchday goal"):IsA("MeshPart")
-			end, "goal sound and goal mesh", 1)
+				local burst = replay:FindFirstChild("Goal net burst")
+				return sounds.goal.IsLoaded and sounds.goal.IsPlaying and sounds.goalMotif.IsLoaded and sounds.goalMotif.IsPlaying
+					and replay:FindFirstChild("Matchday goal"):IsA("MeshPart") and burst and #burst:GetChildren() == 30
+			end, "goal mesh, net burst and musical motif", 1)
 			local ribbon = stage:FindFirstChild("Live stadium ribbon", true)
 			waitFor(function() return ribbon and ribbon:FindFirstChild("Message", true).Text ~= "FOOTBOLAPOLIA" end, "live goal ribbon", 1)
 			task.wait(.25)
@@ -124,6 +137,12 @@ local ok, err = pcall(function()
 		if dice and not diceSeen then
 			diceSeen = true
 			assert(#dice:GetChildren() == 2)
+			if verifyMatchday then
+				waitFor(function()
+					local sound = game:GetService("SoundService")["Footbolapolia Effects"].dice
+					return sound.IsLoaded and sound.IsPlaying
+				end, "dice sound", 1)
+			end
 			task.defer(capture, "dice")
 		end
 		local open = hud.Viewport.PropertyBackdrop.Visible

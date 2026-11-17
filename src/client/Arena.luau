@@ -185,6 +185,28 @@ function Arena.new(myId: number, root: Frame, translate: (string) -> string, pla
 		Debris:AddItem(glow, .36)
 	end
 
+	local function markDestination(index: number, color: Color3)
+		if reduced then return end
+		local tile = Geometry.cells[index]
+		local size = Geometry.tileSize(index)
+		local pose = CFrame.new(tile.X, Art.tileTop + .075, tile.Z) * CFrame.Angles(0, Geometry.tileYaw(index), 0)
+		for _, x in {-1, 1} do
+			for _, z in {-1, 1} do
+				local corner = pose * CFrame.new(x * (size.X * .5 - .42), 0, z * (size.Y * .5 - .42))
+				for _, horizontal in {true, false} do
+					local offset = if horizontal then Vector3.new(-x * .92, 0, 0) else Vector3.new(0, 0, -z * .92)
+					local dimensions = if horizontal then Vector3.new(1.98, .047, .21) else Vector3.new(.21, .047, 1.98)
+					local mark = part(effects, "Tile arrival light", dimensions, Vector3.zero, color, Enum.Material.Neon)
+					mark.CFrame = corner * CFrame.new(offset)
+					mark.Transparency = .14
+					TweenService:Create(mark, TweenInfo.new(.47, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
+						{Transparency = 1}):Play()
+					Debris:AddItem(mark, .49)
+				end
+			end
+		end
+	end
+
 	local function savedDecor(s: any)
 		local bits = {}
 		for i, club in s.clubs do
@@ -265,7 +287,7 @@ function Arena.new(myId: number, root: Frame, translate: (string) -> string, pla
 		local rolled = (s.rollSerial or 0) > lastRoll
 		if sameMatch and rolled and s.diceA and s.diceB then
 			rollDice(effects, s.diceA, s.diceB, reduced)
-			playSound("card")
+			playSound("dice")
 		end
 		lastRoll = s.rollSerial or 0
 		local moved = sameMatch and s.motion.serial > lastMotion
@@ -362,7 +384,10 @@ function Arena.new(myId: number, root: Frame, translate: (string) -> string, pla
 		if elapsed < 0 then return end
 		local movement = elapsed - PREP
 		if reduced or movement >= STEP * entry.steps + SETTLE then
-			if entry.bounced < entry.steps then playSound("land") end
+			if entry.bounced < entry.steps then
+				playSound("land")
+				markDestination(Game.target(entry.from, entry.steps), entry.color)
+			end
 			finishFlight()
 			return
 		end
@@ -396,7 +421,9 @@ function Arena.new(myId: number, root: Frame, translate: (string) -> string, pla
 		if landed > 0 and landed > entry.bounced then
 			entry.bounced = landed
 			if ending or landed % 2 == 1 then playSound(if ending then "land" else "step") end
-			pulse(if ending then entry.destination else position(Game.target(entry.from, landed)), entry.color, ending)
+			local index = Game.target(entry.from, landed)
+			if ending then markDestination(index, entry.color) end
+			pulse(if ending then entry.destination else position(index), entry.color, ending)
 		end
 	end)
 
