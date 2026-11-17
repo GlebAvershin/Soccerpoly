@@ -18,11 +18,6 @@ local names = {
 	KO={"Kickoff","Старт"}, TAX={"Tax","Сбор"}, CH={"Chance","Шанс"}, TOUR={"Away","Выезд"},
 	CUP={"Cup","Кубок"}, BENCH={"Bench","Скамья"},
 }
-local folds = {
-	["Ливерпуль"]="Ливер-\nпуль", ["Дортмунд"]="Дорт-\nмунд", ["Траффорд"]="Траф-\nфорд",
-	["Ман Сити"]="Ман\nСити", ["Марсель"]="Мар-\nсель", Dortmund="Dort-\nmund",
-	Liverpool="Liver-\npool", Marseille="Mar-\nseille",
-}
 local function band(parent: Frame, name: string, y: number, height: number, font: Font, color: Color3): TextLabel
 	local text = Instance.new("TextLabel")
 	text.Name, text.AutoLocalize, text.BackgroundTransparency = name, false, 1
@@ -38,28 +33,33 @@ local function intersects(a: Rect, b: Rect): boolean
 	return a.Min.X < b.Max.X and a.Max.X > b.Min.X and a.Min.Y < b.Max.Y and a.Max.Y > b.Min.Y
 end
 
--- In overview, give each price and name the same depth in studs on all four edges.
--- Top/bottom cells are deeper, so their extra space goes to the stadium panorama.
+-- The paper also carries the type in focus view or behind a figure.
+-- Use comparable printed type sizes across the shallow and deep tiles.
 local function setLayout(entry, compact: boolean)
 	local artHeight = if entry.buyable then .45 else .55
 	local nameHeight = if entry.buyable then .32 else .40
 	local priceY, priceHeight = .775,.21
 	local name = entry.name
-	local folded = if compact and entry.narrow then folds[name] else nil
 	if compact and entry.buyable then
 		priceHeight = (if entry.landscape then 6.35 else 5.7) / entry.part.Size.Y
-		nameHeight = (if folded then 9.3 elseif entry.landscape then 5.4 else 5.35) / entry.part.Size.Y
+		nameHeight = (if entry.landscape then 5.4 else 5.35) / entry.part.Size.Y
 		priceY = .99 - priceHeight
 		artHeight = priceY - nameHeight - .012
 	end
 	local inset = if compact then .012 else .035
-	entry.poster.Size = UDim2.fromScale(1,artHeight)
+	-- External captions free the face for the stadium art and the printed fallback.
+	local rail = compact and not entry.corner
+	entry.poster.Size = UDim2.fromScale(1, if rail then 1 else artHeight)
 	entry.title.Position, entry.title.Size = UDim2.fromScale(inset,artHeight), UDim2.fromScale(1-2*inset,nameHeight)
 	entry.cost.Position, entry.cost.Size = UDim2.fromScale(inset,priceY), UDim2.fromScale(1-2*inset,priceHeight)
 	entry.owner.Position, entry.owner.Size = UDim2.fromScale(0,artHeight), UDim2.fromScale(.026,1-artHeight)
 	entry.title.FontFace = if compact then terraceFace else headline
 	entry.nativeTitle.FontFace = entry.title.FontFace
-	entry.title.Text, entry.nativeTitle.Text = folded or name, folded or name
+	entry.title.Text, entry.nativeTitle.Text = name, name
+	entry.title.BackgroundTransparency = if rail then 0 else 1
+	entry.cost.BackgroundTransparency = if rail then 0 else 1
+	entry.keyline.Enabled = rail
+	entry.amountLine.Enabled = rail
 	for _, rule in entry.rules do rule.Visible = not compact end
 	entry.compact = compact
 end
@@ -83,6 +83,74 @@ local function projectBand(camera: Camera, part: BasePart, original: GuiObject):
 	return Rect.new(left,top,math.max(left+1,right),math.max(top+1,bottom))
 end
 
+-- Neighbouring north and south captions alternate rows. Their maximum width
+-- leaves a clear path for the adjacent tile's vertical leader.
+local function compactBands(entry, face: Rect, viewport: Vector2): (Rect, Rect?, Rect?)
+	local height = math.clamp(math.round(math.min(viewport.X,viewport.Y)*.049),17,23)
+	local priceHeight = math.round(height*.94)
+	local amountWidth = math.ceil(priceHeight*1.95)
+	local titleWidth = math.clamp(math.round(height*(.55*(utf8.len(entry.name) or #entry.name)+.55)),32,math.round(height*4.6))
+	if entry.horizontal then
+		local width = math.min(math.floor(face.Width*2-2),titleWidth)
+		local x = math.round((face.Min.X+face.Max.X-width)*.5)
+		local anchor = if entry.north then face.Min.Y else face.Max.Y
+		local gap = 3 + (entry.index%2)*(height+2)
+		local y = if entry.north then anchor-gap-height else anchor+gap
+		local tip = if entry.north then y+height else y
+		local mid = math.floor((face.Min.X+face.Max.X)*.5)
+		local line = Rect.new(mid-1,math.min(anchor,tip),mid+1,math.max(anchor,tip))
+		-- The pawn track is on the pitch-facing edge. Put each price against the rim.
+		local priceY = if entry.north then face.Min.Y else face.Max.Y-priceHeight
+		return Rect.new(x,y,x+width,y+height),Rect.new(face.Min.X,priceY,face.Max.X,priceY+priceHeight),line
+	end
+
+	-- Hang the name from the outside of the illustrated tile. Its natural width
+	-- leaves short names on the rim. The small price badge sits at the opposite
+	-- end, so the centre of the stadium print remains visible between them.
+	local rimInset = if entry.landscape then 5 else titleWidth-6
+	local x = if entry.east then face.Max.X+rimInset-titleWidth else face.Min.X-rimInset
+	x = math.clamp(x,2,math.max(2,viewport.X-titleWidth-2))
+	local y = math.round((face.Min.Y+face.Max.Y-height)*.5)
+	local title = Rect.new(x,y,x+titleWidth,y+height)
+	local priceX = if entry.east then math.min(face.Min.X+5,x-3)-amountWidth else math.max(face.Max.X-5,title.Max.X+3)
+	local priceY = math.round((face.Min.Y+face.Max.Y-priceHeight)*.5)
+	return title,Rect.new(priceX,priceY,priceX+amountWidth,priceY+priceHeight),nil
+end
+
+-- Keep a side ticket in the same row when a walking or parked pawn crosses
+-- its normal position. Only occupied rows move, and each stays on its own side.
+local function clearSideBand(bandRect: Rect, masks: {Rect}, east: boolean, viewport: Vector2, neighbour: Rect?): Rect
+	local lo = if east then math.ceil(viewport.X*.5)+2 else 2
+	local hi = (if east then viewport.X-2 else math.floor(viewport.X*.5)-2)-bandRect.Width
+	if hi < lo then return bandRect end
+	local candidates = {bandRect.Min.X}
+	local function edges(mask: Rect)
+		if bandRect.Min.Y < mask.Max.Y and bandRect.Max.Y > mask.Min.Y then
+			table.insert(candidates,mask.Min.X-bandRect.Width-3)
+			table.insert(candidates,mask.Max.X+3)
+		end
+	end
+	for _, mask in masks do edges(mask) end
+	if neighbour then edges(neighbour) end
+	local best, distance = bandRect, math.huge
+	for _, edge in candidates do
+		local x = math.clamp(math.round(edge),lo,hi)
+		local travel = math.abs(x-bandRect.Min.X)
+		if travel >= distance then continue end
+		local candidate = Rect.new(x,bandRect.Min.Y,x+bandRect.Width,bandRect.Max.Y)
+		if neighbour and intersects(candidate,neighbour) then continue end
+		local clear = true
+		for _, mask in masks do
+			if intersects(candidate,mask) then clear = false break end
+		end
+		if clear then
+			best, distance = candidate, travel
+			if travel == 0 then break end
+		end
+	end
+	return best
+end
+
 return function(root: Frame, translate: (string)->string)
 	local hud = assert(root:FindFirstAncestorOfClass("ScreenGui"))
 	local playerGui = hud.Parent
@@ -96,6 +164,16 @@ return function(root: Frame, translate: (string)->string)
 	overlay.ScreenInsets, overlay.DisplayOrder = Enum.ScreenInsets.DeviceSafeInsets, hud.DisplayOrder - 1
 	overlay.ClipToDeviceSafeArea = false
 	overlay.Parent = playerGui
+	local arrow = UI.box(overlay, "Turn arrow")
+	arrow.Size, arrow.AnchorPoint = UDim2.fromOffset(15,10), Vector2.new(.5,1)
+	arrow.Visible, arrow.ZIndex = false, 5
+	for i, angle in {-37,37} do
+		local arm = UI.box(arrow, "Arm", Art.mint, 2)
+		arm.AnchorPoint, arm.Rotation = Vector2.new(.5,.5), angle
+		arm.Size = UDim2.fromOffset(4,9)
+		arm.Position = UDim2.fromScale(if i==1 then .35 else .65,.5)
+		UI.stroke(arm,Art.ink)
+	end
 	hud.Destroying:Connect(function()
 		overlay:Destroy()
 		group:Destroy()
@@ -164,10 +242,28 @@ return function(root: Frame, translate: (string)->string)
 			return copy
 		end
 		local nativeTitle, nativeCost = display(title), display(cost)
+		local slot = (i-1)%8
+		local edge = math.floor((i-1)/8)
+		local horizontal = slot > 0 and (edge == 1 or edge == 3)
+		local accent = Art.accent(tile.kind,tile.league)
+		local leader = UI.box(frame, "Caption leader", accent)
+		leader.Visible, nativeTitle.ZIndex = false, 3
+		nativeTitle.BorderSizePixel, nativeTitle.BackgroundColor3 = 0, card.BackgroundColor3
+		title.BackgroundColor3, title.ZIndex = card.BackgroundColor3, 3
+		cost.BackgroundColor3, cost.ZIndex, nativeCost.ZIndex = card.BackgroundColor3, 3, 3
+		UI.round(nativeTitle,4)
+		UI.round(nativeCost,4)
+		local keyline = UI.stroke(nativeTitle,accent)
+		keyline.Transparency = .5
+		local amountLine = UI.stroke(nativeCost,style.price)
+		amountLine.Transparency = .67
+		local cap = Instance.new("UITextSizeConstraint")
+		cap.MaxTextSize, cap.Parent = 100, nativeTitle
 		local layers = {{print=poster, native=display(poster)}, {print=title, native=nativeTitle}}
 		if buyable then table.insert(layers, {print=cost, native=nativeCost}) end
 		local entry = {part=part, surface=sheet, title=title, cost=cost, nativeTitle=nativeTitle,
-			nativeCost=nativeCost, owner=mark, layers=layers, poster=poster, rules=rules, buyable=buyable, compact=nil}
+			nativeCost=nativeCost, owner=mark, layers=layers, poster=poster, rules=rules, buyable=buyable, compact=nil,
+			index=i, horizontal=horizontal, north=edge==1, east=edge==0, corner=slot==0, cap=cap, leader=leader, keyline=keyline, amountLine=amountLine}
 		sheets[i] = entry
 		setCopy(i, entry)
 	end
@@ -185,18 +281,40 @@ return function(root: Frame, translate: (string)->string)
 		layout=function(camera: Camera, masks: {Rect}, compact: boolean)
 			for _, entry in sheets do
 				local landscape = compact and camera.ViewportSize.X > camera.ViewportSize.Y
-				local narrow = camera.ViewportSize.X < 455 and entry.part.Size.X < entry.part.Size.Y
-				if entry.compact ~= compact or entry.narrow ~= narrow or entry.landscape ~= landscape then
-					entry.narrow, entry.landscape = narrow, landscape
+				if entry.compact ~= compact or entry.landscape ~= landscape then
+					entry.landscape = landscape
 					setLayout(entry,compact)
 				end
+				local face = if compact and not entry.corner then projectBand(camera,entry.part,entry.poster.Parent) else nil
+				local caption, priceTag, line
+				if face then
+					caption, priceTag, line = compactBands(entry,face,camera.ViewportSize)
+					if not entry.horizontal and #masks>0 then
+						caption = clearSideBand(caption,masks,entry.east,camera.ViewportSize,nil)
+						if priceTag and entry.buyable then
+							priceTag = clearSideBand(priceTag,masks,entry.east,camera.ViewportSize,caption)
+						end
+					end
+				end
+				entry.hit, entry.priceHit, entry.leader.Visible = nil, nil, false
 				for _, layer in entry.layers do
 					local target = projectBand(camera, entry.part, layer.print)
 					local glyph = layer.native
+					local plaque = face ~= nil and glyph == entry.nativeTitle
+					if plaque and caption then
+						target = caption
+						entry.cap.MaxTextSize = math.max(12, target.Height-1)
+					elseif glyph == entry.nativeTitle then
+						entry.cap.MaxTextSize = 100
+					elseif glyph == entry.nativeCost then
+						if priceTag then target = priceTag end
+						glyph.BackgroundTransparency = if priceTag then .055 else 1
+						glyph.BackgroundColor3 = entry.title.BackgroundColor3
+					end
 					glyph.Position = UDim2.fromOffset(target.Min.X,target.Min.Y)
 					glyph.Size = UDim2.fromOffset(target.Width,target.Height)
 					local painted = target
-					if glyph:IsA("TextLabel") and glyph.TextBounds.X > 0 then
+					if not face and glyph:IsA("TextLabel") and glyph.TextBounds.X > 0 then
 						local centre = (target.Min + target.Max) * .5
 						local extent = glyph.TextBounds * .5 + Vector2.one
 						painted = Rect.new(centre - extent, centre + extent)
@@ -205,17 +323,43 @@ return function(root: Frame, translate: (string)->string)
 					for _, mask in masks do
 						if intersects(painted,mask) then exposed = false break end
 					end
-					-- Keep the caption legible even when multiple figures share the tile.
-					if compact and glyph:IsA("TextLabel") then
-						glyph.BackgroundColor3 = entry.poster.Parent.BackgroundColor3
-						glyph.BackgroundTransparency = if exposed then 1 else .08
-						exposed = true
-					elseif glyph:IsA("TextLabel") then
-						glyph.BackgroundTransparency = 1
+					if glyph == entry.nativeTitle then
+						glyph.BackgroundTransparency = if plaque then .045 else 1
+					end
+					if plaque and exposed then
+						entry.hit = target
+						if line then
+							entry.leader.Position = UDim2.fromOffset(line.Min.X,line.Min.Y)
+							entry.leader.Size = UDim2.fromOffset(line.Width,line.Height)
+							entry.leader.Visible = true
+							for _, mask in masks do
+								if intersects(line,mask) then entry.leader.Visible = false break end
+							end
+						end
+					elseif exposed and glyph == entry.nativeCost and priceTag then
+						entry.priceHit = target
 					end
 					glyph.Visible, layer.print.Visible = exposed, not exposed
 				end
 			end
+		end,
+		markTurn=function(point: Vector3?)
+			arrow.Visible = point ~= nil
+			if point then arrow.Position = UDim2.fromOffset(math.round(point.X),math.round(point.Y)-3) end
+		end,
+		pickCaption=function(point: Vector3): number?
+			local camera = workspace.CurrentCamera
+			if not visible or not camera then return nil end
+			local ray = camera:ScreenPointToRay(point.X,point.Y)
+			local p = camera:WorldToViewportPoint(ray.Origin+ray.Direction*100)
+			for index, entry in sheets do
+				for _, hit in {entry.hit,entry.priceHit} do
+					if p.X>=hit.Min.X and p.X<hit.Max.X and p.Y>=hit.Min.Y and p.Y<hit.Max.Y then
+						return index
+					end
+				end
+			end
+			return nil
 		end,
 		show=function(on: boolean)
 			visible, overlay.Enabled = on, on

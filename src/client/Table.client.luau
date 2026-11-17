@@ -808,11 +808,13 @@ render = function()
 	scorecards(s)
 	languageButton.Visible,languageButton.Text = s == nil, if russian then "Язык · RU" else "Language · EN"
 	matchClock.Visible = s ~= nil and s.phase ~= "final"
+	local shot = root:GetAttribute("ShotPlaying") == true
+	rulesButton.Visible, clubsButton.Visible, turnPrompt.Visible = not shot, not shot, not shot
 	local now = workspace:GetServerTimeNow()
 	local waiting = s and now < data.availableAt
 	local seat = s and s.seats[s.active]
 	local mine = seat and seat.id == Player.UserId and not seat.bot
-	if dealButton then dealButton.Visible = mine and s.phase == "move" and not s.tradeUsed end
+	if dealButton then dealButton.Visible = not shot and mine and s.phase == "move" and not s.tradeUsed end
 	panel.Visible = s == nil or (not waiting and (data.auction ~= nil or s.phase == "final"
 		or (mine and (s.phase == "matchday" or s.phase == "championship" or s.phase == "debt" or s.phase == "tour" or s.phase == "shield"))))
 	if opened ~= "inspect" then propertyCard.hide() end
@@ -843,11 +845,12 @@ render = function()
 		end
 	end
 	local screen = root.AbsoluteSize
-	cameraView.Visible = s ~= nil and s.phase ~= "final" and screen.X < screen.Y * .86 and not panel.Visible
+	cameraView.Visible = not shot and s ~= nil and s.phase ~= "final" and screen.X < screen.Y * .86 and not panel.Visible
 	cameraView.Text = t(if followTurn then "Full board" else "Follow turn")
 	if opened ~= "inspect" then drawDialog() else dialogShade.Visible = false end
 end
 
+root:GetAttributeChangedSignal("ShotPlaying"):Connect(function() render() end)
 root:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
 	arrange()
 	render()

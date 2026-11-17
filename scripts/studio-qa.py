@@ -9,12 +9,16 @@ root = Path(__file__).resolve().parents[1]
 parser = argparse.ArgumentParser()
 parser.add_argument("--rojo", default="rojo")
 parser.add_argument("--players", type=int, choices=[1, 2, 4], default=1)
-parser.add_argument("--device", choices=["portrait", "landscape"])
+parser.add_argument("--device", choices=["portrait", "portrait-small", "landscape", "landscape-phone"])
+parser.add_argument("--edition", choices=["en", "ru"], default="en")
+parser.add_argument("--shot", choices=["goal", "save", "offside"], help="force a matchday outcome for visual QA")
 parser.add_argument("--art", action="store_true", help="verify the Blender meshes and lobby music in a single-client test")
 parser.add_argument("--matchday", action="store_true", help="verify formats, shot camera, goal meshes and audio in a single-client test")
 parser.add_argument("--launchservices", action="store_true", help="use native macOS app launch instead of direct CLI")
 parser.add_argument("--studio", default="/Applications/RobloxStudio.app/Contents/MacOS/RobloxStudio")
 args = parser.parse_args()
+if args.shot:
+    args.matchday = True
 if (args.art or args.matchday) and args.players != 1:
     parser.error("--art and --matchday use a single test client")
 work = root / ".tools"
@@ -33,17 +37,22 @@ with tempfile.TemporaryDirectory(prefix=mode + "-", dir=work) as folder:
                else f'test:ExecuteMultiplayerTestAsync({args.players}, "{mode}")')
     device = ("local fixture = game:GetService('StarterPlayer').StarterPlayerScripts."
               f'Footbolapolia["studio-player"]\nfixture:SetAttribute("ExpectedPlayers", {args.players})\n')
+    device += f'fixture:SetAttribute("Edition", "{args.edition}")\n'
+    if args.shot:
+        roll = {"goal": 1, "save": 4, "offside": 6}[args.shot]
+        device += (f'fixture:SetAttribute("ExpectedShot", "{args.shot}")\n'
+                   f'game:GetService("ServerScriptService").Footbolapolia.Match:SetAttribute("StudioShotRoll", {roll})\n')
     if args.art:
         device += 'fixture:SetAttribute("VerifyBlenderArt", true)\n'
     if args.matchday:
         device += ('fixture:SetAttribute("VerifyMatchday", true)\n'
                    'game:GetService("ServerScriptService").Footbolapolia.Match:SetAttribute("StudioMatchdaySmoke", true)\n')
     if args.device:
-        portrait = args.device == "portrait"
+        portrait = args.device.startswith("portrait")
         direction = "Portrait" if portrait else "LandscapeLeft"
         device += f"""local sim = game:GetService("StudioDeviceSimulatorService")
-sim:SetDeviceAsync("{'iphone_XR' if portrait else 'iphone_7'}")
-{'sim:SetResolutionAsync(640, 300)' if not portrait else ''}
+sim:SetDeviceAsync("{'iphone_XR' if args.device == 'portrait' else 'iphone_7'}")
+{'sim:SetResolutionAsync(640, 300)' if args.device == 'landscape' else ''}
 local orientation = Enum.ScreenOrientation.{direction}
 game:GetService("StarterGui").ScreenOrientation = orientation
 sim:SetOrientationAsync(orientation)

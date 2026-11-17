@@ -39,22 +39,31 @@ end
 local function position(index: number, slot: number?, count: number?): Vector3
 	local tile = Geometry.cells[index]
 	local size = Geometry.tileSize(index)
-	local sideways = math.floor((index - 1) / 8) % 2 == 0
-	local width = if sideways then size.Y else size.X
-	local depth = if sideways then size.X else size.Y
-	local total, ordinal = count or 1, slot or 1
-	local row = math.floor((ordinal - 1) / 3)
-	local onRow = math.min(3, total - row * 3)
-	local col = (ordinal - 1) % 3
-	-- Put the front row on the artwork. Additional seats fan towards the far
-	-- edge, keeping the title and price clear on the player's current square.
-	local x = tile.X + (col - (onRow - 1) * .5) * math.min(4.85,width * .32)
-	local z = tile.Z - depth * (.20 + row * .22)
-	return Vector3.new(x, Art.tileTop + .04 - Art.figureScale * .376, z)
+	local edge = math.floor((index-1)/8)
+	local row = math.floor(((slot or 1)-1)/2)
+	local pair = math.min(2,(count or 1)-2*row)
+	local offset = (((slot or 1)-1)%2 - (pair-1)*.5)*8.3
+	-- The figurines occupy the inside edge of their ticket. Face and boots stay
+	-- separate from its printed name even when all four arrive on the corner.
+	local corner = (index-1)%8 == 0
+	local inward = Vector3.new(-math.sin((edge+1)*math.pi*.5),0,-math.cos((edge+1)*math.pi*.5))
+	local tangent = Vector3.new(-inward.Z,0,inward.X)
+	local at
+	if corner then
+		-- Spread the figurines along the touchline so each face has its own column.
+		local lane = (slot or 1)-1
+		local first = if (count or 1)>1 then 20 else 32
+		at = Vector3.new(math.sign(tile.X)*(first-lane*8.5),0,
+			tile.Z-math.sign(tile.Z)*(5.5+lane%2*3))
+	else
+		local inset = if edge%2==0 then 23 else size.Y*.70
+		at = tile + inward*(inset+row*6.8) + tangent*offset
+	end
+	return Vector3.new(at.X, Art.tileTop + .04 - Art.figureScale * .376, at.Z)
 end
 
 local function settled(point: Vector3): CFrame
-	return CFrame.new(point) * CFrame.Angles(0, Art.boardYaw + .08, 0)
+	return CFrame.new(point) * CFrame.Angles(0, math.rad(19), 0)
 end
 
 local function decorated(parent: Instance, name: string, shape: string, size: Vector3, at: Vector3, fallback: Instance)
@@ -131,6 +140,7 @@ function Arena.new(myId: number, root: Frame, translate: (string) -> string, pla
 		local stage = workspace:WaitForChild("WorldDraftArena", 12)
 		if not stage then return end
 		Meshes.decorate(stage)
+		require(script.Parent.PitchSurface)(stage:WaitForChild("Continental Cup stadium"))
 		require(script.Parent.StadiumDistrict)(stage:WaitForChild("Arena surroundings"):WaitForChild("Stadium district"))
 		local ribbon = stage:FindFirstChild("Live stadium ribbon", true)
 		local message = ribbon and ribbon:FindFirstChild("Message", true)
@@ -144,13 +154,22 @@ function Arena.new(myId: number, root: Frame, translate: (string) -> string, pla
 	markers.Name, markers.Parent = "Markers", localParts
 	local effects = Instance.new("Folder")
 	effects.Name, effects.Parent = "Motion effects", localParts
+	local outline = Instance.new("Highlight")
+	outline.Name, outline.DepthMode = "Active kit outline", Enum.HighlightDepthMode.Occluded
+	outline.FillTransparency, outline.OutlineTransparency, outline.OutlineColor = 1,.25,Art.paper
+	outline.Enabled, outline.Parent = false, localParts
 	local replay = MatchdayReplay(effects, playSound)
 	local replaying = false
 
 	local models: {[number]: Model} = {}
+	local seatPins: {[number]: BasePart} = {}
+	local function clearPins()
+		for _, pin in seatPins do pin:Destroy() end
+		table.clear(seatPins)
+	end
 	local activeId = 0
 	local cheerId, cheerUntil = 0, 0
-	local posed: Model? = nil
+	local idleTick = -1
 	local previews: {Model} = {}
 	local heroModel: Model? = nil
 	local portraitModel: Model? = nil
@@ -169,6 +188,8 @@ function Arena.new(myId: number, root: Frame, translate: (string) -> string, pla
 	local followTurn = false
 	local focusOrbit = Vector3.zero
 	local focusDistance = 0
+	local overviewDistance, viewDistance = 0,0
+	local viewPoint: Vector3? = nil
 	local boardPose: CFrame? = nil
 	local lastInkPose: CFrame? = nil
 	local lastInkTime = 0
@@ -189,7 +210,7 @@ function Arena.new(myId: number, root: Frame, translate: (string) -> string, pla
 		local tangent = math.tan(math.rad(fov) * .5)
 		portraitCamera = aspect < .86
 		shortLandscape = aspect > 1 and root.AbsoluteSize.Y < 430
-		local angle = math.rad(if portraitCamera then 75 else 40)
+		local angle = math.rad(if portraitCamera then 52 else 40)
 		local orbit = Vector3.zAxis * math.cos(angle) + Vector3.yAxis * math.sin(angle)
 		local span = Geometry.width
 		local width = .85
@@ -199,7 +220,8 @@ function Arena.new(myId: number, root: Frame, translate: (string) -> string, pla
 		if portraitCamera or shortLandscape then
 			-- Fit the near corners, with four logical pixels clear on either side.
 			local widthPixels = math.max(1, math.min(root.AbsoluteSize.X,size.X) - (if shortLandscape then 208 else 8))
-			local heightPixels = if shortLandscape then math.max(1,size.Y-16)
+			local plaqueHeight = math.clamp(math.round(math.min(size.X,size.Y)*.049),17,23)
+			local heightPixels = if shortLandscape then math.max(1,size.Y-2*(2*plaqueHeight+8))
 				else math.max(size.Y*.39,root.AbsoluteSize.Y-224)
 			-- Studio devices can render behind a notch; measure the actual projection.
 			camera.FieldOfView = fov
@@ -224,20 +246,24 @@ function Arena.new(myId: number, root: Frame, translate: (string) -> string, pla
 		local centerY = (near.Y / -near.Z + far.Y / -far.Z) * .5
 		local targetY = if shortLandscape then 0 elseif portraitCamera then .01 else -.071
 		overview = base * CFrame.new(0, (centerY + verticalOffset - targetY * tangent) * distance, 0)
-		local followAngle = math.rad(53)
+		local followAngle = math.rad(34)
 		focusOrbit = Vector3.zAxis * math.cos(followAngle) + Vector3.yAxis * math.sin(followAngle)
-		focusDistance = span / (2*tangent*aspect*.86) * .55
-		boardPose = nil
+		focusDistance = span / (2*tangent*aspect*.86) * .48
+		boardPose, viewPoint, overviewDistance = nil, nil, distance
 		oldSize, oldRoot, camera.FieldOfView = size, root.AbsoluteSize, fov
 	end
 
 	local function focusedBoard(): CFrame?
-		local pawn = models[activeId]
+		local flight = activeFlight
+		local pawn = if flight then flight.model else models[activeId]
 		if not (portraitCamera and followTurn and pawn) then return nil end
-		local point = pawn:GetPivot().Position
-		-- Keep the action at the outside of frame so neighboring tiles and the pitch are in view.
-		local clamped = Vector3.new(math.clamp(point.X, -36, 36), Art.tileTop, math.clamp(point.Z, -37, 37))
-		return CFrame.lookAt(clamped + focusOrbit * focusDistance, clamped)
+		local at = pawn:GetPivot().Position
+		if flight then
+			local progress = (os.clock()-flight.start-PREP)/STEP
+			at = at:Lerp(routeAt(flight.route,progress+.55),.32)
+		end
+		local target = Vector3.new(at.X*.88,Art.tileTop+5.5,at.Z*.88)
+		return CFrame.lookAt(target + focusOrbit * focusDistance, target)
 	end
 
 	local function pulse(at: Vector3, color: Color3, impact: boolean)
@@ -312,6 +338,7 @@ function Arena.new(myId: number, root: Frame, translate: (string) -> string, pla
 			replay.clear()
 			activeId, cheerId = 0, 0
 			finishFlight()
+			clearPins()
 			effects:ClearAllChildren()
 			signature = ""
 			markers:ClearAllChildren()
@@ -343,6 +370,7 @@ function Arena.new(myId: number, root: Frame, translate: (string) -> string, pla
 		table.clear(previews)
 		local sameMatch = serial == snapshot.serial
 		if not sameMatch then
+			clearPins()
 			replay.clear()
 			lastRoll = 0
 			finishFlight()
@@ -363,20 +391,35 @@ function Arena.new(myId: number, root: Frame, translate: (string) -> string, pla
 			if seat.bankrupt then continue end
 			tileCounts[seat.position] = (tileCounts[seat.position] or 0) + 1
 		end
-		for _, seat in s.seats do
+		for seatIndex, seat in s.seats do
 			local model = models[seat.id]
 			if seat.bankrupt then
 				if model then model:Destroy(); models[seat.id] = nil end
+				if seatPins[seat.id] then seatPins[seat.id]:Destroy(); seatPins[seat.id] = nil end
 				continue
 			end
 			if not model then
 				model = Pawn.make(seat.figure, matchPawns, true)
 				model:ScaleTo(Art.figureScale)
 				models[seat.id] = model
+				local foot = medallion(model,"Seat enamel",model:GetPivot().Position+Vector3.yAxis*(.376*Art.figureScale-.04),
+					6.6,.08,Art.seatColors[seatIndex])
+				foot.Transparency = .24
 			end
 			local slot = (tileSlots[seat.position] or 0) + 1
 			tileSlots[seat.position] = slot
 			local destination = position(seat.position, slot, tileCounts[seat.position])
+			local pin = seatPins[seat.id]
+			if not pin then
+				pin = part(localParts,"Seat touchline",Vector3.one,Vector3.zero,Art.seatColors[seatIndex])
+				pin.Transparency = .22
+				seatPins[seat.id] = pin
+			end
+			local cell = Geometry.cells[seat.position]
+			local onCard = Vector3.new(cell.X,Art.tileTop+.09,cell.Z)
+			local base = Vector3.new(destination.X,onCard.Y,destination.Z)
+			pin.Size = Vector3.new(.37,.045,(base-onCard).Magnitude)
+			pin.CFrame = CFrame.lookAt((base+onCard)*.5,onCard)
 			if moved and s.motion.who == seat.id and s.motion.steps > 0 and not reduced then
 				local at = model:GetPivot().Position
 				local color = Art.hex(Board.figures[seat.figure].color)
@@ -407,11 +450,20 @@ function Arena.new(myId: number, root: Frame, translate: (string) -> string, pla
 		local entry = activeFlight
 		local clock = os.clock()
 		replay.step(clock, reduced)
+		local runner = if entry then entry.model else models[activeId]
+		local head = runner and runner:FindFirstChild("Head")
+		local face = head and head:FindFirstChild("Face")
+		outline.Adornee = runner
 		local frame = replay.framing(camera)
+		outline.Enabled = frame == nil and runner ~= nil
 		if replaying ~= (frame ~= nil) then
 			replaying = frame ~= nil
+			root:SetAttribute("ShotPlaying",replaying)
 			labels.show(not replaying)
 			matchPawns.Parent = if replaying then nil else localParts
+		end
+		for id, pin in seatPins do
+			pin.LocalTransparencyModifier = if frame or (entry and entry.model==models[id]) then 1 else 0
 		end
 		if frame then
 			camera.CFrame = frame
@@ -419,10 +471,21 @@ function Arena.new(myId: number, root: Frame, translate: (string) -> string, pla
 			local focus = focusedBoard()
 			local target = focus or (overview :: CFrame)
 			local last = boardPose or (overview :: CFrame)
-			boardPose = if (last.Position - target.Position).Magnitude < .08 or reduced
-				then target else last:Lerp(target, 1 - math.exp(-dt * 9))
+			-- Interpolate around the target. A straight blend between two long-lens
+			-- eye positions can swing the subject off screen during a pitch change.
+			local targetDistance = if focus then focusDistance else overviewDistance
+			local targetPoint = target.Position + target.LookVector*targetDistance
+			local blend = if reduced then 1 else 1-math.exp(-dt*12)
+			if not viewPoint or (last.Position-target.Position).Magnitude < .08 then
+				viewPoint, viewDistance, boardPose = targetPoint, targetDistance, target
+			else
+				viewPoint = viewPoint:Lerp(targetPoint,blend)
+				viewDistance += (targetDistance-viewDistance)*blend
+				local axis = last.LookVector:Lerp(target.LookVector,blend).Unit
+				boardPose = CFrame.lookAt(viewPoint-axis*viewDistance,viewPoint)
+			end
 			camera.CFrame, camera.Focus, camera.FieldOfView = boardPose :: CFrame, CFrame.identity, Art.boardFov
-			if camera.CFrame~=lastInkPose or clock-lastInkTime>=.09 then
+			if camera.CFrame~=lastInkPose or clock-lastInkTime >= (if entry then 1/30 else .09) then
 				lastInkPose,lastInkTime=camera.CFrame,clock
 				local silhouettes={}
 				for _,model in models do
@@ -439,6 +502,11 @@ function Arena.new(myId: number, root: Frame, translate: (string) -> string, pla
 				labels.layout(camera,silhouettes,shortLandscape or (portraitCamera and not focus))
 			end
 		end
+		local tip, inView
+		if not frame and face and face:IsA("BasePart") then
+			tip, inView = camera:WorldToViewportPoint(face.Position + Vector3.yAxis*face.Size.Y*.58)
+		end
+		labels.markTurn(if inView then tip else nil)
 		local portrait = portraitModel
 		if portrait and not portrait.Parent then portraitModel = nil end
 		local portraitFrame = math.floor(clock * 24)
@@ -447,22 +515,23 @@ function Arena.new(myId: number, root: Frame, translate: (string) -> string, pla
 			portrait:PivotTo(CFrame.Angles(0, math.sin(clock * 1.55) * .19, 0))
 			Pawn.pose(portrait, clock * 2.5, 0)
 		end
-		local focus = models[if cheerUntil > clock then cheerId else activeId]
-		if entry and focus == entry.model then focus = nil end
-		if posed and posed ~= focus and posed.Parent and (not entry or posed ~= entry.model) then Pawn.pose(posed, 0, 0) end
-		posed = focus
-		if not reduced then
-			if focus then
-				local cheer = if cheerUntil > clock then 1 - (cheerUntil - clock) / .92 else nil
-				Pawn.pose(focus, clock * 2.8, 0, cheer)
-			elseif heroModel then
-				local poseFrame = math.floor(clock * 30)
-				if poseFrame ~= lastIdlePose then
-					lastIdlePose = poseFrame
-					local turn = Art.boardYaw + math.sin(clock * 1.30) * .20
-					heroModel:PivotTo(CFrame.new(0, .36, -.90) * CFrame.Angles(0, turn, 0) * CFrame.Angles(-.13, 0, 0))
-					Pawn.pose(heroModel, clock * 2.2, 0)
+		-- Independent breathing and weight shifts for every seated player.
+		if not reduced and not frame then
+			local tick = math.floor(clock*18)
+			if tick ~= idleTick then
+				idleTick = tick
+				for id, model in models do
+					if entry and model == entry.model then continue end
+					local phase = clock*(2.15 + (math.abs(id)%5)*.10) + id%17
+					local cheer = if id == cheerId and cheerUntil > clock then 1-(cheerUntil-clock)/.92 else nil
+					Pawn.pose(model, phase, 0, cheer)
 				end
+			end
+			if heroModel and math.floor(clock*30) ~= lastIdlePose then
+				lastIdlePose = math.floor(clock*30)
+				local turn = Art.boardYaw + math.sin(clock*1.30)*.20
+				heroModel:PivotTo(CFrame.new(0,.36,-.90)*CFrame.Angles(-.13,turn,0))
+				Pawn.pose(heroModel,clock*2.2,0)
 			end
 		end
 
@@ -514,6 +583,7 @@ function Arena.new(myId: number, root: Frame, translate: (string) -> string, pla
 
 	local function celebrate(index: number, big: boolean)
 		if reduced then return end
+		if big then cheerId, cheerUntil = activeId, os.clock()+.92 end
 		local center = Geometry.cells[index]
 		local origin = Vector3.new(center.X, Art.tileTop + 1.3, center.Z)
 		for i = 1, if big then 14 else 6 do
@@ -560,6 +630,8 @@ function Arena.new(myId: number, root: Frame, translate: (string) -> string, pla
 		end,
 		pickTile = function(point: Vector3): number?
 			if replaying then return nil end
+			local caption = labels.pickCaption(point)
+			if caption then return caption end
 			local camera = workspace.CurrentCamera
 			if not camera then return nil end
 			local ray = camera:ScreenPointToRay(point.X, point.Y)
@@ -581,7 +653,7 @@ function Arena.new(myId: number, root: Frame, translate: (string) -> string, pla
 		reduceMotion = function(value: boolean)
 			reduced = value
 			if value then
-				if posed then Pawn.pose(posed, 0, 0) end
+				for _, model in models do Pawn.pose(model,0,0) end
 				if heroModel then Pawn.pose(heroModel, 0, 0) end
 				if portraitModel and portraitModel.Parent then
 					portraitModel:PivotTo(CFrame.identity)

@@ -56,35 +56,141 @@ end
 
 local function pitch(stage: Folder)
 	local field = folder(stage, "Continental Cup stadium")
-	plate(field, "Pitch rim", 0, -.07, 0, 90.4, .43, 90.4, C("23253A"))
+	local chalk, brass, enamel = C("F4F2D8"), C("E3BE73"), C("18373A")
+	local function beam(parent: Instance, name: string, a: Vector3, b: Vector3, width: number, depth: number, tint: Color3): Part
+		local rod = part(parent, name, Vector3.new(width, depth, (b - a).Magnitude),
+			CFrame.lookAt((a + b) / 2, b), tint)
+		rod.CastShadow = false
+		return rod
+	end
+	local function stroke(name: string, x0: number, z0: number, x1: number, z1: number, width: number, tint: Color3, y: number?)
+		local level = y or .328
+		beam(field, name, Vector3.new(x0, level, z0), Vector3.new(x1, level, z1), width, .028, tint)
+	end
+	local function disk(name: string, x: number, z: number, diameter: number, top: number, tint: Color3)
+		local coin = part(field, name, Vector3.new(.034, diameter, diameter),
+			CFrame.new(x, top - .017, z) * CFrame.Angles(0, 0, math.pi / 2), tint)
+		coin.Shape, coin.CastShadow = Enum.PartType.Cylinder, false
+	end
+	local function arc(name: string, x: number, z: number, radius: number, start: number, finish: number, steps: number, width: number)
+		for i = 0, steps - 1 do
+			local a = start + (finish - start) * i / steps
+			local b = start + (finish - start) * (i + 1) / steps
+			stroke(name, x + radius * math.cos(a), z + radius * math.sin(a),
+				x + radius * math.cos(b), z + radius * math.sin(b), width, chalk)
+		end
+	end
+
+	-- The metal reveal and the printed end rails belong to the miniature stadium.
+	plate(field, "Brushed champagne reveal", 0, -.09, 0, 90.4, .46, 90.4, brass).Material = Enum.Material.Metal
+	plate(field, "Enamel apron", 0, .105, 0, 89.65, .14, 89.65, enamel)
+	plate(field, "Turf binding", 0, .163, 0, 84.6, .1, 72.7, C("112B27"))
+	local turf = {C("33785B"), C("428765")}
+	local strips = 10
+	for i = 1, strips do
+		local grass = plate(field, "Mown turf", (i - (strips + 1) / 2) * 8.4, .20, 0,
+			8.4, .17, 72, turf[1 + (i - 1) % 2])
+		grass.Material, grass.CastShadow = Enum.Material.Grass, false
+	end
+	stroke("Halfway line", 0, -32.5, 0, 32.5, .56, chalk)
 	for _, side in {-1, 1} do
+		stroke("Touchline", -37.5, side * 32.5, 37.5, side * 32.5, .58, chalk)
+		stroke("Goal line", side * 37.5, -32.5, side * 37.5, 32.5, .58, chalk)
+		for _, box in {{24.7, 17.1}, {32.1, 10.9}} do
+			local x, z = side * box[1], box[2]
+			stroke("Box", x, -z, x, z, .49, chalk)
+			for _, flank in {-1, 1} do stroke("Box", x, flank * z, side * 37.5, flank * z, .49, chalk) end
+		end
+		local spot = 29.5 * side
+		disk("Penalty spot", spot, 0, .95, .352, chalk)
+		local facing = if side == 1 then math.pi else 0
+		local sweep = math.acos((29.5 - 24.7) / 7.4)
+		arc("Penalty arc", spot, 0, 7.4, facing - sweep, facing + sweep, 18, .46)
+		for _, flank in {-1, 1} do
+			local inward = if side == 1 then math.pi else 0
+			arc("Corner arc", side * 37.5, flank * 32.5, 2.15, inward,
+				inward + side * flank * math.pi / 2, 9, .37)
+			local x, z = side * 37.82, flank * 32.8
+			plate(field, "Corner flagstaff", x, 1.57, z, .16, 2.56, .16, chalk)
+			local flag = plate(field, "Corner pennant", x + side * .82, 2.41, z, 1.52, .83, .075,
+				if side == 1 then C("E58B72") else C("E6CC7D"))
+			flag.CastShadow = false
+		end
+	end
+
+	-- The full circle is a turned medallion with a small cup die-stamped in the enamel.
+	disk("Centre circle", 0, 0, 16.6, .353, chalk)
+	disk("Centre enamel", 0, 0, 15.55, .364, C("286C52"))
+	disk("Cup seal rim", 0, 0, 9.0, .372, C("96B78A"))
+	disk("Cup seal", 0, 0, 8.48, .380, C("225C4B"))
+	local gilt = C("EACD88")
+	local function engraving(x0: number, z0: number, x1: number, z1: number, width: number)
+		stroke("Championship cup engraving", x0, z0, x1, z1, width, gilt, .397)
+	end
+	engraving(-1.46, -1.68, 1.46, -1.68, .50)
+	engraving(-1.29, -1.53, -.98, .02, .58)
+	engraving(1.29, -1.53, .98, .02, .58)
+	engraving(-.98, .02, 0, .80, .53)
+	engraving(.98, .02, 0, .80, .53)
+	engraving(0, .68, 0, 1.78, .49)
+	engraving(-1.12, 1.91, 1.12, 1.91, .53)
+	for _, side in {-1, 1} do
+		engraving(side * 1.30, -1.31, side * 2.21, -1.31, .30)
+		engraving(side * 2.21, -1.31, side * 1.91, -.32, .30)
+		engraving(side * 1.91, -.32, side * 1.04, .02, .30)
+	end
+
+	for _, side in {-1, 1} do
+		local goal = folder(field, if side > 0 then "East goal" else "West goal")
+		local function cord(name: string, x0: number, y0: number, z0: number, x1: number, y1: number, z1: number, width: number, tint: Color3)
+			beam(goal, name, Vector3.new(side * x0, y0, z0), Vector3.new(side * x1, y1, z1), width, width, tint)
+		end
+		local net = C("BCD2B9")
+		for _, flank in {-1, 1} do
+			local z = 9 * flank
+			cord("Goalpost", 37.5, .30, z, 37.5, 7.60, z, .36, chalk)
+			cord("Roof support", 37.5, 7.60, z, 40.15, 7.0, z, .17, chalk)
+			cord("Net stay", 40.15, 7.0, z, 42, .34, z, .17, chalk)
+			cord("Ground frame", 37.5, .36, z, 42, .36, z, .18, chalk)
+		end
+		cord("Crossbar", 37.5, 7.60, -9.16, 37.5, 7.60, 9.16, .36, chalk)
+		cord("Net ridge", 40.15, 7.0, -9, 40.15, 7.0, 9, .12, net)
+		cord("Rear frame", 42, .36, -9, 42, .36, 9, .17, net)
 		for i = -5, 5 do
-			plate(field, "Dashed touchline", i * 8.05, .158, side * 43.55, 4.8, .016, .13, C("A9E464")).CastShadow = false
-			plate(field, "Dashed touchline", side * 43.55, .158, i * 8.05, .13, .016, 4.8, C("A9E464")).CastShadow = false
+			local z = i * 1.5
+			cord("Roof net", 37.50, 7.55, z, 40.15, 7.0, z, .067, net)
+			cord("Rear net", 40.15, 7.0, z, 42, .36, z, .075, net)
+		end
+		for i = 1, 5 do
+			local t = i / 6
+			local x, y = 42 - 1.85 * t, .36 + 6.64 * t
+			cord("Net weft", x, y, -9, x, y, 9, .078, net)
+			for _, flank in {-1, 1} do cord("Side net", 37.5, y, 9 * flank, x, y, 9 * flank, .064, net) end
 		end
 	end
-	for strip = 0, 5 do
-		plate(field, "Grass strip", 0, .205, (strip - 2.5) * 14, 84, .16, 14,
-			if strip % 2 == 0 then C("417959") else C("34694E")).CastShadow = false
-	end
-	local line = C("C9E2CB")
-	plate(field, "Halfway line", 0, .298, 0, .42, .029, 65, line).CastShadow = false
+
 	for _, side in {-1, 1} do
-		plate(field, "Sideline", 0, .30, side * 32.5, 75, .028, .38, line).CastShadow = false
-		plate(field, "Goal line", side * 37.5, .3, 0, .38, .029, 65, line).CastShadow = false
-		plate(field, "Penalty line", side * 28.6, .30, 0, .32, .030, 28, line).CastShadow = false
-		for _, endLine in {-1, 1} do
-			plate(field, "Penalty area", side * 32.95, .30, endLine * 14, 9.1, .029, .32, line).CastShadow = false
+		local z = side * 40.35
+		local sign = plate(field, "Enamel touchline sign", 0, .208, z, 37, .10, 5.9, C("132E33"))
+		local surface = Instance.new("SurfaceGui")
+		surface.Face, surface.CanvasSize = Enum.NormalId.Top, Vector2.new(1480, 236)
+		surface.SizingMode, surface.LightInfluence = Enum.SurfaceGuiSizingMode.FixedSize, .25
+		surface.MaxDistance, surface.Active, surface.AutoLocalize = 12000, false, false
+		local text = Instance.new("TextLabel")
+		text.Size, text.BackgroundTransparency = UDim2.fromScale(1, 1), 1
+		text.Text = if side > 0 then "CONTINENTAL CUP" else "FOOTBOLAPOLIA"
+		text.FontFace = Font.new("rbxasset://fonts/families/Oswald.json", Enum.FontWeight.Bold)
+		text.TextSize, text.TextColor3, text.Parent = 163, C("EEE9C8"), surface
+		surface.Parent = sign
+		for _, flank in {-1, 1} do
+			local accent = if flank == side then C("E6B373") else C("78AC90")
+			stroke("Touchline inlay", flank * 20.2, z, flank * 39.6, z, .34, accent, .215)
+			for i = 0, 2 do
+				local x = flank * (32.6 + i * 2.6)
+				stroke("Apron chevron", x - .72, z - side * 2.05, x + .72, z -.64 * side, .44, accent, .215)
+			end
 		end
 	end
-	for i = 0, 35 do
-		local angle = i * math.pi / 18
-		part(field, "Center circle", Vector3.new(1.4, .035, .30),
-			CFrame.new(math.sin(angle) * 7.8, .31, math.cos(angle) * 7.8) * CFrame.Angles(0, angle, 0), line).CastShadow = false
-	end
-	local mark = mesh(field, "Footbolapolia field stencil", "pitch_mark", Vector3.new(8, .027, 8),
-		CFrame.new(0, .332, 0) * CFrame.Angles(0, math.rad(17), 0), C("B2D28F"))
-	mark.CastShadow = false
 end
 
 local function ribbon(parent: Folder, name: string, pose: CFrame, width: number)

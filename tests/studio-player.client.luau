@@ -82,7 +82,7 @@ local ok, err = pcall(function()
 			assert(title:IsA("TextLabel") and title.Text ~= "" and title.TextFits, "Clipped title "..title.Text)
 			assert(cell.CanvasSize.X >= cell.Adornee.Size.X*22-1)
 			assert((title.FontFace.Family:find("Montserrat") or title.FontFace.Family:find("Oswald")) and cost.FontFace.Family:find("BuilderMono"))
-			assert(poster.Size.Y.Scale<=title.Position.Y.Scale and title.Position.Y.Scale+title.Size.Y.Scale<=1)
+			assert(title.Position.Y.Scale+title.Size.Y.Scale<=1 and not title.Text:find("\n"))
 			local display=player.PlayerGui["Programme typography"]
 			assert(display.DisplayOrder<hud.DisplayOrder and display.ScreenInsets==Enum.ScreenInsets.DeviceSafeInsets)
 			local ink=display[cell.Name]["Club name"]
@@ -95,7 +95,7 @@ local ok, err = pcall(function()
 				local badge=artLayer["Embroidered kit"]
 				assert(badge.ImageContent.Object.Size==Vector2.new(256,256) and badge.SizeConstraint==Enum.SizeConstraint.RelativeYY)
 			end
-			if ink.Visible then
+			if ink.Visible and ink.BackgroundTransparency==1 then
 				local v=title.Position.Y.Scale+title.Size.Y.Scale*.5
 				local at=camera:WorldToViewportPoint(cell.Adornee.Position+cell.Adornee.CFrame.UpVector*cell.Adornee.Size.Y*(.5-v))
 				local middle=ink.AbsolutePosition-display[cell.Name].AbsolutePosition+ink.AbsoluteSize*.5
@@ -165,10 +165,10 @@ local ok, err = pcall(function()
 			local enamel = stage.Board:FindFirstChild("Porcelain face", true)
 			local sole = hud:FindFirstChild("Molded outsole", true)
 			local plinth = stage.Board:FindFirstChild("Octagonal arena plinth")
-			local stencil = stage:FindFirstChild("Footbolapolia field stencil", true)
+			local seal = stage:FindFirstChild("Cup seal", true)
 			local deck = printLayer.Cell5:FindFirstChild("Lithograph", true)
 			return deck and deck:IsA("ImageLabel") and enamel and enamel:IsA("MeshPart") and sole and sole:IsA("MeshPart")
-				and plinth and plinth:IsA("MeshPart") and stencil and stencil:IsA("MeshPart")
+				and plinth and plinth:IsA("MeshPart") and seal and seal:IsA("BasePart")
 		end, "Blender arena, tile and outsole")
 		dispatch("format", 2)
 		waitFor(function() return snapshot.format == 2 end, "long format")
@@ -194,6 +194,19 @@ local ok, err = pcall(function()
 			end,"in-match language on board and scoreboard")
 		end
 	end
+	if verifyMatchday then
+		local inactive = snapshot.match.seats[(snapshot.match.active % #snapshot.match.seats)+1]
+		local figures = workspace.LocalTablePieces["Match pawns"]
+		local resting = figures:WaitForChild(board.figures[inactive.figure].name)
+		local face = resting.Head.Face
+		local at = resting:GetPivot()
+		local before = at:ToObjectSpace(face.CFrame)
+		waitFor(function()
+			local current = resting:GetPivot():ToObjectSpace(face.CFrame)
+			return (current.Position-before.Position).Magnitude > .025 or current.LookVector:Dot(before.LookVector) < .9998
+		end,"idle pose on a waiting figure",2)
+		assert((at.Position-resting:GetPivot().Position).Magnitude < .01,"Waiting figure slid off its cell")
+	end
 	local function verifyOverview()
 		local display = player.PlayerGui["Programme typography"]
 		local minName, minPrice = math.huge, math.huge
@@ -216,11 +229,19 @@ local ok, err = pcall(function()
 			if tile.price == 0 then continue end
 			local cell = display["Cell"..index]
 			local name, cost = cell["Club name"], cell["Club cost"]
-			assert(name.Visible and cost.Visible and name.TextFits and cost.TextFits,tile.name)
+			assert(name.TextFits and cost.TextFits and not name.Text:find("\n"),tile.name)
+			assert(name.Visible and cost.Visible,"Hidden overview label: "..tile.name)
+			if index == 11 or index == 26 then
+				local russian = player:GetAttribute("TableLanguage") == "ru"
+				local expectedName = if index==11 then (if russian then "Ливерпуль" else "Liverpool")
+					else (if russian then "Дортмунд" else "Dortmund")
+				assert(name.Visible and name.Text==expectedName, "Missing single-line club name: "..name.Text)
+			end
 			minName, minPrice = math.min(minName,math.floor(name.TextBounds.Y/#string.split(name.Text,"\n"))), math.min(minPrice,cost.TextBounds.Y)
 		end
 		print("OVERVIEW_TYPE",camera.ViewportSize,minName,minPrice)
-		assert(minName >= math.floor(math.min(camera.ViewportSize.X,camera.ViewportSize.Y)*.026) and minPrice >= math.floor(math.min(camera.ViewportSize.X,camera.ViewportSize.Y)*.030),
+		local targetHeight = math.floor(math.min(camera.ViewportSize.X,camera.ViewportSize.Y)*.042)
+		assert(minName >= targetHeight and minPrice >= targetHeight,
 			"Overview name or price too small")
 	end
 	if closeup and hud.Viewport.AbsoluteSize.Y < 430 and camera.ViewportSize.X > camera.ViewportSize.Y then
@@ -251,6 +272,24 @@ local ok, err = pcall(function()
 		verifyOverview()
 		capture("full-board")
 		task.wait(.24)
+		local caption = player.PlayerGui["Programme typography"].Cell11["Club name"]
+		local function click(control)
+			local position = control.AbsolutePosition+control.AbsoluteSize*.5
+			-- VirtualInput expects the whole device screen, including the notch.
+			position -= game:GetService("GuiService"):GetInsetArea(Enum.ScreenInsets.None).Min
+			input:SendMouseButton(position,Enum.UserInputType.MouseButton1,true,0)
+			task.wait(.04)
+			input:SendMouseButton(position,Enum.UserInputType.MouseButton1,false,0)
+		end
+		click(caption)
+		local backdrop = hud.Viewport.PropertyBackdrop
+		waitFor(function()
+			local header = backdrop:FindFirstChild("Club header",true)
+			local title = header and header:FindFirstChildWhichIsA("TextLabel")
+			return backdrop.Visible and title and title.Text:find(caption.Text,1,true)
+		end,"inspect Liverpool from outside the tile",2)
+		click(backdrop:FindFirstChild("CloseCard",true))
+		waitFor(function() return not backdrop.Visible end,"close club inspection",2)
 		toggleCamera()
 		waitFor(function()
 			local active = snapshot.match.seats[snapshot.match.active]
@@ -281,6 +320,7 @@ local ok, err = pcall(function()
 		end, "crossfade to match music")
 	end
 	local diceSeen, cardSeen, boardSeen = false, false, false
+	local shotResult = script:GetAttribute("ExpectedShot") or "goal"
 	local previous, captured = -1, {}
 	local replaySeen = false
 	local runSeen = false
@@ -291,7 +331,7 @@ local ok, err = pcall(function()
 		local replay = effects and effects["Motion effects"]:FindFirstChild("Matchday players")
 		if verifyMatchday and replay and s.last.who == player.UserId and not replaySeen then
 			replaySeen = true
-			assert(s.last.kind == "goal" and s.last.amount == 140, "Expected a goal and its reward")
+			assert(s.last.kind == shotResult and s.last.amount == ({goal=140,save=25,offside=-40})[shotResult], "Shot outcome and award")
 			waitFor(function() return not printLayer.Cell1.Enabled and camera.FieldOfView > art.boardFov + 2 end, "shot camera", 1)
 			capture("strike")
 			local ball = effects["Motion effects"]:FindFirstChild("Matchday ball")
@@ -302,15 +342,26 @@ local ok, err = pcall(function()
 				return sounds.kick.IsLoaded and sounds.kick.IsPlaying and (ball:GetPivot().Position - from).Magnitude > 4
 			end, "kick sound and moving ball", 1)
 			waitFor(function()
-				local burst = replay:FindFirstChild("Goal net burst")
-				return sounds.goal.IsLoaded and sounds.goal.IsPlaying and sounds.goalMotif.IsLoaded and sounds.goalMotif.IsPlaying
-					and replay:FindFirstChild("Matchday goal"):IsA("MeshPart") and burst and #burst:GetChildren() == 30
-			end, "goal mesh, net burst and musical motif", 1)
-			local ribbon = stage:FindFirstChild("Live stadium ribbon", true)
-			waitFor(function() return ribbon and ribbon:FindFirstChild("Message", true).Text ~= "FOOTBOLAPOLIA" end, "live goal ribbon", 1)
-			task.wait(.25)
-			capture("goal")
+				local feedback = if shotResult=="offside" then true
+					else replay:FindFirstChild(if shotResult=="save" then "Glove impact" else "Goal net burst")
+				return sounds[shotResult].IsLoaded and sounds[shotResult].IsPlaying and feedback
+					and replay:FindFirstChild("Matchday goal"):IsA("MeshPart")
+			end, "shot impact, frame and outcome cue", 1.5)
+			task.wait(.09)
+			capture(shotResult)
 			waitFor(function() return printLayer.Cell1.Enabled and math.abs(camera.FieldOfView - art.boardFov) < .1 end, "board camera restored", 3)
+		end
+		local dice = effects and effects["Motion effects"]:FindFirstChild("Dice roll")
+		if dice and not diceSeen then
+			diceSeen = true
+			assert(#dice:GetChildren() == 2)
+			if verifyMatchday then
+				waitFor(function()
+					local sound = game:GetService("SoundService")["Footbolapolia Effects"].dice
+					return sound.IsLoaded and sound.IsPlaying
+				end, "dice sound", 1)
+			end
+			capture("dice")
 		end
 		local moving = effects and effects["Motion effects"]:FindFirstChild("Travel shadow")
 		if verifyMatchday and moving and s.motion.who == player.UserId and not runSeen then
@@ -326,23 +377,16 @@ local ok, err = pcall(function()
 				local relative = thigh:GetPivot():ToObjectSpace(knee:GetPivot())
 				return (model:GetPivot().Position - at).Magnitude > 1 and relative.LookVector:Dot(prior.LookVector) < .995
 			end, "moving knee and translated figure", 1)
+			local head = model.Head.Face
+			local top, visibleHead = camera:WorldToViewportPoint(head.Position)
+			local foot, visibleFeet = camera:WorldToViewportPoint(model:GetPivot().Position)
+			assert(visibleHead and visibleFeet and foot.Y-top.Y > 10,"Running figure silhouette")
+			assert(player.PlayerGui["Programme typography"]["Turn arrow"].Visible, "Active runner marker")
 			runSeen = true
 			capture("run")
 		end
-		local dice = effects and effects["Motion effects"]:FindFirstChild("Dice roll")
-		if dice and not diceSeen then
-			diceSeen = true
-			assert(#dice:GetChildren() == 2)
-			if verifyMatchday then
-				waitFor(function()
-					local sound = game:GetService("SoundService")["Footbolapolia Effects"].dice
-					return sound.IsLoaded and sound.IsPlaying
-				end, "dice sound", 1)
-			end
-			task.defer(capture, "dice")
-		end
 		local open = hud.Viewport.PropertyBackdrop.Visible
-		if open and (s.phase == "offer" or s.phase == "upgrade" or s.phase == "rebuy") then
+		if open and s.seats[s.active].id == player.UserId and (s.phase == "offer" or s.phase == "upgrade" or s.phase == "rebuy") then
 			cardSeen = true
 			local picture=hud.Viewport.PropertyBackdrop:FindFirstChild("Lithograph",true)
 			assert(picture and picture.ImageContent.Object.Size==Vector2.new(768,256),"Missing high-resolution dossier")
@@ -378,6 +422,8 @@ local ok, err = pcall(function()
 			capture("table")
 		end
 		local current = snapshot
+		-- Capturing a frame may yield across a bot turn or a new server phase.
+		if current.match ~= s then continue end
 		local ready = workspace:GetServerTimeNow() >= current.availableAt
 		if ready and current.version ~= previous then
 			local seat = s.seats[s.active]

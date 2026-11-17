@@ -239,7 +239,10 @@ local function action(s: Rules.Match, verb: string, player: Player?, index: numb
 			return table.remove(values, 1) or studioRoll(low, high)
 		end
 	elseif scriptedMatchday and verb == "shoot" then
-		roll = function(low: number, _high: number): number return low end
+		local result = script:GetAttribute("StudioShotRoll")
+		roll = function(low: number, high: number): number
+			return if typeof(result) == "number" then math.clamp(result,low,high) else low
+		end
 	end
 	local accepted: boolean
 	if verb == "closeAuction" then
