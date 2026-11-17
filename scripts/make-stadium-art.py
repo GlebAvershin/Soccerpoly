@@ -16,7 +16,7 @@ from blender_export import ROOT, blender, export_shapes
 
 NAMES = (
     "table", "enamel", "stand", "tunnel", "dugout", "goal", "lights",
-    "cup", "ball", "academy", "arena", "curls", "sweep", "cap", "crest",
+    "cup", "ball", "academy", "arena", "curls", "sweep", "cap", "crest", "die", "chance", "champions",
 )
 INK, NAVY, SLATE = "23334A", "254671", "3C6BA1"
 TEAL, MINT, GOLD = "2679BB", "76CFE2", "EAB561"
@@ -300,6 +300,29 @@ def hair(style):
             ellipsoid((x, .08 - i * .024, .25 - abs(x) * .42), (.32, .22, .48 - i * .021), None, .39)
 
 
+def chance_wheel():
+    colors = ("EF3273", "F4C535", "70B643", "14A5DA", "D74793", "F4D95E")
+    loft(((0, 1.02), (.06, 1.02), (.10, .98)), PAPER, 48)
+    for i in range(12):
+        a, b = (tau * i / 12, tau * (i + 1) / 12)
+        outer = [a + (b - a) * j / 4 for j in range(5)]
+        points = [(0, .109, 0), *[(.96 * cos(angle), .109, .96 * sin(angle)) for angle in outer]]
+        from_faces([blender(point) for point in points], [tuple(reversed(range(len(points))))], colors[i % len(colors)])
+    loft(((.109, .23), (.133, .23), (.16, .18)), "D1C4CC", 24)
+
+
+def champions_arena():
+    loft(((0, 1.02), (.16, 1.04), (.21, 1.04)), "E4D9DF", 36)
+    loft(((.21, .66), (.24, .66)), "92AB46", 36)
+    for i in range(12):
+        angle = i * tau / 12
+        at = cos(angle) * .83, sin(angle) * .83
+        tier = .66 if i in (4, 5, 6, 7, 8) else .46
+        wall = block((at[0], (tier + .15) / 2, at[1]), (.45, tier - .11, .30), PAPER, .036, 2)
+        trim = block((at[0], tier, at[1]), (.42, .115, .31), "AC7194" if tier > .5 else "C5B9C7", .04, 2)
+        wall.rotation_euler.z = trim.rotation_euler.z = pi / 2 - angle
+
+
 def build_scene():
     bpy.ops.wm.read_factory_settings(use_empty=True)
     builders = (
@@ -307,6 +330,8 @@ def build_scene():
         seating, tunnel, dugout, goal, lights, trophy, soccer_ball,
         lambda: club_stadium(False), lambda: club_stadium(True),
         lambda: hair("curls"), lambda: hair("sweep"), lambda: hair("cap"), club_crest,
+        lambda: block((0, 0, 0), (1, 1, 1), radius=.13, segments=5),
+        chance_wheel, champions_arena,
     )
     objects = []
     for name, build in zip(NAMES, builders):

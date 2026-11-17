@@ -1,5 +1,7 @@
 # World Draft visual kit
 
+- **studio-table-v0120.png**, **studio-property-v0120.png** — кадры быстрого стола из Studio. В стадионном файле Blender добавлены кубик, колесо «Шанс» и арена чемпионата.
+
 - **studio-board-v0110.png**, **studio-strike-v0110.png**, **studio-goal-v0110.png** — кадры доски и повтора из одного прогона Studio для Continental Cup v0.11.0.
 - **stadium-kit.blend**, **pawn-shapes.blend**, **pawn-motion.blend** — редактируемые исходники стадиона, фигурок и анимаций. [Порядок экспорта](../docs/ART_DIRECTION.md).
 

@@ -1,6 +1,6 @@
 --!strict
 local shared = game:GetService("ReplicatedStorage"):WaitForChild("League")
-local Board = require(shared.Board)
+local Board = require(shared.TourBoard)
 local Art = require(shared.Presentation)
 local Meshes = require(script.Parent.MeshLibrary)
 local Motion = require(script.Parent.PawnMotionData)

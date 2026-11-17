@@ -9,6 +9,7 @@ test:
 	"$(PYTHON)" scripts/event_studio.py check
 	"$(COMPILE)" --null src tests analytics
 	"$(ANALYZE)" src/shared/Board.luau src/shared/EventCards.luau src/shared/Experiment.luau src/shared/Rules.luau tests/match.test.luau tests/balance.test.luau analytics/simulate.luau
+	"$(LUAU)" tests/tour.test.luau
 	"$(LUAU)" tests/match.test.luau
 	"$(LUAU)" tests/balance.test.luau
 	"$(PYTHON)" tests/analytics_test.py

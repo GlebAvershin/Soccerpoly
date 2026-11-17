@@ -1,6 +1,6 @@
 local studio = game:GetService("StudioTestService")
 local mode = studio:GetTestArgs()
-local expected = ({WorldDraftSmoke = 1, WorldDraftDuo = 2, WorldDraftSix = 6})[mode]
+local expected = ({WorldDraftSmoke = 1, WorldDraftDuo = 2, WorldDraftFour = 4})[mode]
 assert(expected)
 local net = game:GetService("ReplicatedStorage"):WaitForChild("WorldDraft")
 local players = game:GetService("Players")
@@ -8,7 +8,7 @@ local report = Instance.new("RemoteEvent")
 report.Name = "StudioReport"
 report:SetAttribute("ReadyCount", 0)
 report.Parent = net
-task.delay(if expected == 6 then 180 else 75, function() studio:EndTest("TIMEOUT") end)
+task.delay(if expected == 4 then 180 else 75, function() studio:EndTest("TIMEOUT") end)
 local checks, ready = {}, {}
 local metrics = ""
 report.OnServerEvent:Connect(function(player, status)

@@ -9,21 +9,25 @@ type Board = {
 	read tradeRates: {number},
 	read startCash: number, read kickoffCash: number, read upgradeCost: number, read upgradeGate: number,
 	read maxLevel: number, read leagueValue: number, read benchFee: number,
+	read tour: boolean?, read benchTile: number?,
 }
 type Card = {read id: string, read kind: string, read title: string, read amount: number, read body: string, read ru: string, read ruBody: string}
 type Shot = {read result: string, read cash: number, read weight: number}
 type Edition = {read cards: {Card}, read shots: {Shot}, read safe_cash: number, read trophy_value: number}
 export type Entry = {id: number, name: string, figure: number, bot: boolean?}
-export type Seat = {id: number, name: string, figure: number, bot: boolean, cash: number, position: number, trophies: number, benched: boolean, ability: "ready" | "armed" | "spent"}
-export type Club = {owner: number, level: number}
+export type Seat = {id: number, name: string, figure: number, bot: boolean, cash: number, position: number, trophies: number, benched: boolean, ability: "ready" | "armed" | "spent",
+	bankrupt: boolean?, benchAttempts: number?, touring: boolean?}
+export type Club = {owner: number, level: number, shield: boolean?}
 export type Story = {kind: string, title: string, who: number, tile: number, amount: number, card: number, crossed: boolean, other: number?, otherTile: number?, power: string?}
-export type Motion = {serial: number, who: number, from: number, steps: number}
+export type Motion = {serial: number, who: number, from: number, steps: number, warp: boolean?}
 export type Standing = {id: number, score: number}
 export type Auction = {tile: number, replies: {[number]: number}}
 export type Trade = {seller: number, buyer: number, offered: number, requested: number, price: number}
 export type Match = {
 	seats: {Seat}, clubs: {Club}, active: number, round: number, phase: string, short: number, long: number,
 	last: Story, motion: Motion, standings: {Standing}, decks: {[string]: {number}}, auction: Auction?, soldThisTurn: boolean, trade: Trade?, tradeUsed: boolean,
+	diceA: number?, diceB: number?, rollSerial: number?, doubles: number?, reroll: boolean?, festival: number?, winner: number?,
+	finishReason: string?, debt: {amount: number, owner: number, tile: number, rebuy: boolean}?,
 }
 
 local function withBoard(board: Board, edition: Edition)
@@ -79,8 +83,12 @@ local function withBoard(board: Board, edition: Edition)
 	function Rules.gate(s: Match, index: number): number
 		local tile, club = board.tiles[index], s.clubs[index]
 		if tile.price == 0 or club.owner == 0 then return 0 end
-		if tile.league == 0 then return tile.gate * ownedCount(s, club.owner, tile) end
-		return (tile.gate + club.level * board.upgradeGate) * (if setComplete(s, club.owner, tile.league) then 2 else 1)
+		if tile.league == 0 then
+			local count = ownedCount(s, club.owner, tile)
+			return tile.gate * (if board.tour then 2 ^ (count - 1) else count)
+		end
+		local value = (tile.gate + club.level * board.upgradeGate) * (if setComplete(s, club.owner, tile.league) then 2 else 1)
+		return value * (if s.festival == index then 2 else 1)
 	end
 
 	function Rules.score(s: Match, id: number): number
@@ -109,7 +117,58 @@ local function withBoard(board: Board, edition: Edition)
 	end
 
 	local function makeRoutes(s: Match, rng: RNG)
+		if board.tour then return end
 		s.short, s.long = rng(1, 3), rng(4, 6)
+	end
+
+	function Rules.finish(s: Match, winner: number?, reason: string)
+		if s.phase == "final" then return end
+		s.phase, s.winner, s.finishReason = "final", winner, reason
+		s.auction, s.trade, s.debt = nil, nil, nil
+		for _, seat in s.seats do table.insert(s.standings, {id = seat.id, score = Rules.score(s, seat.id)}) end
+		table.sort(s.standings, function(a: Standing, b: Standing)
+			if a.id == b.id then return false end
+			if winner == a.id then return true end
+			if winner == b.id then return false end
+			if a.score == b.score then return a.id < b.id end
+			return a.score > b.score
+		end)
+	end
+
+	local function checkVictory(s: Match): boolean
+		local survivors = 0
+		local last = 0
+		for _, player in s.seats do
+			if player.bankrupt then continue end
+			survivors += 1
+			last = player.id
+			local leagues = 0
+			for league in board.members do
+				if setComplete(s, player.id, league) then leagues += 1 end
+			end
+			local reason = if leagues >= 3 then "triple" else nil
+			if not reason and ownedCount(s, player.id, board.tiles[board.assetGroups.venue[1]]) == #board.assetGroups.venue then
+				reason = "venues"
+			end
+			if not reason then
+				for edge = 0, 3 do
+					local complete = true
+					for index = edge * 8 + 2, edge * 8 + 8 do
+						if board.tiles[index].price > 0 and s.clubs[index].owner ~= player.id then
+							complete = false
+							break
+						end
+					end
+					if complete then
+						reason = "line"
+						break
+					end
+				end
+			end
+			if reason then Rules.finish(s, player.id, reason); return true end
+		end
+		if survivors == 1 then Rules.finish(s, last, "bankruptcy"); return true end
+		return false
 	end
 
 	function Rules.new(entries: {Entry}, rng: RNG): Match
@@ -133,14 +192,27 @@ local function withBoard(board: Board, edition: Edition)
 	end
 
 	local function advance(s: Match, rng: RNG)
+		if board.tour then
+			if checkVictory(s) then return end
+			local active = s.seats[s.active]
+			if s.reroll and not active.bankrupt and not active.benched and not active.touring then
+				s.reroll = false
+				s.phase = "move"
+				return
+			end
+			s.doubles, s.reroll = 0, false
+			repeat
+				s.active = s.active % #s.seats + 1
+				if s.active == 1 then s.round += 1 end
+			until not s.seats[s.active].bankrupt
+			local nextSeat = s.seats[s.active]
+			s.phase = if nextSeat.benched then "bench" elseif nextSeat.touring then "tour" else "move"
+			s.soldThisTurn, s.tradeUsed = false, false
+			return
+		end
 		if s.active == #s.seats then
 			if s.round == board.rounds then
-				s.phase = "final"
-				for _, seat in s.seats do table.insert(s.standings, {id = seat.id, score = Rules.score(s, seat.id)}) end
-				table.sort(s.standings, function(a: Standing, b: Standing)
-					if a.score == b.score then return a.id < b.id end
-					return a.score > b.score
-				end)
+				Rules.finish(s, nil, "rounds")
 				return
 			end
 			s.round += 1
@@ -160,7 +232,7 @@ local function withBoard(board: Board, edition: Edition)
 	local function openAuction(s: Match, index: number, crossed: boolean): boolean
 		local minimum = Rules.auctionMinimum(index)
 		for _, seat in s.seats do
-			if seat.cash >= minimum then
+			if not seat.bankrupt and seat.cash >= minimum then
 				s.auction = {tile = index, replies = {}}
 				s.phase = "auction"
 				s.last = story("auction", board.tiles[index].name, s.seats[s.active].id, index, 0, 0, crossed)
@@ -176,7 +248,7 @@ local function withBoard(board: Board, edition: Edition)
 		if choice ~= 0 and choice ~= 1 and choice ~= 2 then return false end
 		local minimum = Rules.auctionMinimum(auction.tile)
 		for _, seat in s.seats do
-			if seat.id == id and seat.cash >= minimum then
+			if seat.id == id and not seat.bankrupt and seat.cash >= minimum then
 				local amount = if choice == 0 then 0 elseif choice == 1 then minimum else board.tiles[auction.tile].price
 				if amount > seat.cash then return false end
 				auction.replies[id] = amount
@@ -191,7 +263,7 @@ local function withBoard(board: Board, edition: Edition)
 		if not auction then return false end
 		local minimum = Rules.auctionMinimum(auction.tile)
 		for _, seat in s.seats do
-			if seat.cash >= minimum and auction.replies[seat.id] == nil then return false end
+			if not seat.bankrupt and seat.cash >= minimum and auction.replies[seat.id] == nil then return false end
 		end
 		return true
 	end
@@ -203,7 +275,7 @@ local function withBoard(board: Board, edition: Edition)
 		local tile = board.tiles[auction.tile]
 		local minimum = Rules.auctionMinimum(auction.tile)
 		for _, seat in s.seats do
-			if seat.bot and seat.cash >= minimum and auction.replies[seat.id] == nil then
+			if seat.bot and not seat.bankrupt and seat.cash >= minimum and auction.replies[seat.id] == nil then
 				local partners = ownedCount(s, seat.id, tile)
 				local choice = if partners == #group(tile) - 1 and seat.cash >= tile.price then 2
 					elseif partners >= 1 or (s.round <= board.rounds - 2 and seat.cash >= minimum + 130) then 1 else 0
@@ -234,7 +306,7 @@ local function withBoard(board: Board, edition: Edition)
 		for offset = 1, #s.seats do
 			local seat = s.seats[(s.active - 1 + offset) % #s.seats + 1]
 			local bid = auction.replies[seat.id] or 0
-			if bid > price and bid <= seat.cash then
+			if not seat.bankrupt and bid > price and bid <= seat.cash then
 				winner, price = seat, bid
 			end
 		end
@@ -280,7 +352,7 @@ local function withBoard(board: Board, edition: Edition)
 
 	function Rules.proposeTrade(s: Match, id: number, buyerId: number, offered: number, requested: number, option: number): boolean
 		local buyer = participant(s, buyerId)
-		if s.phase ~= "move" or s.seats[s.active].id ~= id or s.tradeUsed or not buyer or buyerId == id
+		if s.phase ~= "move" or s.seats[s.active].id ~= id or s.tradeUsed or not buyer or buyer.bankrupt or buyerId == id
 			or not Rules.canTransfer(s, id, offered) then return false end
 		local price = 0
 		if requested == 0 then
@@ -309,8 +381,10 @@ local function withBoard(board: Board, edition: Edition)
 			return true
 		end
 		s.clubs[trade.offered].owner = id
+		s.clubs[trade.offered].shield = nil
 		if trade.requested ~= 0 then
 			s.clubs[trade.requested].owner = seller.id
+			s.clubs[trade.requested].shield = nil
 		end
 		seller.cash += trade.price
 		buyer.cash -= trade.price
@@ -346,12 +420,230 @@ local function withBoard(board: Board, edition: Edition)
 	local function canUpgrade(s: Match, seat: Seat, index: number): boolean
 		local club = s.clubs[index]
 		return board.tiles[index].league > 0 and club.owner == seat.id and club.level < board.maxLevel and seat.cash >= Rules.upgradePrice(seat)
-			and (club.level == 0 or setComplete(s, seat.id, board.tiles[index].league))
+			and (board.tour or club.level == 0 or setComplete(s, seat.id, board.tiles[index].league))
+	end
+
+	function Rules.rebuyPrice(s: Match, index: number): number
+		return 2 * (board.tiles[index].price + s.clubs[index].level * board.upgradeCost)
+	end
+
+	function Rules.buildPrice(s: Match, index: number, level: number): number
+		local holding = s.clubs[index]
+		return (if holding.owner == 0 then board.tiles[index].price else 0)
+			+ math.max(0, level - holding.level) * board.upgradeCost
+	end
+
+	function Rules.tourRentAt(s: Match, index: number, level: number): number
+		local tile = board.tiles[index]
+		if tile.league == 0 then return tile.gate end
+		local holding = s.clubs[index]
+		local fee = (tile.gate + level * board.upgradeGate) * (if setComplete(s, holding.owner, tile.league) then 2 else 1)
+		return fee * (if s.festival == index then 2 else 1)
+	end
+
+	local function settleBill(s: Match, seat: Seat, amount: number, owner: number, index: number, rebuy: boolean, rng: RNG)
+		if seat.cash < amount then
+			s.phase, s.debt = "debt", {amount = amount, owner = owner, tile = index, rebuy = rebuy}
+			return
+		end
+		local recipient = participant(s, owner)
+		seat.cash -= amount
+		if recipient then recipient.cash += amount end
+		if rebuy and seat.cash >= Rules.rebuyPrice(s, index) then
+			s.phase = "rebuy"
+		else
+			advance(s, rng)
+		end
+	end
+
+	local function toBench(s: Match, seat: Seat, rng: RNG)
+		local from = seat.position
+		seat.position, seat.benched, seat.benchAttempts = board.benchTile or 25, true, 0
+		s.motion = {serial = s.motion.serial + 1, who = seat.id, from = from, steps = 0, warp = true}
+		s.last = story("sentOff", "Sent to the bench", seat.id, seat.position)
+		s.reroll = false
+		advance(s, rng)
+	end
+
+	local function tourLanding(s: Match, seat: Seat, rng: RNG, index: number, steps: number)
+		local from = seat.position
+		local crossed = from + steps > #board.tiles or (steps == 0 and index < from)
+		if crossed then seat.cash += board.kickoffCash end
+		seat.position = index
+		s.motion = {serial = s.motion.serial + 1, who = seat.id, from = from, steps = steps, warp = steps == 0}
+		local tile, property = board.tiles[index], s.clubs[index]
+		local kind, amount, card = tile.kind, tile.award, 0
+		if tile.price > 0 then
+			s.last = story("visit", tile.name, seat.id, index, 0, 0, crossed)
+			if property.owner == 0 then
+				if seat.cash >= tile.price then
+					s.phase, s.last.kind = "offer", "offer"
+				else
+					advance(s, rng)
+				end
+			elseif property.owner == seat.id then
+				if canUpgrade(s, seat, index) then s.phase, s.last.kind = "upgrade", "invest" else advance(s, rng) end
+			else
+				local gate = Rules.gate(s, index)
+				s.last.kind, s.last.amount = "gate", -gate
+				local available = tile.league > 0 and not property.shield and property.level < board.maxLevel
+					and not setComplete(s, property.owner, tile.league)
+				settleBill(s, seat, gate, property.owner, index, available, rng)
+			end
+			return
+		elseif kind == "bench" then
+			seat.benched, seat.benchAttempts = true, 0
+		elseif kind == "tour" then
+			seat.touring = true
+		elseif kind == "championship" then
+			for i, holding in s.clubs do
+				if holding.owner == seat.id and board.tiles[i].league > 0 then
+					s.phase = "championship"
+					s.last = story(kind, tile.name, seat.id, index, 0, 0, crossed)
+					return
+				end
+			end
+		elseif kind == "chance" then
+			if rng(1, 6) == 6 then
+				for i, holding in s.clubs do
+					if holding.owner == seat.id and board.tiles[i].league > 0 and not holding.shield then
+						s.phase = "shield"
+						s.last = story("shieldDrawn", "Club shield", seat.id, index, 0, 0, crossed)
+						return
+					end
+				end
+			end
+			kind = if rng(1, 2) == 1 then "goalDeck" else "offsideDeck"
+			card = draw(s.decks[kind], families[kind], rng)
+			local entry = edition.cards[card]
+			if entry.kind == "bench" then toBench(s, seat, rng); return end
+			amount = entry.amount
+		end
+		s.last = story(kind, tile.name, seat.id, index, amount, card, crossed)
+		if amount < 0 then settleBill(s, seat, -amount, 0, index, false, rng)
+		else
+			seat.cash += amount
+			advance(s, rng)
+		end
+	end
+
+	local function applyTour(s: Match, seat: Seat, action: string, rng: RNG, index: number?): boolean?
+		if s.phase == "debt" then
+			local debt = s.debt
+			if not debt then return false end
+			if action == "sell" and index and s.clubs[index] and s.clubs[index].owner == seat.id then
+				seat.cash += Rules.sellValue(s, index)
+				s.clubs[index] = {owner = 0, level = 0}
+				if s.festival == index then s.festival = nil end
+				if seat.cash >= debt.amount then
+					s.debt = nil
+					settleBill(s, seat, debt.amount, debt.owner, debt.tile, debt.rebuy, rng)
+				end
+				return true
+			end
+			if action ~= "bankrupt" then return false end
+			for i, holding in s.clubs do
+				if holding.owner == seat.id then
+					s.clubs[i] = {owner = 0, level = 0}
+					if s.festival == i then s.festival = nil end
+				end
+			end
+			local creditor = participant(s, debt.owner)
+			if creditor then creditor.cash += seat.cash end
+			seat.cash, seat.bankrupt, s.debt = 0, true, nil
+			s.last = story("bankrupt", "Bankrupt", seat.id, seat.position)
+			advance(s, rng)
+			return true
+		elseif s.phase == "rebuy" then
+			local club = s.clubs[seat.position]
+			local price = Rules.rebuyPrice(s, seat.position)
+			if action == "rebuy" and seat.cash >= price then
+				local owner = participant(s, club.owner)
+				if not owner or owner.id == seat.id then return false end
+				owner.cash += price
+				seat.cash -= price
+				club.owner = seat.id
+				s.last = story("rebuy", "Club purchased", seat.id, seat.position, -price)
+				s.last.other = owner.id
+			elseif action ~= "skip" then return false end
+			advance(s, rng)
+			return true
+		elseif s.phase == "championship" then
+			if action == "festival" and index and s.clubs[index] and s.clubs[index].owner == seat.id and board.tiles[index].league > 0 then
+				s.festival = index
+				s.last = story("festival", "Championship awarded", seat.id, index)
+			elseif action ~= "skip" then return false end
+			advance(s, rng)
+			return true
+		elseif s.phase == "shield" then
+			if action == "shield" and index and s.clubs[index] and s.clubs[index].owner == seat.id
+				and board.tiles[index].league > 0 and not s.clubs[index].shield then
+				s.clubs[index].shield = true
+				s.last = story("shield", "Club protected", seat.id, index)
+			elseif action ~= "skip" then return false end
+			advance(s, rng)
+			return true
+		elseif s.phase == "tour" then
+			if action ~= "travel" or not index or index % 1 ~= 0 or not board.tiles[index] or index == seat.position then return false end
+			seat.touring = false
+			tourLanding(s, seat, rng, index, 0)
+			return true
+		elseif s.phase == "bench" and action == "release" then
+			if seat.cash < board.benchFee then return false end
+			seat.cash -= board.benchFee
+			seat.benched, seat.benchAttempts, s.phase = false, 0, "move"
+			s.last = story("release", "Back in play", seat.id, seat.position, -board.benchFee)
+			return true
+		elseif action == "roll" and (s.phase == "move" or s.phase == "bench") then
+			s.trade = nil
+			local a, b = rng(1, 6), rng(1, 6)
+			s.diceA, s.diceB = a, b
+			s.rollSerial = (s.rollSerial or 0) + 1
+			if s.phase == "bench" then
+				local attempts = (seat.benchAttempts or 0) + 1
+				seat.benchAttempts = attempts
+				if a ~= b and attempts < 3 then
+					s.last = story("benchWait", "Still on the bench", seat.id, seat.position)
+					advance(s, rng)
+					return true
+				end
+				if a ~= b then seat.cash -= math.min(board.benchFee, seat.cash) end
+				seat.benched, seat.benchAttempts = false, 0
+				s.doubles, s.reroll = 0, false
+			else
+				s.doubles, s.reroll = if a == b then (s.doubles or 0) + 1 else 0, a == b
+				if s.doubles == 3 then toBench(s, seat, rng); return true end
+			end
+			tourLanding(s, seat, rng, Rules.target(seat.position, a + b), a + b)
+			return true
+		end
+		if (s.phase == "offer" and action == "buy") or (s.phase == "upgrade" and action == "upgrade") then
+			local tile, holding = board.tiles[seat.position], s.clubs[seat.position]
+			local buying = s.phase == "offer"
+			local level = index or (if buying then 0 else holding.level + 1)
+			if level % 1 ~= 0 or level < (if buying then 0 else holding.level + 1)
+				or level > (if tile.league == 0 then 0 else board.maxLevel) then return false end
+			if (buying and holding.owner ~= 0) or (not buying and holding.owner ~= seat.id) then return false end
+			local price = Rules.buildPrice(s, seat.position, level)
+			if seat.cash < price then return false end
+			seat.cash -= price
+			holding.owner, holding.level = seat.id, level
+			s.last = story(if not buying then "upgrade" elseif setComplete(s, seat.id, tile.league) then "league" else "buy",
+				tile.name, seat.id, seat.position, -price)
+			advance(s, rng)
+			return true
+		end
+		if action == "short" or action == "long" or action == "ability" then return false end
+		return nil
 	end
 
 	function Rules.apply(s: Match, id: number, action: string, rng: RNG, index: number?): boolean
 		local seat = s.seats[s.active]
 		if seat.id ~= id or s.phase == "final" then return false end
+		if board.tour then
+			local result = applyTour(s, seat, action, rng, index)
+			if result ~= nil then return result end
+		end
 		local current = seat.position
 		if action == "ability" then
 			if s.phase ~= "move" or seat.ability ~= "ready" then return false end
@@ -373,7 +665,10 @@ local function withBoard(board: Board, edition: Edition)
 			local proceeds = if upgradesOnly then math.floor(holding.level * board.upgradeCost / 2) else Rules.sellValue(s, index)
 			seat.cash += proceeds
 			holding.level = 0
-			if not upgradesOnly then holding.owner = 0 end
+			if not upgradesOnly then
+				holding.owner, holding.shield = 0, nil
+				if s.festival == index then s.festival = nil end
+			end
 			s.soldThisTurn = true
 			s.last = story(if upgradesOnly then "soldUpgrades" else "sold", tile.name, id, index, proceeds)
 			return true
@@ -417,7 +712,7 @@ local function withBoard(board: Board, edition: Edition)
 		if s.phase == "offer" or s.phase == "upgrade" then
 			local tile, club = board.tiles[current], s.clubs[current]
 			if action == "skip" then
-				if s.phase == "offer" and openAuction(s, current, s.last.crossed) then return true end
+				if not board.tour and s.phase == "offer" and openAuction(s, current, s.last.crossed) then return true end
 				s.last = story("skip", tile.name, id, current)
 			elseif action == "buy" and s.phase == "offer" and club.owner == 0 and seat.cash >= tile.price then
 				seat.cash -= tile.price
@@ -553,6 +848,54 @@ local function withBoard(board: Board, edition: Edition)
 		end
 
 		return if routeValue(s, seat, s.long) >= routeValue(s, seat, s.short) then "long" else "short"
+	end
+
+	function Rules.tourDecision(s: Match): (string, number?)
+		local seat = s.seats[s.active]
+		if s.phase == "move" or s.phase == "bench" then return "roll", nil end
+		if s.phase == "offer" then return (if seat.bot then "buy" else "skip"), nil end
+		if s.phase == "upgrade" then
+			return (if seat.bot and seat.cash >= Rules.upgradePrice(seat) + 400 then "upgrade" else "skip"), nil
+		end
+		if s.phase == "rebuy" then
+			return (if seat.bot and seat.cash >= Rules.rebuyPrice(s, seat.position) + 500 then "rebuy" else "skip"), nil
+		end
+		if s.phase == "debt" then
+			local cheapest, price = nil, math.huge
+			for index, holding in s.clubs do
+				if holding.owner == seat.id then
+					local sale = Rules.sellValue(s, index)
+					if sale < price then cheapest, price = index, sale end
+				end
+			end
+			return (if cheapest then "sell" else "bankrupt"), cheapest
+		end
+		if s.phase == "championship" then
+			local best, fee = nil, 0
+			for index, holding in s.clubs do
+				if holding.owner == seat.id and board.tiles[index].league > 0 then
+					local rent = Rules.gate(s, index)
+					if rent > fee then best, fee = index, rent end
+				end
+			end
+			return (if best then "festival" else "skip"), best
+		end
+		if s.phase == "shield" then
+			for index, holding in s.clubs do
+				if holding.owner == seat.id and not holding.shield and board.tiles[index].league > 0 then return "shield", index end
+			end
+			return "skip", nil
+		end
+		if s.phase == "tour" then
+			local best, value = 1, 0
+			for index, tile in board.tiles do
+				if tile.price > 0 and s.clubs[index].owner == 0 and tile.price <= seat.cash and tile.gate > value then
+					best, value = index, tile.gate
+				end
+			end
+			return "travel", best
+		end
+		return "skip", nil
 	end
 
 	return table.freeze(Rules)

@@ -84,4 +84,5 @@ Board.upgradeCost = 100
 Board.upgradeGate = 45
 Board.maxLevel = 2
 Board.leagueValue = 160
+Board.tour, Board.benchTile, Board.matchSeconds = false, 0, 0
 return table.freeze(Board)
