@@ -16,7 +16,7 @@ from blender_export import ROOT, blender, export_shapes
 
 NAMES = (
     "table", "enamel", "stand", "tunnel", "dugout", "goal", "lights",
-    "cup", "ball", "academy", "arena", "curls", "sweep", "cap", "crest", "die", "chance", "champions", "tile_case", "tile_enamel", "fade",
+    "cup", "ball", "academy", "arena", "curls", "sweep", "cap", "crest", "die", "chance", "champions", "tile_case", "tile_enamel", "fade", "arena_plinth", "night_stand", "pitch_mark",
 )
 INK, NAVY, SLATE = "23334A", "254671", "3C6BA1"
 TEAL, MINT, GOLD = "2679BB", "76CFE2", "EAB561"
@@ -338,6 +338,53 @@ def champions_arena():
         wall.rotation_euler.z = trim.rotation_euler.z = pi / 2 - angle
 
 
+def octagonal_layer(half, cut, floor, ceiling, color):
+    outline = [(half - cut, half), (-half + cut, half), (-half, half - cut),
+               (-half, -half + cut), (-half + cut, -half), (half - cut, -half),
+               (half, -half + cut), (half, half - cut)]
+    points = [blender((x, y, z)) for y in (floor, ceiling) for x, z in outline]
+    faces = [tuple(range(8)), tuple(reversed(range(8, 16)))]
+    faces.extend((i + 8, (i + 1) % 8 + 8, (i + 1) % 8, i) for i in range(8))
+    bevel(from_faces(points, faces, color), .16, 2)
+
+
+def arena_plinth():
+    octagonal_layer(70, 10.5, 0, .54, "171624")
+    octagonal_layer(72, 12.5, .54, 2.76, "262441")
+    octagonal_layer(72.15, 12.7, 2.76, 3.03, "ACF24B")
+    octagonal_layer(71.75, 12.3, 3.03, 3.83, "403F62")
+    octagonal_layer(70.8, 10.1, 3.83, 4.12, "171A2B")
+
+
+def night_stand():
+    block((0, .35, 0), (20, .70, 6.8), "22223A", .15, 2)
+    for row in range(4):
+        y, z = .91 + row * .55, -2.48 + row * 1.37
+        block((0, y * .5, z), (19.6, y, 1.40), "3C385E", .06)
+        for seat in range(-5, 6):
+            tint = "8571BD" if (seat - row * 2) % 7 in (0, 1) else "56527B"
+            block((seat * 1.62, y + .09, z), (1.29, .16, .73), tint, .055)
+            block((seat * 1.62, y + .27, z + .34), (1.29, .43, .16), tint, .05)
+    for x in (-8.7, 8.7):
+        pipe((x, 1.8, 2.6), (x, 4.75, 2.6), .13, "6A6688")
+        pipe((x, 3.4, 2.6), (x, 4.46, -2.3), .085, "6A6688")
+    canopy = block((0, 4.59, .18), (20.5, .36, 5.5), "2C2847", .15, 2)
+    canopy.rotation_euler.x = radians(7)
+    block((0, 4.22, -2.58), (19.3, .13, .14), "B8F76C", .04)
+
+
+def pitch_mark():
+    # A split-F pitch stencil made from flat parallelograms.
+    for x, z, width, depth in ((-1.33, 0, .62, 3.5), (-.02, 1.43, 2.62, .62), (-.34, .06, 1.91, .58),
+                              (1.47, 1.43, .36, .62)):
+        points = [blender((x + dx * width * .5 + dz * depth * .20, .05, z + dz * depth * .5))
+                  for dx, dz in ((-1, -1), (-1, 1), (1, 1), (1, -1))]
+        from_faces(points, [(0, 1, 2, 3)], None)
+    # Give normalized export a shallow thickness while keeping it a field decal.
+    block((-1.33, 0, 0), (.28, .09, .28))
+
+
+
 def build_scene():
     bpy.ops.wm.read_factory_settings(use_empty=True)
     builders = (
@@ -349,7 +396,7 @@ def build_scene():
         chance_wheel, champions_arena,
         lambda: block((0, 0, 0), (12, .60, 14), radius=.27, segments=4),
         lambda: block((0, 0, 0), (12, .32, 14), radius=.145, segments=4),
-        lambda: hair("fade"),
+        lambda: hair("fade"), arena_plinth, night_stand, pitch_mark,
     )
     objects = []
     for name, build in zip(NAMES, builders):

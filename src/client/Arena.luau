@@ -104,9 +104,15 @@ end
 
 function Arena.new(myId: number, root: Frame, translate: (string) -> string, playSound: (string) -> ())
 	local labels = BoardLabels(root, translate)
+	local ribbonText: TextLabel? = nil
+	local ribbonVersion = 0
 	task.defer(function()
 		local stage = workspace:WaitForChild("WorldDraftArena", 12)
-		if stage then Meshes.decorate(stage) end
+		if not stage then return end
+		Meshes.decorate(stage)
+		local ribbon = stage:FindFirstChild("Live stadium ribbon", true)
+		local message = ribbon and ribbon:FindFirstChild("Message", true)
+		if message and message:IsA("TextLabel") then ribbonText = message end
 	end)
 	local localParts = Instance.new("Folder")
 	localParts.Name, localParts.Parent = "LocalTablePieces", workspace
@@ -150,20 +156,21 @@ function Arena.new(myId: number, root: Frame, translate: (string) -> string, pla
 	local function layout(camera: Camera)
 		local size = camera.ViewportSize
 		local aspect = size.X / size.Y
-		local fov = 7.5
-		local tangent = math.tan(math.rad(fov) / 2)
-		local width = math.min(.915, .731 * (16 / 9) / aspect)
-		local angle = math.rad(33.2)
-		local orbit = Vector3.new(math.sin(Art.boardYaw) * math.cos(angle), math.sin(angle),
-			math.cos(Art.boardYaw) * math.cos(angle))
-		local distance = Geometry.width * math.sqrt(2) / (2 * tangent * aspect * width)
+		local fov = Art.boardFov
+		local tangent = math.tan(math.rad(fov) * .5)
+		local angle = math.rad(50)
+		local orbit = Art.boardNear * math.cos(angle) + Vector3.yAxis * math.sin(angle)
+		local span = Geometry.width * (Art.boardNear.X + Art.boardNear.Z)
+		local width = if aspect < .85 then .83 else .85
+		local height = if size.Y < 550 then .57 else .655
+		local distance = math.max(span / (2 * tangent * aspect * width), span * math.sin(angle) / (2 * tangent * height))
 		local base = CFrame.lookAt(orbit * distance, Vector3.zero)
 		local half = Geometry.width * .5
 		local near = base:PointToObjectSpace(Vector3.new(half, Art.tileTop, half))
 		local far = base:PointToObjectSpace(Vector3.new(-half, Art.tileTop, -half))
-		local middle = (near.Y / -near.Z + far.Y / -far.Z) * .5
-		local targetY = if aspect < .85 then .06 else -.035
-		cameraTarget = base * CFrame.new(0, (middle - targetY * tangent) * distance, 0)
+		local centerY = (near.Y / -near.Z + far.Y / -far.Z) * .5
+		local targetY = if aspect < .85 then .05 else -.068
+		cameraTarget = base * CFrame.new(0, (centerY - targetY * tangent) * distance, 0)
 		projected = nil
 		oldSize, oldRoot, camera.FieldOfView = size, root.AbsoluteSize, fov
 	end
@@ -317,7 +324,7 @@ function Arena.new(myId: number, root: Frame, translate: (string) -> string, pla
 		if frame then
 			camera.CFrame = frame
 		else
-			camera.CFrame, camera.Focus, camera.FieldOfView = cameraTarget :: CFrame, CFrame.identity, 7.5
+			camera.CFrame, camera.Focus, camera.FieldOfView = cameraTarget :: CFrame, CFrame.identity, Art.boardFov
 			if projected ~= camera.CFrame then
 				labels.project(camera)
 				projected = camera.CFrame
@@ -416,6 +423,18 @@ function Arena.new(myId: number, root: Frame, translate: (string) -> string, pla
 
 	return {
 		sync = sync,
+		stadiumMessage = function(title: string, tint: Color3)
+			local textLabel = ribbonText
+			if not textLabel then return end
+			ribbonVersion += 1
+			local revision = ribbonVersion
+			textLabel.Text, textLabel.TextColor3 = title, tint
+			task.delay(1.65, function()
+				if ribbonVersion == revision and textLabel.Parent then
+					textLabel.Text, textLabel.TextColor3 = "FOOTBOLAPOLIA", Art.mint
+				end
+			end)
+		end,
 		relocalize = function()
 			labels.translate()
 		end,

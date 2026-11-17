@@ -46,7 +46,7 @@ return function(root: Frame, translate: (string) -> string)
 		local holding = Instance.new("UICorner")
 		holding.CornerRadius, holding.Parent = UDim.new(0, 3), price
 		prints[index] = {
-			name = text(tile, "Club name", Art.ink, 23, Enum.Font.BuilderSansExtraBold),
+			name = text(tile, "Club name", Art.paper, 23, Enum.Font.BuilderSansExtraBold),
 			value = price, league = text(tile, "League mark", Art.paper, 11, Enum.Font.BuilderSansBold), stripe = stripe,
 			transform = CFrame.new(cell.X, Art.tileTop + .09, cell.Z) * CFrame.Angles(0, Geometry.tileYaw(index), 0),
 			width = dimensions.X, depth = dimensions.Y,
@@ -63,7 +63,9 @@ return function(root: Frame, translate: (string) -> string)
 			entry.name.Text = if compact then tile.code elseif translated == tile.name then shortTitles[tile.name] or translated else translated
 			entry.value.Text = if value > 0 then tostring(value) .. (if compact then "" else " CR") else ""
 			entry.value.BackgroundTransparency = if value > 0 then 0 else 1
-			entry.value.BackgroundColor3 = Art.accent(tile.kind, tile.league):Lerp(Art.paper, .72)
+			local accent = Art.accent(tile.kind, tile.league)
+			entry.name.TextColor3 = if tile.price == 0 then accent else Art.paper
+			entry.value.BackgroundColor3 = accent:Lerp(Art.paper, .24)
 			entry.league.Text = if not compact and tile.league > 0 then Board.leagues[tile.league].code else ""
 			entry.stripe.Visible = owner ~= 0
 			if owner ~= 0 then

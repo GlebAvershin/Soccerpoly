@@ -6,7 +6,8 @@ local Art = require(shared.Presentation)
 local Meshes = require(script.Parent.MeshLibrary)
 local UI = require(script.Parent.Components)
 local C = Color3.fromHex
-local PAPER, INK, BLUE = Art.paper, Art.ink, C("1795C8")
+local colors = UI.color
+local INK = Art.ink
 local CENTER = Enum.TextXAlignment.Center
 local BOLD = Enum.Font.BuilderSansExtraBold
 
@@ -24,19 +25,13 @@ end
 
 local Card = {}
 
-function Card.button(parent: Instance, name: string, label: string, press: () -> ()): TextButton
-	local button = UI.button(parent, name, label, 44, press, Color3.new(1, 1, 1), Color3.new(1, 1, 1))
-	button.Rotation, button.Font, button.TextSize = 0, BOLD, 15
-	button.TextStrokeColor3, button.TextStrokeTransparency = C("155C8A"), .72
-	for _, child in button:GetChildren() do
-		if child:IsA("UIStroke") or child:IsA("UICorner") then child:Destroy() end
-	end
-	UI.round(button, 23)
-	UI.stroke(button, Color3.new(1, 1, 1), 2.5)
-	gradient(button, C("54C7FA"), C("138DCB"))
-	button.TextTransparency, button.TextStrokeTransparency = 1, 1
-	local caption = text(button, label, 44, 0, 15, Color3.new(1, 1, 1))
-	caption.Font, caption.Position, caption.Size = BOLD, UDim2.fromOffset(3, 0), UDim2.new(1, -6, 1, 0)
+function Card.button(parent: Instance, name: string, label: string, press: () -> (), primary: boolean?): TextButton
+	local button = UI.button(parent, name, label, 44, press,
+		if primary then colors.mint else colors.surface, if primary then INK else colors.text)
+	-- Side controls and ticket actions share the same stadium-signage geometry.
+	local corner = button:FindFirstChildOfClass("UICorner")
+	if corner then corner.CornerRadius = UDim.new(0, 5) end
+	button.TextSize = 15
 	return button
 end
 
@@ -44,8 +39,8 @@ local function illustration(parent: Instance, index: number, level: number)
 	local tile = Board.tiles[index]
 	local backing = UI.box(parent, "Illustration", Color3.new(1, 1, 1))
 	backing.Position, backing.Size = UDim2.fromOffset(12, 39), UDim2.new(1, -24, 0, 127)
-	gradient(backing, C("C5E4E9"), C("FFFDF6"))
-	UI.stroke(backing, C("C4B7A9"))
+	gradient(backing, C("46466D"), C("211F37"))
+	UI.stroke(backing, colors.outline)
 	local view = Instance.new("ViewportFrame")
 	view.Name, view.BackgroundTransparency, view.Size = "ClubMiniature", 1, UDim2.fromScale(1, 1)
 	view.Ambient, view.LightColor, view.LightDirection = C("BBC8B5"), C("FFF3DC"), Vector3.new(-3, -5, -2)
@@ -91,7 +86,7 @@ export type Details = {
 }
 
 function Card.new(root: Frame)
-	local shade = UI.button(root, "PropertyBackdrop", "", 1, nil, C("12334D"))
+	local shade = UI.button(root, "PropertyBackdrop", "", 1, nil, colors.background)
 	shade.BorderSizePixel, shade.BackgroundTransparency, shade.AutoButtonColor = 0, .28, false
 	shade.Active, shade.Modal, shade.Visible, shade.ZIndex = true, true, false, 12
 	local top = GuiService:GetGuiInset().Y
@@ -102,54 +97,60 @@ function Card.new(root: Frame)
 	wrapper.Size = UDim2.new(.90, 0, 0, 284)
 	local limit = Instance.new("UISizeConstraint")
 	limit.MaxSize, limit.Parent = Vector2.new(405, 284), wrapper
+	local scale = Instance.new("UIScale")
+	scale.Parent = wrapper
+	local function fit()
+		scale.Scale = math.min(1, math.max(0, shade.AbsoluteSize.Y - 22) / limit.MaxSize.Y)
+	end
+	shade:GetPropertyChangedSignal("AbsoluteSize"):Connect(fit)
 	return {
 		hide = function() shade.Visible = false end,
 		show = function(info: Details)
-			limit.Parent = nil
+			limit.Parent, scale.Parent = nil, nil
 			wrapper:ClearAllChildren()
 			local options = info.levels
 			local optionsHeight = if options then 26 + #options * 28 else 0
 			local height = 284 + optionsHeight
 			wrapper.Size = UDim2.new(.90, 0, 0, height)
 			limit.MaxSize = Vector2.new(405, height)
-			local back = UI.box(wrapper, "Paper underneath", C("E1D5C4"), 13)
-			back.Position, back.Size, back.Rotation = UDim2.fromOffset(6, 9), UDim2.new(1, -2, 1, -8), -4
-			local paper = UI.box(wrapper, "Front paper", PAPER, 13)
+			local paper = UI.box(wrapper, "Club dossier", colors.panel, 7)
 			paper.Size = UDim2.fromScale(1, 1)
-			UI.stroke(paper, C("D6C9BA"))
+			UI.stroke(paper, colors.outline)
 			local tile = Board.tiles[info.index]
 			local league = Art.accent(tile.kind, tile.league)
-			local header = UI.box(paper, "Title ribbon", league:Lerp(INK, .72))
-			header.Position, header.Size = UDim2.fromOffset(-5, -3), UDim2.new(1, 10, 0, 36)
-			gradient(header, league:Lerp(INK, .62), league:Lerp(INK, .86))
-			local title = text(header, info.title, 36, 0, 20, Color3.new(1, 1, 1))
-			title.Font, title.Size = BOLD, UDim2.new(1, -54, 1, 0)
-			local exit = UI.button(header, "CloseCard", "×", 33, info.close, BLUE, Color3.new(1, 1, 1))
+			local header = UI.box(paper, "Club header", colors.ink, 6)
+			header.Position, header.Size = UDim2.fromOffset(0, 0), UDim2.new(1, 0, 0, 37)
+			local tab = UI.box(header, "League accent", league)
+			tab.Position, tab.Size = UDim2.fromOffset(11, 10), UDim2.fromOffset(4, 17)
+			local title = text(header, info.title, 36, 0, 20, colors.text)
+			title.Font, title.TextXAlignment = BOLD, Enum.TextXAlignment.Left
+			title.Position, title.Size = UDim2.fromOffset(23, 0), UDim2.new(1, -67, 1, 0)
+			local exit = UI.button(header, "CloseCard", "×", 33, info.close, colors.ink, colors.text)
 			exit.BackgroundTransparency, exit.TextSize = 1, 25
 			exit.Position, exit.Size = UDim2.new(1, -39, 0, 0), UDim2.fromOffset(39, 33)
 			for _, child in exit:GetChildren() do if child:IsA("UIStroke") then child:Destroy() end end
 			illustration(paper, info.index, info.level)
-			local summary = text(paper, info.summary, 30, 169, 14, INK)
+			local summary = text(paper, info.summary, 30, 169, 14, colors.text)
 			summary.Font = Enum.Font.BuilderSansBold
 			if options then
-				local function row(y: number, cells: {string}, fill: Color3, bold: boolean)
+				local function row(y: number, cells: {string}, fill: Color3, heading: boolean, selected: boolean?)
 					local columns = UI.box(paper, "Prices", fill)
 					columns.Position, columns.Size = UDim2.fromOffset(13, y), UDim2.new(1, -26, 0, 26)
 					for i, cell in cells do
-						local label = text(columns, cell, 25, 0, 12, INK)
+						local label = text(columns, cell, 25, 0, 12, if selected then colors.ink else colors.text)
 						label.Position, label.Size = UDim2.fromScale((i - 1) / #cells, 0), UDim2.fromScale(1 / #cells, 1)
-						if bold then label.Font = BOLD end
+						if heading or selected then label.Font = BOLD end
 					end
 					return columns
 				end
-				row(200, info.columns or {}, C("E1D5C4"), true)
+				row(200, info.columns or {}, colors.ink, true)
 				for i, item in options do
-					local fill = if item.highlighted then C("CCE7CC") elseif i % 2 == 0 then C("E7DEC9") else C("F0EBE1")
-					local columns = row(226 + (i - 1) * 28, item.cells, fill, item.highlighted == true)
+					local fill = if item.highlighted then colors.mint elseif i % 2 == 0 then colors.surface else colors.ink
+					local columns = row(226 + (i - 1) * 28, item.cells, fill, false, item.highlighted)
 					if item.press then
 						local button = UI.button(columns, "ChooseLevel" .. i, "", 26, item.press, fill)
 						button.BackgroundTransparency, button.Size = 1, UDim2.fromScale(1, 1)
-						for _, child in button:GetChildren() do if child:IsA("UIStroke") then child.Color = BLUE end end
+						for _, child in button:GetChildren() do if child:IsA("UIStroke") then child.Color = colors.outline end end
 					end
 				end
 			end
@@ -157,12 +158,13 @@ function Card.new(root: Frame)
 			close.Position, close.Size = UDim2.new(if info.action then 0 else .23, 15, 0, 207 + optionsHeight),
 				UDim2.new(if info.action then .40 else .48, -23, 0, 39)
 			if info.action and info.actionName and info.actionLabel then
-				local accept = Card.button(paper, info.actionName, info.actionLabel, info.action)
+				local accept = Card.button(paper, info.actionName, info.actionLabel, info.action, true)
 				accept.Position, accept.Size = UDim2.new(.40, 8, 0, 207 + optionsHeight), UDim2.new(.60, -23, 0, 39)
 			end
-			text(paper, info.footer, 26, 251 + optionsHeight, 13, INK)
-			limit.Parent = wrapper
+			text(paper, info.footer, 26, 251 + optionsHeight, 13, colors.muted)
+			limit.Parent, scale.Parent = wrapper, wrapper
 			shade.Visible = true
+			fit()
 		end,
 	}
 end

@@ -2,9 +2,9 @@
 local UI = {}
 local function c(hex: string): Color3 return Color3.fromHex(hex) end
 UI.color = table.freeze({
-	background = c("21385D"), panel = c("203552"), surface = c("2D4C73"), outline = c("7398C1"),
-	text = c("FFF8E9"), muted = c("CDDEF0"), mint = c("AFE98B"), blue = c("ADE6FF"),
-	ink = c("22314A"), gold = c("FFD17A"), pink = c("FFC4B6"), paper = c("FFF6E5"),
+	background = c("131420"), panel = c("191B2C"), surface = c("2D304B"), outline = c("626487"),
+	text = c("F6F6ED"), muted = c("C3C4DB"), mint = c("C4F568"), blue = c("A6DCFA"),
+	ink = c("141522"), gold = c("FFD085"), pink = c("FFAACB"), paper = c("F6F6E9"),
 })
 local colors = UI.color
 

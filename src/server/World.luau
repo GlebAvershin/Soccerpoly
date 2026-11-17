@@ -5,7 +5,6 @@ local Board = require(shared.TourBoard)
 local Geometry = require(shared.Geometry)
 local Art = require(shared.Presentation)
 local C = Color3.fromHex
-local SIZE = Geometry.width
 
 local function folder(parent: Instance, name: string): Folder
 	local node = Instance.new("Folder")
@@ -63,17 +62,16 @@ local function drawTile(tray: Folder, index: number, tile: Board.Tile)
 	mesh(cell, "Molded tile case", "tile_case", Vector3.new(width, .53, depth),
 		pose * CFrame.new(0, -.31, 0), accent:Lerp(Art.ink, .70))
 	local face = mesh(cell, "Porcelain face", "tile_enamel", Vector3.new(width - .15, .26, depth - .15),
-		pose * CFrame.new(0, -.10, 0), Art.paper)
+		pose * CFrame.new(0, -.10, 0), Art.tile)
 	face.CastShadow = false
 	local insetDepth = if isCorner then depth * .66 elseif tile.price > 0 and tile.league > 0 then depth * .23 else depth * .56
 	local insetOffset = -.5 * depth + .5 * insetDepth + .17
-	local insetTint = accent:Lerp(Art.paper, if isCorner then .42 else .66)
-	if tile.league > 0 then insetTint = accent:Lerp(Art.ink, .54) end
+	local insetTint = accent:Lerp(Art.ink, if tile.league > 0 then .60 else .76)
 	mesh(cell, "League enamel inlay", "tile_enamel", Vector3.new(width - .33, .066, insetDepth),
 		pose * CFrame.new(0, .061, insetOffset), insetTint).CastShadow = false
 	if tile.league > 0 then
-		part(cell, "League stripe", Vector3.new(width - .57, .025, .075),
-			pose * CFrame.new(0, .043, insetOffset + insetDepth * .5 + .19), accent:Lerp(Art.paper, .12)).CastShadow = false
+		part(cell, "League stripe", Vector3.new(width - .7, .045, .17),
+			pose * CFrame.new(0, .043, insetOffset + insetDepth * .5 + .19), accent).CastShadow = false
 	end
 	local printLayer = part(cell, "Printed tile", Vector3.new(width, .02, depth), pose * CFrame.new(0, .045, 0), Art.paper)
 	printLayer.CastShadow, printLayer.Transparency = false, 1
@@ -96,18 +94,18 @@ end
 
 local function pitch(stage: Folder)
 	local field = folder(stage, "Continental Cup stadium")
-	plate(field, "Pitch rim", 0, -.07, 0, 90.4, .43, 90.4, C("344B57"))
+	plate(field, "Pitch rim", 0, -.07, 0, 90.4, .43, 90.4, C("23253A"))
 	for _, side in {-1, 1} do
 		for i = -5, 5 do
-			plate(field, "Dashed touchline", i * 8.05, .158, side * 43.55, 4.8, .016, .13, C("E0BD7B")).CastShadow = false
-			plate(field, "Dashed touchline", side * 43.55, .158, i * 8.05, .13, .016, 4.8, C("E0BD7B")).CastShadow = false
+			plate(field, "Dashed touchline", i * 8.05, .158, side * 43.55, 4.8, .016, .13, C("A9E464")).CastShadow = false
+			plate(field, "Dashed touchline", side * 43.55, .158, i * 8.05, .13, .016, 4.8, C("A9E464")).CastShadow = false
 		end
 	end
 	for strip = 0, 5 do
 		plate(field, "Grass strip", 0, .205, (strip - 2.5) * 14, 84, .16, 14,
-			if strip % 2 == 0 then C("699C61") else C("608F56")).CastShadow = false
+			if strip % 2 == 0 then C("417959") else C("34694E")).CastShadow = false
 	end
-	local line = C("D5EAC1")
+	local line = C("C9E2CB")
 	plate(field, "Halfway line", 0, .298, 0, .42, .029, 65, line).CastShadow = false
 	for _, side in {-1, 1} do
 		plate(field, "Sideline", 0, .30, side * 32.5, 75, .028, .38, line).CastShadow = false
@@ -122,58 +120,76 @@ local function pitch(stage: Folder)
 		part(field, "Center circle", Vector3.new(1.4, .035, .30),
 			CFrame.new(math.sin(angle) * 7.8, .31, math.cos(angle) * 7.8) * CFrame.Angles(0, angle, 0), line).CastShadow = false
 	end
+	local mark = mesh(field, "Footbolapolia field stencil", "pitch_mark", Vector3.new(8, .027, 8),
+		CFrame.new(0, .332, 0) * CFrame.Angles(0, math.rad(17), 0), C("B2D28F"))
+	mark.CastShadow = false
+end
+
+local function ribbon(parent: Folder, name: string, pose: CFrame, width: number)
+	local board = part(parent, name, Vector3.new(width, 2.08, .15), pose, C("181B2B"))
+	local surface = Instance.new("SurfaceGui")
+	surface.Face, surface.LightInfluence, surface.CanvasSize = Enum.NormalId.Back, 0, Vector2.new(640, 56)
+	surface.SizingMode, surface.Parent = Enum.SurfaceGuiSizingMode.FixedSize, board
+	local word = Instance.new("TextLabel")
+	word.Name = "Message"
+	word.Text, word.Font, word.TextScaled = "FOOTBOLAPOLIA", Enum.Font.BuilderSansExtraBold, true
+	word.TextColor3, word.BackgroundTransparency = Art.mint, 1
+	word.Size, word.Parent = UDim2.fromScale(1, 1), surface
 end
 
 local function surroundings(stage: Folder)
 	local scene = folder(stage, "Arena surroundings")
-	local back = plate(scene, "Sky backdrop", 0, -14, 0, 1900, .35, 1900, C("324F67"))
+	local back = plate(scene, "Night backdrop", 0, -8.5, 0, 2048, .35, 2048, C("191824"))
 	back.CastShadow = false
-	local surf = Instance.new("SurfaceGui")
-	surf.Face, surf.CanvasSize = Enum.NormalId.Top, Vector2.new(1024, 1024)
-	surf.SizingMode, surf.LightInfluence, surf.MaxDistance = Enum.SurfaceGuiSizingMode.FixedSize, 0, 5000
-	surf.Parent = back
+	local surface = Instance.new("SurfaceGui")
+	surface.Face, surface.CanvasSize = Enum.NormalId.Top, Vector2.new(1024, 1024)
+	surface.SizingMode, surface.LightInfluence, surface.MaxDistance = Enum.SurfaceGuiSizingMode.FixedSize, 0, 5000
+	surface.Parent = back
 	local fill = Instance.new("Frame")
 	fill.Size, fill.BorderSizePixel, fill.BackgroundColor3 = UDim2.fromScale(1, 1), 0, Color3.new(1, 1, 1)
-	fill.Parent = surf
-	local grad = Instance.new("UIGradient")
-	grad.Rotation = 135
-	grad.Color = ColorSequence.new({
-		ColorSequenceKeypoint.new(0, C("24394C")),
-		ColorSequenceKeypoint.new(.42, C("24394C")),
-		ColorSequenceKeypoint.new(.58, C("527286")),
-		ColorSequenceKeypoint.new(1, C("527286")),
+	fill.Parent = surface
+	local gradient = Instance.new("UIGradient")
+	gradient.Rotation = 25
+	gradient.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, C("121421")),
+		ColorSequenceKeypoint.new(.39, C("1D1C30")),
+		ColorSequenceKeypoint.new(.53, C("302D47")),
+		ColorSequenceKeypoint.new(.68, C("242339")),
+		ColorSequenceKeypoint.new(1, C("141726")),
 	})
-	grad.Parent = fill
-	for _, side in {-1, 1} do
-		for _, other in {-1, 1} do
-			local pose = if side == other then CFrame.new(side * 80, -.85, 0) * CFrame.Angles(0, math.pi / 2, 0)
-				else CFrame.new(0, -.85, other * 80)
-			for col = 1, 5 do
-				local height = if col <= 2 then 5 else if col < 5 then 3 else 1
-				for row = 1, height do
-					local tint = if col <= 2 then C("9CAA65") elseif col < 5 then C("D5DDCA") else C("E8B953")
-					local at = pose * CFrame.new((col - 3) * 5.25, row * .64, 0)
-					part(scene, "Club bank bond", Vector3.new(5.16, .56, 5.91), at, tint)
-					part(scene, "Bond band", Vector3.new(.95, .026, 5.94), at * CFrame.new(0, .285, 0), Art.paper).CastShadow = false
-				end
-			end
-		end
+	gradient.Parent = fill
+	local pad = plate(scene, "Arena ground shadow", 0, -7.65, 0, 159, .18, 159, C("171926"))
+	pad.CastShadow = false
+	pad.Transparency = .25
+
+	for _, x in {-43, -15, 15, 43} do
+		mesh(scene, "North terrace", "night_stand", Vector3.new(26, 7.2, 10.8),
+			CFrame.new(x, 1.25, -69.3) * CFrame.Angles(0, math.pi, 0)).CastShadow = false
 	end
+	for _, z in {-41, -13, 15} do
+		mesh(scene, "West terrace", "night_stand", Vector3.new(26, 6.2, 10.6),
+			CFrame.new(-69.8, .65, z) * CFrame.Angles(0, -math.pi * .5, 0)).CastShadow = false
+	end
+	for _, x in {-66.0, 66.0} do
+		mesh(scene, "Floodlight tower", "lights", Vector3.new(7.8, 14.7, 5.0), CFrame.new(x, 4.35, -68.5)).CastShadow = false
+		local rig = plate(scene, "Floodlight accent", x, 11.01, -65.95, 5.5, .26, .18, C("C5C7FF"))
+		rig.Material, rig.CastShadow = Enum.Material.Neon, false
+	end
+	ribbon(scene, "Live stadium ribbon", CFrame.new(22.2, 5.12, -64.6), 34)
+	ribbon(scene, "Front stadium ribbon", CFrame.new(0, -1.70, 72.25), 36)
 end
 
 return function()
-	Lighting.ClockTime, Lighting.GeographicLatitude, Lighting.Brightness = 13.8, 31, 2.1
-	Lighting.Ambient, Lighting.OutdoorAmbient = C("929296"), C("B3BED1")
-	Lighting.EnvironmentDiffuseScale, Lighting.EnvironmentSpecularScale = .32, .36
-	Lighting.GlobalShadows, Lighting.ShadowSoftness = true, .4
-	Lighting.ExposureCompensation = -.1
+	Lighting.ClockTime, Lighting.GeographicLatitude, Lighting.Brightness = 9.7, 39, 2.6
+	Lighting.Ambient, Lighting.OutdoorAmbient = C("9690AA"), C("BFC7E0")
+	Lighting.EnvironmentDiffuseScale, Lighting.EnvironmentSpecularScale = .34, .46
+	Lighting.GlobalShadows, Lighting.ShadowSoftness = true, .62
+	Lighting.ExposureCompensation = -.04
 	local stage = Instance.new("Folder")
 	stage.Name = "WorldDraftArena"
 	surroundings(stage)
 	local tray = folder(stage, "Board")
-	for i, band in {{-2.45, .38, C("263C4B")}, {-1.79, 1.10, C("1C2D3A")}, {-.91, .64, C("D7AE71")}, {-.40, .40, C("3A5264")}} do
-		plate(tray, "Board layer " .. i, 0, band[1] :: number, 0, SIZE + .27, band[2] :: number, SIZE + .27, band[3] :: Color3)
-	end
+	mesh(tray, "Octagonal arena plinth", "arena_plinth", Vector3.new(144.3, 4.8, 144.3), CFrame.new(0, -2.65, 0))
 	pitch(stage)
 	for i, tile in Board.tiles do drawTile(tray, i, tile) end
 	stage.Parent = workspace

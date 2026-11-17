@@ -6,6 +6,7 @@ local net = shared:WaitForChild("WorldDraft")
 local report = net:WaitForChild("StudioReport")
 local hud = player:WaitForChild("PlayerGui"):WaitForChild("WorldDraftHUD")
 local board = require(shared.League.TourBoard)
+local art = require(shared.League.Presentation)
 local snapshot
 net.Snapshot.OnClientEvent:Connect(function(data) snapshot = data end)
 net.Intent:FireServer("sync")
@@ -46,7 +47,7 @@ local ok, err = pcall(function()
 		return current and current.CameraType == Enum.CameraType.Scriptable and current.ViewportSize.X > 2 and current
 	end, "scriptable play camera", 8)
 	waitFor(function()
-		return printLayer.Cell1["Club name"].AbsoluteSize.X > 25
+		return printLayer.Cell1["Club name"].AbsoluteSize.X > (if camera.ViewportSize.Y < 430 then 18 else 25)
 	end, "projected board print")
 	for _, cell in printLayer:GetChildren() do
 		assert(cell["Club name"].Text ~= "" and cell["Club name"].TextFits, "Unreadable title " .. cell.Name)
@@ -72,8 +73,11 @@ local ok, err = pcall(function()
 		waitFor(function()
 			local enamel = stage.Board:FindFirstChild("Porcelain face", true)
 			local sole = hud:FindFirstChild("Molded outsole", true)
+			local plinth = stage.Board:FindFirstChild("Octagonal arena plinth")
+			local stencil = stage:FindFirstChild("Footbolapolia field stencil", true)
 			return enamel and enamel:IsA("MeshPart") and sole and sole:IsA("MeshPart")
-		end, "Blender tile and outsole")
+				and plinth and plinth:IsA("MeshPart") and stencil and stencil:IsA("MeshPart")
+		end, "Blender arena, tile and outsole")
 		dispatch("format", 2)
 		waitFor(function() return snapshot.format == 2 end, "long format")
 		dispatch("format", 1)
@@ -98,7 +102,7 @@ local ok, err = pcall(function()
 		if verifyMatchday and replay and s.last.who == player.UserId and not replaySeen then
 			replaySeen = true
 			assert(s.last.kind == "goal" and s.last.amount == 140, "Expected a goal and its reward")
-			waitFor(function() return not printLayer.Visible and camera.FieldOfView > 10 end, "shot camera", 1)
+			waitFor(function() return not printLayer.Visible and camera.FieldOfView > art.boardFov + 2 end, "shot camera", 1)
 			capture("strike")
 			local ball = effects["Motion effects"]:FindFirstChild("Matchday ball")
 			assert(ball and ball.PrimaryPart and replay:FindFirstChild("Goalkeeper") and replay:FindFirstChild("Striker"))
@@ -110,9 +114,11 @@ local ok, err = pcall(function()
 			waitFor(function()
 				return sounds.goal.IsLoaded and sounds.goal.IsPlaying and replay:FindFirstChild("Matchday goal"):IsA("MeshPart")
 			end, "goal sound and goal mesh", 1)
+			local ribbon = stage:FindFirstChild("Live stadium ribbon", true)
+			waitFor(function() return ribbon and ribbon:FindFirstChild("Message", true).Text ~= "FOOTBOLAPOLIA" end, "live goal ribbon", 1)
 			task.wait(.25)
 			capture("goal")
-			waitFor(function() return printLayer.Visible and math.abs(camera.FieldOfView - 7.5) < .1 end, "board camera restored", 3)
+			waitFor(function() return printLayer.Visible and math.abs(camera.FieldOfView - art.boardFov) < .1 end, "board camera restored", 3)
 		end
 		local dice = effects and effects["Motion effects"]:FindFirstChild("Dice roll")
 		if dice and not diceSeen then
@@ -140,6 +146,16 @@ local ok, err = pcall(function()
 		local roll = hud:FindFirstChild("RollDice", true)
 		if roll and not boardSeen then
 			boardSeen = true
+			if verifyMatchday then
+				local scoreboard = hud.Viewport.Scoreboard
+				local lowerRight = scoreboard.AbsolutePosition + scoreboard.AbsoluteSize
+				for _, cell in printLayer:GetChildren() do
+					local label = cell["Club name"]
+					local center = label.AbsolutePosition + label.AbsoluteSize * .5
+					assert(center.Y > lowerRight.Y or center.X < scoreboard.AbsolutePosition.X or center.X > lowerRight.X,
+						"Scoreboard obscures " .. label.Text)
+				end
+			end
 			capture("table")
 		end
 		local current = snapshot

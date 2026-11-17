@@ -53,16 +53,27 @@ GuiService:GetPropertyChangedSignal("ReducedMotionEnabled"):Connect(function()
 	tableView.reduceMotion(reduced())
 end)
 
-local scores = UI.box(root, "Scoreboard")
-scores.Size = UDim2.fromScale(1, 1)
-local matchClock = UI.box(root, "MatchClock", Color3.fromHex("4A484D"), 2)
-matchClock.AnchorPoint, matchClock.Position = Vector2.new(.5, .5), UDim2.fromScale(.5, .29)
-matchClock.Size, matchClock.Visible = UDim2.fromOffset(82, 33), false
-UI.stroke(matchClock, Color3.fromHex("807C7B"), 3)
-local clockText = UI.label(matchClock, "", 23, {font = BLACK, align = CENTER, ellipsis = true})
+local brand = UI.box(root, "Footbolapolia wordmark")
+brand.Position, brand.Size = UDim2.fromOffset(13, 8), UDim2.fromOffset(185, 28)
+for i = 1, 2 do
+	local slash = UI.box(brand, "Stencil stroke", colors.mint)
+	slash.Position, slash.Size = UDim2.fromOffset(3 + (i - 1) * 7, 5), UDim2.fromOffset(4, 16)
+	slash.Rotation = 21
+end
+local brandText = UI.label(brand, "FOOTBOLAPOLIA", 16, {font = BLACK, color = colors.text, ellipsis = true})
+brandText.Position, brandText.Size = UDim2.fromOffset(20, 0), UDim2.new(1, -20, 1, 0)
+local scores = UI.box(root, "Scoreboard", colors.ink, 6)
+scores.AnchorPoint, scores.Position = Vector2.new(.5, 0), UDim2.new(.5, 0, 0, 10)
+UI.stroke(scores, colors.outline)
+local matchClock = UI.box(root, "MatchClock", colors.ink, 5)
+matchClock.AnchorPoint, matchClock.Position = Vector2.new(1, 0), UDim2.new(1, -13, 0, 6)
+matchClock.Size, matchClock.Visible = UDim2.fromOffset(80, 29), false
+UI.stroke(matchClock, colors.outline)
+local clockText = UI.label(matchClock, "", 18, {font = Enum.Font.RobotoMono, color = colors.mint, align = CENTER, ellipsis = true})
 clockText.Size = UDim2.fromScale(1, 1)
 local turnPrompt = UI.box(root, "TurnPrompt")
-turnPrompt.AnchorPoint, turnPrompt.Position, turnPrompt.Size = Vector2.new(.5, .5), UDim2.fromScale(.5, .59), UDim2.fromOffset(244, 99)
+turnPrompt.AnchorPoint, turnPrompt.Position = Vector2.new(.5, 1), UDim2.new(.5, 0, 1, -12)
+turnPrompt.Size = UDim2.fromOffset(264, 48)
 local dealButton: TextButton? = nil
 local panel = UI.box(root, "MatchPanel", colors.panel, 13)
 panel.Active = true
@@ -391,7 +402,7 @@ local function show(name: string)
 	drawDialog()
 end
 dialogShade.Activated:Connect(function() show(opened) end)
-local rulesButton = PropertyCard.button(root, "Rules", "Ⅱ", function() show("rules") end)
+local rulesButton = PropertyCard.button(root, "Rules", "?", function() show("rules") end)
 local clubsButton = PropertyCard.button(root, "Clubs", "≡", function() show("clubs") end)
 dealButton = PropertyCard.button(root, "ClubDeals", "⇄", function() show("tradeClubs") end)
 dealButton.AnchorPoint, dealButton.Position, dealButton.Size = Vector2.new(1, .5), UDim2.new(1, -11, .62, 0), UDim2.fromOffset(41, 41)
@@ -401,6 +412,11 @@ closeButton.AnchorPoint, closeButton.Position, closeButton.Size = Vector2.new(1,
 local function arrange()
 	local size = root.AbsoluteSize
 	mode = if size.X >= 630 then "dock" else "portrait"
+	local shortLandscape = size.X > size.Y and size.Y < 430
+	scores.Position = UDim2.new(.5, 0, 0, if size.X >= 1040 or shortLandscape then 8 else 41)
+	brand.Visible = not shortLandscape
+	matchClock.AnchorPoint = if shortLandscape then Vector2.new(0, 1) else Vector2.new(1, 0)
+	matchClock.Position = if shortLandscape then UDim2.new(0, 13, 1, -12) else UDim2.new(1, -13, 0, 6)
 	for i, control in {rulesButton, clubsButton} do
 		control.AnchorPoint = Vector2.new(1, .5)
 		control.Position = UDim2.new(1, -11, .70 + (i - 1) * .08, 0)
@@ -431,40 +447,40 @@ end
 local portraits: {[number]: ViewportFrame} = {}
 local function scorecards(s: any)
 	for _, portrait in portraits do portrait.Parent = nil end
-	scores:ClearAllChildren()
+	-- Keep the scoreboard outline while updating player records.
+	for _, child in scores:GetChildren() do
+		if child:IsA("Frame") then child:Destroy() end
+	end
+	scores.Visible = s ~= nil
 	if not s then
 		for _, portrait in portraits do portrait:Destroy() end
 		table.clear(portraits)
 		return
 	end
-	local pins = {{1, 1}, {0, 1}, {0, 0}, {1, 0}}
-	local own = 1
-	for i, seat in s.seats do if seat.id == Player.UserId then own = i break end end
-	local width = math.clamp(math.floor(root.AbsoluteSize.X * .205), 104, 218)
-	local portrait = math.clamp(math.floor(width * .31), 31, 58)
-	local height = math.max(39, portrait - 6)
+	local compact = root.AbsoluteSize.X < 630 or root.AbsoluteSize.Y < 430
+	local outerWidth = math.clamp(root.AbsoluteSize.X - 24, 0, 696)
+	local height = if compact then 47 else 58
+	scores.Size = UDim2.fromOffset(outerWidth, height)
+	local width = outerWidth / #s.seats
+	local portraitSize = if compact then 0 else 44
 	for i, seat in s.seats do
-		local pin = pins[(i - own) % #pins + 1]
 		local active = s.active == i and s.phase ~= "final"
 		local tint = Art.seatColors[i]
-		local card = UI.box(scores, "Seat" .. i, hex(0xF4EEE3), 9)
-		card.AnchorPoint = Vector2.new(pin[1], pin[2])
-		card.Position = UDim2.new(pin[1], if pin[1] == 0 then 8 else -8, pin[2], if pin[2] == 0 then 8 else -8)
-		card.Size = UDim2.fromOffset(width, height)
-		UI.stroke(card, tint, if active then 3 else 1.6)
-		local band = UI.box(card, "Team ribbon", tint)
-		band.Size, band.Position = UDim2.new(1, 12, 0, 21), UDim2.new(0, -6, pin[2], if pin[2] == 0 then -1 else -19)
-		local info = UI.box(card, "Score")
-		info.Position, info.Size = UDim2.fromOffset(if pin[1] == 0 then portrait + 6 else 4, 0), UDim2.new(1, -portrait - 10, 1, 0)
-		local name = UI.label(info, sessionName(seat.id), 13, {font = BLACK, color = Color3.new(1, 1, 1), align = CENTER, ellipsis = true})
-		name.Position, name.Size = UDim2.new(0, 0, pin[2], if pin[2] == 0 then 0 else -20), UDim2.new(1, 0, 0, 20)
-		local money = UI.label(info, if seat.bankrupt then t("Bankrupt") else tostring(seat.cash) .. " CR", 16,
-			{font = BOLD, color = hex(0x372E2C), align = CENTER, ellipsis = true})
-		money.Position, money.Size = UDim2.fromOffset(0, if pin[2] == 0 then 21 else 0), UDim2.new(1, 0, 0, height - 20)
-		local inset = if pin[1] == 0 then 1 else -portrait - 1
-		local avatar = UI.box(card, "Figure", tint:Lerp(hex(0x3A4D65), .46), 8)
-		avatar.Position, avatar.Size = UDim2.new(pin[1], inset, .5, -portrait * .5), UDim2.fromOffset(portrait, portrait)
-		UI.stroke(avatar, Color3.new(1, 1, 1), 3)
+		local card = UI.box(scores, "Seat" .. i, if active then tint:Lerp(colors.panel, .82) else colors.panel, 4)
+		card.Position, card.Size = UDim2.fromOffset((i - 1) * width + 3, 3), UDim2.fromOffset(width - 6, height - 6)
+		local band = UI.box(card, "Team accent", tint)
+		band.Position, band.Size = UDim2.new(0, 3, 1, -3), UDim2.new(1, -6, 0, if active then 3 else 1)
+		local textInset = if compact then 5 else portraitSize + 10
+		local textWidth = UDim2.new(1, -textInset - 3, 0, 18)
+		local name = UI.label(card, sessionName(seat.id), 12,
+			{font = BOLD, color = if active then tint else colors.muted, ellipsis = true, name = "PlayerName"})
+		name.Position, name.Size = UDim2.fromOffset(textInset, if compact then 2 else 6), textWidth
+		local money = UI.label(card, if seat.bankrupt then t("Bankrupt") else tostring(seat.cash) .. " CR", 15,
+			{font = BLACK, color = colors.text, ellipsis = true, name = "Balance"})
+		money.Position, money.Size = UDim2.fromOffset(textInset, if compact then 18 else 26), textWidth
+		if compact then continue end
+		local avatar = UI.box(card, "Figure", tint:Lerp(colors.ink, .73), 4)
+		avatar.Position, avatar.Size = UDim2.fromOffset(4, 3), UDim2.fromOffset(portraitSize, portraitSize)
 		local miniature = portraits[seat.figure]
 		if not miniature then
 			miniature = Instance.new("ViewportFrame")
@@ -479,7 +495,6 @@ local function scorecards(s: any)
 			portraits[seat.figure] = miniature
 		end
 		miniature.Parent = avatar
-
 	end
 end
 
@@ -607,17 +622,21 @@ local function rollPanel(s: any, mine: boolean)
 	local player = s.seats[s.active]
 	if mine then
 		primary = function() send("roll") end
-		local button = PropertyCard.button(turnPrompt, "RollDice", t("Roll dice"), primary :: () -> ())
-		button.Position, button.Size = UDim2.fromOffset(41, 35), UDim2.fromOffset(162, 46)
-		if s.phase == "bench" and player.cash >= Board.benchFee then
+		local canRelease = s.phase == "bench" and player.cash >= Board.benchFee
+		local button = UI.button(turnPrompt, "RollDice", t("Roll dice"), 46, primary, colors.mint, colors.ink)
+		button.Size = UDim2.new(if canRelease then .58 else 1, 0, 1, 0)
+		if canRelease then
 			alternate = function() send("release") end
-			local release = PropertyCard.button(turnPrompt, "BenchRelease", t("Pay %d CR", Board.benchFee), alternate :: () -> ())
-			release.Position, release.Size = UDim2.fromOffset(60, 83), UDim2.fromOffset(124, 38)
+			local release = UI.button(turnPrompt, "BenchRelease", t("Pay %d CR", Board.benchFee), 46, alternate)
+			release.Position, release.Size = UDim2.fromScale(.60, 0), UDim2.fromScale(.40, 1)
 		end
 	else
-		local message = UI.label(turnPrompt, t("%s's turn", sessionName(player.id)), 15,
-			{font = BOLD, color = colors.ink, align = CENTER, ellipsis = true})
-		message.Size, message.Position = UDim2.fromOffset(218, 31), UDim2.fromOffset(13, 50)
+		local rail = UI.box(turnPrompt, "Turn status", colors.ink, 5)
+		rail.Size = UDim2.fromScale(1, 1)
+		UI.stroke(rail, colors.outline)
+		local message = UI.label(rail, t("%s's turn", sessionName(player.id)), 15,
+			{font = BOLD, color = colors.text, align = CENTER, ellipsis = true})
+		message.Size = UDim2.fromScale(1, 1)
 	end
 end
 
@@ -940,9 +959,13 @@ snapshots.OnClientEvent:Connect(function(data)
 			if not final and not shot then
 				audio.play(if last.card > 0 or last.kind == "auctionEmpty" then "card" else "sign")
 			end
-			resultBanner.reveal(title, caption, tint, reduced(), mode,
-				.55)
-			if exciting then tableView.celebrate(last.tile, true) elseif last.kind == "upgrade" then tableView.celebrate(last.tile, false) end
+			resultBanner.reveal(title, caption, tint, reduced())
+			if exciting then
+				tableView.stadiumMessage(title, tint)
+				tableView.celebrate(last.tile, true)
+			elseif last.kind == "upgrade" then
+				tableView.celebrate(last.tile, false)
+			end
 		end
 		if shot then
 			for _, actor in match.seats do

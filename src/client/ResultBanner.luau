@@ -7,19 +7,19 @@ local Banner = {}
 
 function Banner.new(parent: Frame)
 	local view = Instance.new("Frame")
-	view.Name, view.BackgroundColor3, view.Visible = "PlayResult", colors.paper, false
+	view.Name, view.BackgroundColor3, view.Visible = "PlayResult", colors.panel, false
 	view.AnchorPoint, view.ZIndex = Vector2.new(.5, 0), 5
 	view.Size, view.Position = UDim2.new(.86, 0, 0, 90), UDim2.fromScale(.5, .42)
 	view.Parent = parent
-	UI.round(view, 16)
-	UI.stroke(view, colors.ink, 2)
+	UI.round(view, 6)
+	UI.stroke(view, colors.outline, 1)
 	local bound = Instance.new("UISizeConstraint")
 	bound.MaxSize, bound.Parent = Vector2.new(332, 65), view
 	local stripe = UI.box(view, "Result color", colors.gold, 5)
 	stripe.Size, stripe.Position = UDim2.new(0, 7, 1, -26), UDim2.fromOffset(12, 13)
-	local heading = UI.label(view, "", 21, {font = Enum.Font.BuilderSansExtraBold, color = colors.ink, ellipsis = true})
+	local heading = UI.label(view, "", 21, {font = Enum.Font.BuilderSansExtraBold, color = colors.text, ellipsis = true})
 	heading.Size, heading.Position = UDim2.new(1, -45, 0, 33), UDim2.fromOffset(31, 6)
-	local detail = UI.label(view, "", 14, {font = Enum.Font.BuilderSansBold, color = colors.panel, ellipsis = true})
+	local detail = UI.label(view, "", 14, {font = Enum.Font.BuilderSansBold, color = colors.muted, ellipsis = true})
 	detail.Size, detail.Position = UDim2.new(1, -45, 0, 24), UDim2.fromOffset(32, 34)
 	local seq = 0
 	local tweens: {Tween} = {}
@@ -41,19 +41,12 @@ function Banner.new(parent: Frame)
 			stop()
 			view.Visible = false
 		end,
-		reveal = function(title: string, caption: string, tint: Color3, reduced: boolean, mode: string, railFraction: number)
+		reveal = function(title: string, caption: string, tint: Color3, reduced: boolean)
 			stop()
 			local revision = seq
-			heading.Text, detail.Text, stripe.BackgroundColor3 = title, caption, tint
-			local headerSpace = mode ~= "rail" and parent.AbsoluteSize.X >= 700 and parent.AbsoluteSize.X < 920
-			view.Size = if headerSpace then UDim2.fromOffset(math.min(295, parent.AbsoluteSize.X - 440), 52)
-				else UDim2.new(if mode == "rail" then railFraction - .06 else .88, 0, 0, 65)
-			heading.Position = UDim2.fromOffset(31, if headerSpace then 0 else 6)
-			detail.Position = UDim2.fromOffset(32, if headerSpace then 25 else 34)
-			local place = if mode == "rail" then UDim2.new(railFraction * .5, 0, 0, 108)
-				elseif mode == "portrait" then UDim2.new(.5, 0, .46, 0)
-				elseif headerSpace then UDim2.new(.5, 22, 0, 5)
-				else UDim2.new(.5, 0, 0, if parent.AbsoluteSize.X >= 920 then 76 else 108)
+			heading.Text, heading.TextColor3, detail.Text, stripe.BackgroundColor3 = title, tint, caption, tint
+			view.Size = UDim2.new(.88, 0, 0, 65)
+			local place = UDim2.new(.5, 0, 0, if parent.AbsoluteSize.X >= 1040 then 77 else 109)
 			view.Position = place
 			view.Visible = true
 			if not reduced then
