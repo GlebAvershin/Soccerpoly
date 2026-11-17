@@ -81,7 +81,7 @@ local ok, err = pcall(function()
 			assert(poster:FindFirstChild("Lithograph"), "Missing illustrated print "..tile.name)
 			assert(title:IsA("TextLabel") and title.Text ~= "" and title.TextFits, "Clipped title "..title.Text)
 			assert(cell.CanvasSize.X >= cell.Adornee.Size.X*22-1)
-			assert(title.FontFace.Family:find("Montserrat") and cost.FontFace.Family:find("BuilderMono"))
+			assert((title.FontFace.Family:find("Montserrat") or title.FontFace.Family:find("Oswald")) and cost.FontFace.Family:find("BuilderMono"))
 			assert(poster.Size.Y.Scale<=title.Position.Y.Scale and title.Position.Y.Scale+title.Size.Y.Scale<=1)
 			local display=player.PlayerGui["Programme typography"]
 			assert(display.DisplayOrder<hud.DisplayOrder and display.ScreenInsets==Enum.ScreenInsets.DeviceSafeInsets)
@@ -194,22 +194,40 @@ local ok, err = pcall(function()
 			end,"in-match language on board and scoreboard")
 		end
 	end
+	local function verifyOverview()
+		local display = player.PlayerGui["Programme typography"]
+		local minName, minPrice = math.huge, math.huge
+		local base = stage.Board["Octagonal arena plinth"]
+		for _, x in {-1,1} do
+			for _, z in {-1,1} do
+				local _, visible = camera:WorldToViewportPoint(base.Position + Vector3.new(x*base.Size.X*.5,0,z*base.Size.Z*.5))
+				assert(visible,"Cropped board base")
+			end
+		end
+		for index, tile in board.tiles do
+			local part = printLayer["Cell"..index].Adornee
+			for _, x in {-1,1} do
+				for _, y in {-1,1} do
+					local corner = part.CFrame * Vector3.new(x*part.Size.X*.5,y*part.Size.Y*.5,0)
+					local _, visible = camera:WorldToViewportPoint(corner)
+					assert(visible,"Clipped overview corner: "..tile.name)
+				end
+			end
+			if tile.price == 0 then continue end
+			local cell = display["Cell"..index]
+			local name, cost = cell["Club name"], cell["Club cost"]
+			assert(name.Visible and cost.Visible and name.TextFits and cost.TextFits,tile.name)
+			minName, minPrice = math.min(minName,math.floor(name.TextBounds.Y/#string.split(name.Text,"\n"))), math.min(minPrice,cost.TextBounds.Y)
+		end
+		print("OVERVIEW_TYPE",camera.ViewportSize,minName,minPrice)
+		assert(minName >= math.floor(math.min(camera.ViewportSize.X,camera.ViewportSize.Y)*.026) and minPrice >= math.floor(math.min(camera.ViewportSize.X,camera.ViewportSize.Y)*.030),
+			"Overview name or price too small")
+	end
+	if closeup and hud.Viewport.AbsoluteSize.Y < 430 and camera.ViewportSize.X > camera.ViewportSize.Y then
+		verifyOverview()
+	end
 	if closeup and camera.ViewportSize.X < camera.ViewportSize.Y * .86 then
 		local cameraButton = hud.Viewport:FindFirstChild("BoardCamera")
-		waitFor(function()
-			local active = snapshot.match.seats[snapshot.match.active]
-			local pieces = workspace:FindFirstChild("LocalTablePieces")
-			local figures = pieces and pieces:FindFirstChild("Match pawns")
-			local actor = figures and figures:FindFirstChild(board.figures[active.figure].name)
-			if not actor or not cameraButton or not cameraButton.Visible then return false end
-			local point, visible = camera:WorldToViewportPoint(actor:GetPivot().Position)
-			local a = camera:WorldToViewportPoint(Vector3.new(-63, art.tileTop, 54))
-			local b = camera:WorldToViewportPoint(Vector3.new(63, art.tileTop, 54))
-			local title = printLayer.Cell1["Printed programme"]["Club name"]
-			return visible and point.Y > camera.ViewportSize.Y * .18 and point.Y < camera.ViewportSize.Y * .81
-				and math.abs(b.X - a.X) > camera.ViewportSize.X * 1.33
-				and printLayer.Cell1.Enabled and title.TextFits
-		end, "portrait turn close-up and horizontal type", 3)
 		local input = assert(game:GetService("UserInputService"):CreateVirtualInput())
 		local function toggleCamera()
 			input:SendKey(true, Enum.KeyCode.V, false)
@@ -226,26 +244,34 @@ local ok, err = pcall(function()
 			task.wait(.06)
 			return (camera.CFrame.Position - before).Magnitude < 1.4
 		end
+		waitFor(function()
+			return span() < 1 and settledView()
+		end, "default portrait overview", 2)
+		verifyPrint()
+		verifyOverview()
+		capture("full-board")
+		task.wait(.24)
+		toggleCamera()
+		waitFor(function()
+			local active = snapshot.match.seats[snapshot.match.active]
+			local pieces = workspace:FindFirstChild("LocalTablePieces")
+			local figures = pieces and pieces:FindFirstChild("Match pawns")
+			local actor = figures and figures:FindFirstChild(board.figures[active.figure].name)
+			if not actor or not cameraButton or not cameraButton.Visible then return false end
+			local point, visible = camera:WorldToViewportPoint(actor:GetPivot().Position)
+			local a = camera:WorldToViewportPoint(Vector3.new(-63, art.tileTop, 54))
+			local b = camera:WorldToViewportPoint(Vector3.new(63, art.tileTop, 54))
+			local title = printLayer.Cell1["Printed programme"]["Club name"]
+			return visible and point.Y > camera.ViewportSize.Y * .18 and point.Y < camera.ViewportSize.Y * .81
+				and math.abs(b.X - a.X) > camera.ViewportSize.X * 1.33
+				and printLayer.Cell1.Enabled and title.TextFits
+		end, "portrait turn close-up and horizontal type", 3)
 		waitFor(settledView, "settled close-up", 2)
 		verifyPrint()
 		capture("focused-board")
 		task.wait(.24)
 		toggleCamera()
-		waitFor(function()
-			if span() >= 1 or not settledView() then return false end
-			for _, part in stage.Board:GetDescendants() do
-				if part:IsA("BasePart") and part:GetAttribute("BoardIndex") then
-					local _, shown = camera:WorldToViewportPoint(part.Position)
-					if not shown then return false end
-				end
-			end
-			return true
-		end, "full board button and all tile centers", 2)
-		verifyPrint()
-		capture("full-board")
-		task.wait(.24)
-		toggleCamera()
-		waitFor(function() return span() > 1.33 end, "return to active turn", 2)
+		waitFor(function() return span() < 1 and settledView() end, "return to overview", 2)
 	end
 	if verifyMatchday then
 		waitFor(function()

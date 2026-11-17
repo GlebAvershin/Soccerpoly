@@ -157,7 +157,7 @@ return function()
 	stage.Name = "WorldDraftArena"
 	surroundings(stage)
 	local tray = folder(stage, "Board")
-	mesh(tray, "Octagonal arena plinth", "arena_plinth", Vector3.new(144.3, 4.8, 144.3), CFrame.new(0, -2.65, 0))
+	mesh(tray, "Octagonal arena plinth", "arena_plinth", Vector3.new(Art.plinthWidth, 4.8, Art.plinthWidth), CFrame.new(0, -2.65, 0))
 	pitch(stage)
 	for i, tile in Board.tiles do drawTile(tray, i, tile) end
 	stage.Parent = workspace

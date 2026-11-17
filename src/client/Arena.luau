@@ -165,7 +165,8 @@ function Arena.new(myId: number, root: Frame, translate: (string) -> string, pla
 	local oldRoot: Vector2? = nil
 	local overview: CFrame? = nil
 	local portraitCamera = false
-	local followTurn = true
+	local shortLandscape = false
+	local followTurn = false
 	local focusOrbit = Vector3.zero
 	local focusDistance = 0
 	local boardPose: CFrame? = nil
@@ -187,20 +188,45 @@ function Arena.new(myId: number, root: Frame, translate: (string) -> string, pla
 		local fov = Art.boardFov
 		local tangent = math.tan(math.rad(fov) * .5)
 		portraitCamera = aspect < .86
-		local angle = math.rad(if portraitCamera then 53 else 40)
+		shortLandscape = aspect > 1 and root.AbsoluteSize.Y < 430
+		local angle = math.rad(if portraitCamera then 75 else 40)
 		local orbit = Vector3.zAxis * math.cos(angle) + Vector3.yAxis * math.sin(angle)
 		local span = Geometry.width
-		local width = if portraitCamera then .86 else .85
+		local width = .85
 		local height = if size.Y < 550 then .60 else .718
 		local distance = math.max(span / (2 * tangent * aspect * width), span * math.sin(angle) / (2 * tangent * height))
+		local verticalOffset = 0
+		if portraitCamera or shortLandscape then
+			-- Fit the near corners, with four logical pixels clear on either side.
+			local widthPixels = math.max(1, math.min(root.AbsoluteSize.X,size.X) - (if shortLandscape then 208 else 8))
+			local heightPixels = if shortLandscape then math.max(1,size.Y-16)
+				else math.max(size.Y*.39,root.AbsoluteSize.Y-224)
+			-- Studio devices can render behind a notch; measure the actual projection.
+			camera.FieldOfView = fov
+			local basis = camera.CFrame
+			local origin = camera:WorldToViewportPoint(basis * Vector3.new(0,0,-100))
+			local right = camera:WorldToViewportPoint(basis * Vector3.new(10,0,-100))
+			local focalLength = (right.X-origin.X)*10
+			if shortLandscape then
+				verticalOffset = (size.Y*.5-origin.Y)/focalLength
+			end
+			local extent = Art.plinthWidth
+			-- At the sides of a landscape phone, the bleachers can sit behind the HUD.
+			-- Keep the playing track clear of the controls and fit the whole base vertically.
+			local trackWidth = if shortLandscape then span else extent
+			distance = math.max(trackWidth*focalLength/widthPixels,extent*math.sin(angle)*focalLength/heightPixels)
+				+ extent*.5*math.cos(angle) + Art.tileTop*math.sin(angle)
+		end
 		local base = CFrame.lookAt(orbit * distance, Vector3.zero)
 		local half = Geometry.width * .5
 		local near = base:PointToObjectSpace(Vector3.new(half, Art.tileTop, half))
 		local far = base:PointToObjectSpace(Vector3.new(-half, Art.tileTop, -half))
 		local centerY = (near.Y / -near.Z + far.Y / -far.Z) * .5
-		local targetY = if portraitCamera then .07 else -.071
-		overview = base * CFrame.new(0, (centerY - targetY * tangent) * distance, 0)
-		focusOrbit, focusDistance = orbit, distance * .55
+		local targetY = if shortLandscape then 0 elseif portraitCamera then .01 else -.071
+		overview = base * CFrame.new(0, (centerY + verticalOffset - targetY * tangent) * distance, 0)
+		local followAngle = math.rad(53)
+		focusOrbit = Vector3.zAxis * math.cos(followAngle) + Vector3.yAxis * math.sin(followAngle)
+		focusDistance = span / (2*tangent*aspect*.86) * .55
 		boardPose = nil
 		oldSize, oldRoot, camera.FieldOfView = size, root.AbsoluteSize, fov
 	end
@@ -410,7 +436,7 @@ function Arena.new(myId: number, root: Frame, translate: (string) -> string, pla
 					table.insert(silhouettes,Rect.new(math.min(top.X,foot.X)-extent,math.min(top.Y,foot.Y),
 						math.max(top.X,foot.X)+extent,math.max(top.Y,foot.Y)))
 				end
-				labels.layout(camera,silhouettes)
+				labels.layout(camera,silhouettes,shortLandscape or (portraitCamera and not focus))
 			end
 		end
 		local portrait = portraitModel

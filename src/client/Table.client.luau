@@ -422,14 +422,14 @@ local rulesButton = PropertyCard.button(root, "Rules", "?", function() show("rul
 local clubsButton = PropertyCard.button(root, "Clubs", "≡", function() show("clubs") end)
 dealButton = PropertyCard.button(root, "ClubDeals", "⇄", function() show("tradeClubs") end)
 dealButton.AnchorPoint, dealButton.Position, dealButton.Size = Vector2.new(1, .5), UDim2.new(1, -11, .62, 0), UDim2.fromOffset(41, 41)
-local followTurn = true
+local followTurn = false
 local cameraView: TextButton
 local function toggleCamera()
 	followTurn = not followTurn
 	tableView.setFollow(followTurn)
 	cameraView.Text = t(if followTurn then "Full board" else "Follow turn")
 end
-cameraView = UI.button(root, "BoardCamera", t("Full board"), 43, toggleCamera, colors.ink, colors.text)
+cameraView = UI.button(root, "BoardCamera", t("Follow turn"), 43, toggleCamera, colors.ink, colors.text)
 cameraView.AnchorPoint, cameraView.Position = Vector2.new(0, 1), UDim2.new(0, 12, 1, -83)
 cameraView.Size, cameraView.Visible = UDim2.fromOffset(110, 43), false
 UI.stroke(cameraView, colors.outline)
@@ -441,15 +441,21 @@ local function arrange()
 	mode = if size.X >= 630 then "dock" else "portrait"
 	local shortLandscape = size.X > size.Y and size.Y < 430
 	if dealButton then
-		dealButton.Position = if size.X < size.Y * .86 then UDim2.new(1, -11, 1, -104) else UDim2.new(1, -11, .62, 0)
+		dealButton.Position = if size.X < size.Y * .86 then UDim2.new(1, -111, 1, -104) else UDim2.new(1, -11, .62, 0)
 	end
-	scores.Position = UDim2.new(.5, 0, 0, if size.X >= 1040 or shortLandscape then 8 else 41)
+	scores.AnchorPoint = if shortLandscape then Vector2.new(0,.5) else Vector2.new(.5,0)
+	scores.Position = if shortLandscape then UDim2.new(0,6,.49,0) else UDim2.new(.5,0,0,if size.X>=1040 then 8 else 41)
+	turnPrompt.AnchorPoint = if shortLandscape then Vector2.new(1,1) else Vector2.new(.5,1)
+	turnPrompt.Size = UDim2.fromOffset(if shortLandscape then 94 else 264,48)
+	turnPrompt.Position = if shortLandscape then UDim2.new(1,-4,1,-6) else UDim2.new(.5,0,1,-12)
+	if shortLandscape and dealButton then dealButton.Position = UDim2.new(1,-7,.19,0) end
 	brand.Visible = not shortLandscape
 	matchClock.AnchorPoint = if shortLandscape then Vector2.new(0, 1) else Vector2.new(1, 0)
 	matchClock.Position = if shortLandscape then UDim2.new(0, 13, 1, -12) else UDim2.new(1, -13, 0, 6)
 	for i, control in {rulesButton, clubsButton} do
 		control.AnchorPoint = Vector2.new(1, .5)
-		control.Position = UDim2.new(1, -11, .70 + (i - 1) * .08, 0)
+		control.Position = if size.X < size.Y * .86 then UDim2.new(1,-11-(i-1)*50,1,-104)
+			elseif shortLandscape then UDim2.new(1,-7,.19,49*i) else UDim2.new(1, -11, .70 + (i - 1) * .08, 0)
 		control.Size = UDim2.fromOffset(41, 41)
 	end
 	panel.AnchorPoint, panel.Position = Vector2.new(.5, .5), UDim2.fromScale(.5, .53)
@@ -490,14 +496,16 @@ local function scorecards(s: any)
 	local compact = root.AbsoluteSize.X < 630 or root.AbsoluteSize.Y < 430
 	local outerWidth = math.clamp(root.AbsoluteSize.X - 24, 0, 696)
 	local height = if compact then 47 else 58
-	scores.Size = UDim2.fromOffset(outerWidth, height)
-	local width = outerWidth / #s.seats
+	local stacked = root.AbsoluteSize.X > root.AbsoluteSize.Y and root.AbsoluteSize.Y < 430
+	local width = if stacked then 92 else outerWidth / #s.seats
+	scores.Size = if stacked then UDim2.fromOffset(width,height*#s.seats) else UDim2.fromOffset(outerWidth,height)
 	local portraitSize = if compact then 0 else 44
 	for i, seat in s.seats do
 		local active = s.active == i and s.phase ~= "final"
 		local tint = Art.seatColors[i]
 		local card = UI.box(scores, "Seat" .. i, if active then tint:Lerp(colors.panel, .82) else colors.panel, 4)
-		card.Position, card.Size = UDim2.fromOffset((i - 1) * width + 3, 3), UDim2.fromOffset(width - 6, height - 6)
+		card.Position = if stacked then UDim2.fromOffset(3,(i-1)*height+3) else UDim2.fromOffset((i-1)*width+3,3)
+		card.Size = UDim2.fromOffset(width-6,height-6)
 		local band = UI.box(card, "Team accent", tint)
 		band.Position, band.Size = UDim2.new(0, 3, 1, -3), UDim2.new(1, -6, 0, if active then 3 else 1)
 		local textInset = if compact then 5 else portraitSize + 10
@@ -661,7 +669,12 @@ local function rollPanel(s: any, mine: boolean)
 		if canRelease then
 			alternate = function() send("release") end
 			local release = UI.button(turnPrompt, "BenchRelease", t("Pay %d CR", Board.benchFee), 46, alternate)
-			release.Position, release.Size = UDim2.fromScale(.60, 0), UDim2.fromScale(.40, 1)
+			if turnPrompt.AbsoluteSize.X < 120 then
+				button.Size = UDim2.fromScale(1,1)
+				release.Position, release.Size = UDim2.fromScale(0,-1.04), UDim2.fromScale(1,1)
+			else
+				release.Position, release.Size = UDim2.fromScale(.60,0), UDim2.fromScale(.40,1)
+			end
 		end
 	else
 		local rail = UI.box(turnPrompt, "Turn status", colors.ink, 5)

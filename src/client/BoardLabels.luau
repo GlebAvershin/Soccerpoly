@@ -7,6 +7,7 @@ local UI = require(script.Parent.Components)
 local style = require(script.Parent.ProgrammeStyle)
 local headline = Font.new("rbxasset://fonts/families/Montserrat.json", Enum.FontWeight.Bold)
 local numberFace = Font.new("rbxasset://fonts/families/BuilderMono.json", Enum.FontWeight.SemiBold)
+local terraceFace = Font.new("rbxasset://fonts/families/Oswald.json", Enum.FontWeight.Bold)
 local names = {
 	SEV={"Sevilla","Севилья"}, ATM={"Atlético","Атлетико"}, FCB={"Barça","Барса"}, RMA={"Real Madrid","Реал"},
 	ARS={"Arsenal","Арсенал"}, LIV={"Liverpool","Ливерпуль"}, MCI={"Man City","Ман Сити"}, MUN={"Man Utd","МЮ"},
@@ -16,6 +17,11 @@ local names = {
 	SB={"Bernabéu","Бернабеу"}, OT={"Trafford","Траффорд"}, SS={"San Siro","Сан-Сиро"}, AA={"Allianz","Альянц"},
 	KO={"Kickoff","Старт"}, TAX={"Tax","Сбор"}, CH={"Chance","Шанс"}, TOUR={"Away","Выезд"},
 	CUP={"Cup","Кубок"}, BENCH={"Bench","Скамья"},
+}
+local folds = {
+	["Ливерпуль"]="Ливер-\nпуль", ["Дортмунд"]="Дорт-\nмунд", ["Траффорд"]="Траф-\nфорд",
+	["Ман Сити"]="Ман\nСити", ["Марсель"]="Мар-\nсель", Dortmund="Dort-\nmund",
+	Liverpool="Liver-\npool", Marseille="Mar-\nseille",
 }
 local function band(parent: Frame, name: string, y: number, height: number, font: Font, color: Color3): TextLabel
 	local text = Instance.new("TextLabel")
@@ -30,6 +36,32 @@ end
 
 local function intersects(a: Rect, b: Rect): boolean
 	return a.Min.X < b.Max.X and a.Max.X > b.Min.X and a.Min.Y < b.Max.Y and a.Max.Y > b.Min.Y
+end
+
+-- In overview, give each price and name the same depth in studs on all four edges.
+-- Top/bottom cells are deeper, so their extra space goes to the stadium panorama.
+local function setLayout(entry, compact: boolean)
+	local artHeight = if entry.buyable then .45 else .55
+	local nameHeight = if entry.buyable then .32 else .40
+	local priceY, priceHeight = .775,.21
+	local name = entry.name
+	local folded = if compact and entry.narrow then folds[name] else nil
+	if compact and entry.buyable then
+		priceHeight = (if entry.landscape then 6.35 else 5.7) / entry.part.Size.Y
+		nameHeight = (if folded then 9.3 elseif entry.landscape then 5.4 else 5.35) / entry.part.Size.Y
+		priceY = .99 - priceHeight
+		artHeight = priceY - nameHeight - .012
+	end
+	local inset = if compact then .012 else .035
+	entry.poster.Size = UDim2.fromScale(1,artHeight)
+	entry.title.Position, entry.title.Size = UDim2.fromScale(inset,artHeight), UDim2.fromScale(1-2*inset,nameHeight)
+	entry.cost.Position, entry.cost.Size = UDim2.fromScale(inset,priceY), UDim2.fromScale(1-2*inset,priceHeight)
+	entry.owner.Position, entry.owner.Size = UDim2.fromScale(0,artHeight), UDim2.fromScale(.026,1-artHeight)
+	entry.title.FontFace = if compact then terraceFace else headline
+	entry.nativeTitle.FontFace = entry.title.FontFace
+	entry.title.Text, entry.nativeTitle.Text = folded or name, folded or name
+	for _, rule in entry.rules do rule.Visible = not compact end
+	entry.compact = compact
 end
 
 -- The board camera's right axis stays parallel to the touchlines. Intersect the
@@ -78,7 +110,10 @@ return function(root: Frame, translate: (string)->string)
 		local owner = if match then match.clubs[i].owner else 0
 		local name = names[tile.code][language]
 		local price = if tile.price == 0 then "" else tostring(if owner ~= 0 then gates[i] else tile.price)
-		entry.title.Text, entry.nativeTitle.Text = name, name
+		if entry.name ~= name then
+			entry.name = name
+			setLayout(entry,entry.compact == true)
+		end
 		entry.cost.Text, entry.nativeCost.Text = price, price
 		entry.owner.Visible = owner ~= 0
 		if owner ~= 0 then
@@ -110,11 +145,13 @@ return function(root: Frame, translate: (string)->string)
 		local title = band(card, "Club name", if buyable then .45 else .55, if buyable then .32 else .40, headline, color)
 		local cost = band(card, "Club cost", .775, .21, numberFace, style.price)
 		cost.Visible = buyable
+		local rules = {}
 		if buyable then
 			for _, x in {.105,.685} do
 				local rule = UI.box(card, "Price rule", style.price)
 				rule.Position, rule.Size = UDim2.fromScale(x,.88), UDim2.fromScale(.21,.015)
 				rule.BackgroundTransparency = .62
+				table.insert(rules,rule)
 			end
 		end
 		local mark = UI.box(card, "Owner", Art.gold)
@@ -130,7 +167,7 @@ return function(root: Frame, translate: (string)->string)
 		local layers = {{print=poster, native=display(poster)}, {print=title, native=nativeTitle}}
 		if buyable then table.insert(layers, {print=cost, native=nativeCost}) end
 		local entry = {part=part, surface=sheet, title=title, cost=cost, nativeTitle=nativeTitle,
-			nativeCost=nativeCost, owner=mark, layers=layers}
+			nativeCost=nativeCost, owner=mark, layers=layers, poster=poster, rules=rules, buyable=buyable, compact=nil}
 		sheets[i] = entry
 		setCopy(i, entry)
 	end
@@ -145,8 +182,14 @@ return function(root: Frame, translate: (string)->string)
 			refresh()
 		end,
 		translate=refresh,
-		layout=function(camera: Camera, masks: {Rect})
+		layout=function(camera: Camera, masks: {Rect}, compact: boolean)
 			for _, entry in sheets do
+				local landscape = compact and camera.ViewportSize.X > camera.ViewportSize.Y
+				local narrow = camera.ViewportSize.X < 455 and entry.part.Size.X < entry.part.Size.Y
+				if entry.compact ~= compact or entry.narrow ~= narrow or entry.landscape ~= landscape then
+					entry.narrow, entry.landscape = narrow, landscape
+					setLayout(entry,compact)
+				end
 				for _, layer in entry.layers do
 					local target = projectBand(camera, entry.part, layer.print)
 					local glyph = layer.native
@@ -161,6 +204,14 @@ return function(root: Frame, translate: (string)->string)
 					local exposed = true
 					for _, mask in masks do
 						if intersects(painted,mask) then exposed = false break end
+					end
+					-- Keep the caption legible even when multiple figures share the tile.
+					if compact and glyph:IsA("TextLabel") then
+						glyph.BackgroundColor3 = entry.poster.Parent.BackgroundColor3
+						glyph.BackgroundTransparency = if exposed then 1 else .08
+						exposed = true
+					elseif glyph:IsA("TextLabel") then
+						glyph.BackgroundTransparency = 1
 					end
 					glyph.Visible, layer.print.Visible = exposed, not exposed
 				end
