@@ -2,6 +2,7 @@
 local TweenService = game:GetService("TweenService")
 local shared = game:GetService("ReplicatedStorage"):WaitForChild("League")
 local Art = require(shared.Presentation)
+local Board = require(shared.TourBoard)
 local Pawn = require(script.Parent.Pawn)
 local Meshes = require(script.Parent.MeshLibrary)
 local C = Color3.fromHex
@@ -11,7 +12,7 @@ local SHOT_START = Vector3.new(-11.5, 1.55, 2.6)
 
 type Shot = {
 	actors: Folder, ball: Model, shadow: Part, trail: Trail, shooter: Model, keeper: Model, start: number,
-	outcome: string, released: boolean, resolved: boolean, impact: () -> (),
+	outcome: string, figure: number, released: boolean, resolved: boolean, impact: () -> (),
 }
 
 local function part(parent: Instance, name: string, size: Vector3, position: Vector3, color: Color3, material: Enum.Material?): Part
@@ -134,7 +135,8 @@ return function(effects: Folder, playSound: (string) -> ())
 		shooter.Name, keeper.Name = "Striker", "Goalkeeper"
 		shooter:ScaleTo(2.36)
 		keeper:ScaleTo(2.22)
-		shooter:PivotTo(CFrame.new(-21, -.50, 2.6) * CFrame.Angles(0, math.pi * .5, 0))
+		local shootingLane = if Board.figures[figure].leftFoot then 1.70 else 3.50
+		shooter:PivotTo(CFrame.new(-21, -.50, shootingLane) * CFrame.Angles(0, math.pi * .5, 0))
 		keeper:PivotTo(CFrame.new(33, -.40, 0) * CFrame.Angles(0, -math.pi * .5, 0))
 		local ball = Instance.new("Model")
 		ball.Name, ball.Parent = "Matchday ball", effects
@@ -164,7 +166,7 @@ return function(effects: Folder, playSound: (string) -> ())
 		local shadow = medallion(actors, "Ball contact shadow", Vector3.new(SHOT_START.X, .411, SHOT_START.Z), 2.6, .02, Art.ink)
 		shadow.Transparency = .57
 		shot = {ball = ball, actors = actors, shadow = shadow, trail = trail, shooter = shooter, keeper = keeper,
-			start = os.clock(), outcome = outcome, released = false, resolved = false, impact = impact}
+			start = os.clock(), outcome = outcome, figure = figure, released = false, resolved = false, impact = impact}
 	end
 
 	local function step(clock: number, reduced: boolean)
@@ -205,10 +207,15 @@ return function(effects: Folder, playSound: (string) -> ())
 				local approach = math.clamp(elapsed / SHOT_RELEASE, 0, 1)
 				local strikerX = -21 + 6 * approach + 2 * settle
 				local celebrating = replay.outcome == "goal" and replay.resolved
+				local flourish = celebrating and replay.figure == 2
+				local jump = if flourish then math.sin(math.pi * math.clamp(settle / .64, 0, 1)) * 1.50 else 0
 				local turnToCrowd = if celebrating then .98 * (1 - (1 - settle) ^ 3) else 0
-				replay.shooter:PivotTo(CFrame.new(strikerX, -.52, 2.6) * CFrame.Angles(0, math.pi * .5 - turnToCrowd, 0))
+				if flourish then turnToCrowd += TAU * math.clamp((settle - .12) / .52, 0, 1) end
+				local shootingLane = if Board.figures[replay.figure].leftFoot then 1.70 else 3.50
+				replay.shooter:PivotTo(CFrame.new(strikerX, -.52 + jump, shootingLane)
+					* CFrame.Angles(0, math.pi * .5 - turnToCrowd, 0))
 				if celebrating then
-					Pawn.animate(replay.shooter, "cheer", .18 + settle * .66)
+					Pawn.animate(replay.shooter, "cheer", .10 + settle * .82)
 				else
 					Pawn.animate(replay.shooter, "kick", math.clamp(elapsed / .55, 0, 1))
 				end

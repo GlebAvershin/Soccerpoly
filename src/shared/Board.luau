@@ -63,12 +63,12 @@ Board.assetGroups = table.freeze(assetGroups)
 Board.benchFee = 50
 
 Board.figures = table.freeze({
-	table.freeze({name = "Mika Vale", role = "Playmaker", ru = "Плеймейкер", number = "08", color = 0x7BFAAA, dark = 0x193F37, skin = 0xC88D62, hair = 0x251820}),
-	table.freeze({name = "Inez Sol", role = "Striker", ru = "Нападающая", number = "09", color = 0xFF9F69, dark = 0x57263B, skin = 0xAC6244, hair = 0x30182C}),
-	table.freeze({name = "Kai Ito", role = "Winger", ru = "Вингер", number = "17", color = 0x6CBFFF, dark = 0x29315A, skin = 0xF4BD93, hair = 0x233653}),
-	table.freeze({name = "Amara Diop", role = "Keeper", ru = "Вратарь", number = "01", color = 0xEBACFF, dark = 0x492A67, skin = 0x885341, hair = 0x221C2C}),
-	table.freeze({name = "Rafa Marin", role = "Coach", ru = "Тренер", number = "CT", color = 0xF4D46B, dark = 0x39453F, skin = 0xCF9269, hair = 0x3B2A27}),
-	table.freeze({name = "Samira Noor", role = "Referee", ru = "Арбитр", number = "RF", color = 0xF588A5, dark = 0x402A49, skin = 0xBD785B, hair = 0x262132}),
+	table.freeze({name = "Lionel Messi", localName = "Лионель Месси", model = "messi", countryCode = "ARG", role = "Playmaker", ru = "Плеймейкер", number = "10", color = 0x9ADBF3, kit = 0xEDF3EC, dark = 0x1B3044, skin = 0xCE926F, height = .96, width = .94, leftFoot = true}),
+	table.freeze({name = "Cristiano Ronaldo", localName = "Криштиану Роналду", model = "ronaldo", countryCode = "POR", role = "Striker", ru = "Нападающий", number = "07", color = 0xFA7992, kit = 0xB92547, dark = 0x143D38, skin = 0xBF815E, height = 1.06, width = 1.04, leftFoot = false}),
+	table.freeze({name = "Kylian Mbappé", localName = "Килиан Мбаппе", model = "mbappe", countryCode = "FRA", role = "Forward", ru = "Форвард", number = "10", color = 0x929EFF, kit = 0x444C9D, dark = 0x202746, skin = 0x92573C, height = 1.01, width = 1.06, leftFoot = false}),
+	table.freeze({name = "Lamine Yamal", localName = "Ламин Ямаль", model = "yamal", countryCode = "ESP", role = "Winger", ru = "Вингер", number = "19", color = 0xF8A763, kit = 0xDA422F, dark = 0x35233D, skin = 0xAF7152, height = 1.00, width = .88, leftFoot = true}),
+	table.freeze({name = "Erling Haaland", localName = "Эрлинг Холанд", model = "haaland", countryCode = "NOR", role = "Striker", ru = "Нападающий", number = "09", color = 0xE1DED0, kit = 0xD9DEE0, dark = 0x233B55, skin = 0xE7A78B, height = 1.11, width = 1.10, leftFoot = true}),
+	table.freeze({name = "Vinícius Júnior", localName = "Винисиус Жуниор", model = "vinicius", countryCode = "BRA", role = "Winger", ru = "Вингер", number = "07", color = 0xBCF389, kit = 0xECD44B, dark = 0x244E43, skin = 0x884D37, height = .99, width = .97, leftFoot = false}),
 })
 
 Board.figureAbilities = table.freeze({"route", "goal", "kickoff", "gate", "upgrade", "var"})

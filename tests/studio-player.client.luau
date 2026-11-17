@@ -67,6 +67,33 @@ local ok, err = pcall(function()
 			return face and face:IsA("MeshPart") and collar and collar:IsA("MeshPart") and hand and hand:IsA("MeshPart")
 		end, "Blender figure")
 		waitFor(function()
+			local roster = workspace:FindFirstChild("LocalTablePieces")
+			if not roster then return false end
+			for _, footballer in board.figures do
+				local figure = roster:FindFirstChild(footballer.name)
+				local head = figure and figure:FindFirstChild("Face", true)
+				local jersey = figure and figure:FindFirstChild("Jersey", true)
+				if not (head and head:IsA("MeshPart") and jersey and jersey:IsA("MeshPart")) then return false end
+			end
+			return true
+		end, "six portrait sculpts and six match kits")
+		local pawn = require(script.Parent.Pawn)
+		local inspection = Instance.new("Folder")
+		for index in {1, 2} do
+			local model = pawn.make(index, inspection, true)
+			pawn.animate(model, "kick", 0)
+			local left, right = model["Left leg"], model["Right leg"]
+			local initialLeft, initialRight = left:GetPivot().UpVector, right:GetPivot().UpVector
+			pawn.animate(model, "kick", .58)
+			local leftTurn = initialLeft:Dot(left:GetPivot().UpVector)
+			local rightTurn = initialRight:Dot(right:GetPivot().UpVector)
+			local leftFoot = board.figures[index].leftFoot
+			assert(if leftFoot then leftTurn < rightTurn else rightTurn < leftTurn, "Dominant foot and Blender kick differ")
+			pawn.animate(model, "cheer", .45)
+			assert((model["Right arm"]:GetPivot().LookVector - Vector3.new(0, 0, -1)).Magnitude > .5)
+		end
+		inspection:Destroy()
+		waitFor(function()
 			local music = game:GetService("SoundService"):FindFirstChild("Footbolapolia Music")
 			local sound = music and music:FindFirstChild("Feel That Move")
 			return sound and sound.IsLoaded and sound.IsPlaying

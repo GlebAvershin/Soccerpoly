@@ -22,7 +22,7 @@ def array(name, values):
     return f"\t\t{name} = {{\n" + "".join(f"\t\t\t{row},\n" for row in rows) + "\t\t},\n"
 
 
-def export_shapes(models, target):
+def export_shapes(models, target, include_bounds=False):
     totals = Counter()
     lines = ["--!strict\n-- Generated from Blender. Edit the source scene and re-export.\nreturn table.freeze({\n"]
     deps = bpy.context.evaluated_depsgraph_get()
@@ -54,6 +54,9 @@ def export_shapes(models, target):
         assert 0 < count <= 6000, (model.name, count)
         totals.update(vertices=len(positions), triangles=count)
         lines.append(f'\t["{model.name}"] = {{\n')
+        if include_bounds:
+            lines.append(array("size", [round(v, 5) for v in extent]))
+            lines.append(array("center", [round((a + b) / 2, 5) for a, b in zip(low, high)]))
         for key, values in (("points", points), ("normals", [v for n in normals for v in n]),
                             ("triangles", triangles), ("normalIndices", normal_ids),
                             ("colors", colors), ("faceColors", face_colors)):

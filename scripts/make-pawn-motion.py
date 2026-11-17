@@ -62,6 +62,49 @@ RANGES = {
 }
 BASIS = Matrix(((1, 0, 0), (0, 0, -1), (0, 1, 0)))
 NEUTRAL = [(0, 0, 0)] * 6
+# Each pose is articulated in the same 12 channels as the run and the shot.
+CELEBRATIONS = {
+    "messi": (
+        [(3, -9, -6), (-4, 7, 2), (-41, -4, -19), (-52, 5, 14), (-12, 0, 4), (15, 0, -4)],
+        [(-7, 7, 1), (-25, 2, -2), (-112, -21, -25), (-115, 18, 25), (8, 0, 5), (-6, 0, -3)],
+        [(-3, 4, 0), (-17, 8, 1), (-104, -20, -21), (-109, 21, 27), (4, 0, 4), (-5, 0, -3)],
+        (-39, -36, 18, 24, -10, -14), (-43, -47, 8, 12, -3, -5),
+    ),
+    "ronaldo": (
+        [(17, 11, 6), (8, -9, -2), (-28, -12, -36), (-41, 10, 39), (-21, 0, -8), (-24, 0, 8)],
+        [(-15, 36, -2), (-6, -25, 5), (-143, -24, -40), (-148, 19, 41), (-30, 4, 18), (-35, -7, -19)],
+        [(2, -4, 2), (5, 5, -2), (10, 0, -57), (15, 0, 60), (-14, 4, 16), (-14, -5, -16)],
+        (-66, -57, 64, 68, -20, -19), (-12, -15, 28, 26, -13, -11),
+    ),
+    "mbappe": (
+        [(4, -10, -1), (1, 9, 3), (-52, 9, -13), (-61, -13, 14), (-9, 0, 5), (12, 0, -3)],
+        [(-4, 8, 4), (-5, -7, -6), (-73, -13, -23), (-59, 15, 25), (5, 0, 4), (-8, 1, -5)],
+        [(-6, 8, 4), (-5, -7, -6), (-72, -11, -20), (-56, 13, 24), (5, 0, 4), (-8, 1, -5)],
+        (-79, -93, 9, 18, -10, -7), (-87, -97, 12, 14, -9, -7),
+    ),
+    "yamal": (
+        [(8, -19, -10), (0, 14, 5), (-43, 3, -24), (-54, -3, 18), (-11, 0, 6), (19, 0, -7)],
+        [(-4, 15, 8), (-6, -16, -5), (-55, -20, -18), (-151, 17, 23), (5, 0, 11), (-25, 0, -15)],
+        [(2, -10, -7), (-7, 11, 5), (-120, -12, -22), (-57, 13, 17), (-15, 0, 10), (12, 0, -12)],
+        (-74, -44, 8, 49, -7, -18), (-52, -78, 41, 17, -14, -7),
+    ),
+    "haaland": (
+        [(8, 6, -2), (8, -4, 1), (5, 12, -31), (4, -17, 30), (-15, 0, 7), (-11, 0, -8)],
+        [(1, 1, 0), (10, 0, 0), (-14, -22, -33), (-14, 22, 33), (-8, 0, 11), (-8, 0, -11)],
+        [(1, -1, 0), (11, 0, 0), (-13, -25, -32), (-13, 25, 32), (-10, 0, 12), (-10, 0, -12)],
+        (-92, -92, 30, 30, -12, -12), (-93, -93, 31, 31, -12, -12),
+    ),
+    "vinicius": (
+        [(9, -20, -13), (1, 12, 9), (-64, -4, -21), (18, 0, 20), (-18, 0, 12), (11, 0, -9)],
+        [(4, 24, 18), (-3, -14, -9), (-23, 22, -44), (-86, 13, 38), (8, 0, 14), (-37, -6, -15)],
+        [(-5, -21, -12), (4, 13, 5), (-94, -16, -23), (-29, -8, 34), (-42, 7, 14), (12, 0, -7)],
+        (-57, -74, 16, 61, -4, -16), (-73, -51, 61, 17, -19, -5),
+    ),
+}
+for index, name in enumerate(CELEBRATIONS):
+    start = 225 + index * 32
+    RANGES[name] = (start, start + 24)
+
 
 
 def record(rig, clip, time, angles, torso_y=0):
@@ -80,7 +123,7 @@ def record(rig, clip, time, angles, torso_y=0):
 def figure_rig():
     bpy.ops.wm.read_factory_settings(use_empty=True)
     scene = bpy.context.scene
-    scene.frame_start, scene.frame_end, scene.render.fps = 1, 217, 24
+    scene.frame_start, scene.frame_end, scene.render.fps = 1, max(end for _, end in RANGES.values()), 24
     rig = {}
     for name, at in JOINTS.items():
         joint = bpy.data.objects.new(name, None)
@@ -90,19 +133,26 @@ def figure_rig():
         joint.location = local_offset(name)
         joint.empty_display_size = .22
         rig[name] = joint
-    previews = {
-        "Torso": [((0, 3.05, 0), (2.12, 1.65, 1.31), "Kit")],
-        "Head": [((0, 4.59, .04), (1.76, 1.62, 1.58), "Skin"),
-                 ((0, 5.13, -.05), (1.82, .64, 1.55), "Hair"),
-                 ((0, 4.47, .76), (.26, .26, .35), "Skin")],
-    }
+    # Use the production sculpts for the torso and head in the animation scene.
+    sculpt_file = ROOT / "art/player-sculpts.blend"
+    with bpy.data.libraries.load(str(sculpt_file), link=False) as (_, imported):
+        imported.objects = ["messi_jersey", "messi"]
+    for mesh, joint, y in zip(imported.objects, ("Torso", "Head"), (3.00, 4.59)):
+        scene.collection.objects.link(mesh)
+        mesh.parent = rig[joint]
+        mesh.location = blender(point(0, y, 0)) - blender(JOINTS[joint])
+        if joint == "Torso":
+            mesh.scale = (1.97, 1.30, 1.65)
+        else:
+            mesh.scale = (1.44 * .87, 1.48 * .94, 1.21 * 1.035)
+    previews = {"Torso": [((0, 3.82, 0), (.58, .45, .63), "Skin")]}
     for label, side in (("Left", -1), ("Right", 1)):
         previews[label + " arm"] = [((side * 1.10, 3.24, 0), (.76, .83, .80), "Kit")]
         previews[label + " elbow"] = [((side * 1.34, 2.68, .17), (.52, .91, .60), "Skin")]
         previews[label + " leg"] = [((side * .44, 1.93, 0), (.81, .87, .84), "Hair")]
         previews[label + " knee"] = [((side * .47, 1.17, .05), (.49, .99, .55), "Kit")]
         previews[label + " ankle"] = [((side * .49, .63, .26), (.76, .52, 1.04), "Hair")]
-    colors = {"Kit": (.13, .72, .48, 1), "Skin": (.64, .38, .22, 1), "Hair": (.11, .12, .15, 1)}
+    colors = {"Kit": (.78, .91, .94, 1), "Skin": (.80, .57, .43, 1), "Hair": (.09, .16, .22, 1)}
     for name, pieces in previews.items():
         for pos, size, surface in pieces:
             bpy.ops.mesh.primitive_uv_sphere_add(segments=16, ring_count=8, radius=.5)
@@ -153,6 +203,17 @@ def figure_rig():
     record(rig, "save", .49, [(-16, 4, 36), (-11, -8, -17), (-115, 5, -43), (-100, -17, 24), (15, 3, 13), (22, 4, -8)], .11)
     record(rig, "save", .72, [(4, -5, 25), (7, 6, -11), (-72, 5, -15), (-69, -7, 12), (-17, 4, 13), (-20, 2, -10)], -.16)
     record(rig, "save", 1, NEUTRAL)
+    for name, (gather, peak, land, peak_hinges, land_hinges) in CELEBRATIONS.items():
+        HINGES[name] = {
+            0: (0, 0, 0, 0, 0, 0), .18: (-33, -33, 30, 30, -11, -11),
+            .45: peak_hinges, .74: land_hinges, .91: land_hinges, 1: (0, 0, 0, 0, 0, 0),
+        }
+        record(rig, name, 0, NEUTRAL)
+        record(rig, name, .18, gather, -.12)
+        record(rig, name, .45, peak, .19 if name == "ronaldo" else .03)
+        record(rig, name, .74, land, -.13 if name == "ronaldo" else .02)
+        record(rig, name, .91, land)
+        record(rig, name, 1, NEUTRAL)
     for screen in bpy.data.screens:
         for area in screen.areas:
             if area.type == "VIEW_3D":

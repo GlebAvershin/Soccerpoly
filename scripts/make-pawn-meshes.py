@@ -49,11 +49,6 @@ PROFILES = {
         (-.54, .23, .29, .07), (-.45, .44, .45, .08), (-.28, .50, .51, .08),
         (-.08, .53, .52, .04), (.14, .50, .47, -.012), (.32, .37, .40, -.065), (.54, .31, .33, -.10),
     ),
-    "hand": (
-        (-.53, .19, .24, .055), (-.46, .36, .39, .085), (-.28, .46, .48, .052),
-        (-.03, .51, .49, .019), (.18, .50, .47, -.029), (.34, .41, .36, -.072),
-        (.52, .32, .30, -.080),
-    ),
     "ear": (
         (-.52, .13, .14, -.05), (-.43, .33, .29, -.04), (-.19, .47, .39, -.03),
         (.06, .53, .48, .035), (.30, .50, .46, .08), (.49, .29, .28, .07), (.54, .11, .10, .05),
@@ -72,7 +67,7 @@ PROFILES = {
 COLORS = {
     "head": (.41, .24, .14, 1), "jersey": (.12, .53, .30, 1),
     "forearm": (.41, .24, .14, 1), "sock": (.25, .64, .46, 1), "glove": (.79, .83, .72, 1),
-    "shorts": (.064, .13, .12, 1), "sleeve": (.15, .52, .72, 1), "boot": (.05, .08, .076, 1), "hand": (.41, .24, .14, 1), "ear": (.41, .24, .14, 1), "outsole": (.12, .13, .16, 1),
+    "shorts": (.064, .13, .12, 1), "sleeve": (.15, .52, .72, 1), "boot": (.05, .08, .076, 1), "ear": (.41, .24, .14, 1), "outsole": (.12, .13, .16, 1),
 }
 
 
@@ -102,7 +97,7 @@ def build(name, profile):
                 z += .058 * math.exp(-((height - .18) / .27) ** 2) * math.cos(angle)
                 z -= .045 * math.exp(-((x / .12) ** 2) - (((height - .22) / .24) ** 2))
                 x *= .91 + .12 * math.exp(-((height - .30) / .24) ** 2)
-            if name in ("hand", "glove") and math.cos(angle) > 0:
+            if name == "glove" and math.cos(angle) > 0:
                 z += .07 * math.exp(-((height + .21) / .18) ** 2) * math.cos(x * 24) ** 2
                 z += .09 * math.exp(-((x + .39) / .14) ** 2 - ((height + .04) / .24) ** 2)
             if name == "ear" and math.cos(angle) > 0:
@@ -176,6 +171,53 @@ def geometric_parts():
     }
 
 
+def sculpt_hand(side):
+    """Fuse the palm, folded fingers and thumb into a single articulated hand."""
+    from mathutils import Euler
+    name = "Hand_Left" if side < 0 else "Hand_Right"
+    pieces = []
+
+    def volume(x, y, z, size, angles=(0, 0, 0)):
+        bpy.ops.mesh.primitive_uv_sphere_add(segments=18, ring_count=12, location=(x * side, -z, y))
+        piece = bpy.context.object
+        piece.scale = (size[0], size[2], size[1])
+        piece.rotation_euler = Euler((angles[0], angles[1] * side, angles[2] * side))
+        pieces.append(piece)
+
+    # Wrist blends into the forearm. Four knuckles wrap around a relaxed palm.
+    volume(0, .275, -.005, (.258, .318, .230))
+    volume(.025, -.015, .025, (.369, .351, .272))
+    for i, length in enumerate((.161, .198, .190, .144)):
+        x = -.205 + i * .164
+        volume(x, -.268 + abs(i - 1.5) * .040, .101, (.128, length, .151), (-.26, 0, 0))
+        volume(x, -.127, .210, (.115, .114, .161), (-.33, 0, 0))
+    volume(-.292, .063, .077, (.165, .245, .175), (-.19, -.31, -.22))
+    volume(-.330, -.101, .207, (.132, .165, .153), (.26, -.40, -.24))
+    bpy.ops.object.select_all(action="DESELECT")
+    for piece in pieces:
+        piece.select_set(True)
+    model = pieces[0]
+    bpy.context.view_layer.objects.active = model
+    bpy.ops.object.join()
+    bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
+    model.name = name
+    remesh = model.modifiers.new("Sculpt union", "REMESH")
+    remesh.mode, remesh.voxel_size, remesh.use_smooth_shade = "VOXEL", .037, True
+    bpy.ops.object.modifier_apply(modifier=remesh.name)
+    smooth = model.modifiers.new("Soft knuckle contours", "SMOOTH")
+    smooth.factor, smooth.iterations = .42, 3
+    bpy.ops.object.modifier_apply(modifier=smooth.name)
+    simplify = model.modifiers.new("Game mesh", "DECIMATE")
+    simplify.ratio = min(1, 1020 / (len(model.data.polygons) * 2))
+    bpy.ops.object.modifier_apply(modifier=simplify.name)
+    for face in model.data.polygons:
+        face.use_smooth = True
+    material = bpy.data.materials.get("Palm resin") or bpy.data.materials.new("Palm resin")
+    material.diffuse_color = (.47, .28, .19, 1)
+    model.data.materials.append(material)
+    return model
+
+
 def export(model):
     evaluated = model.evaluated_get(bpy.context.evaluated_depsgraph_get())
     mesh = evaluated.to_mesh()
@@ -202,13 +244,14 @@ def lua_array(name, values):
 
 
 export_only = "--" in sys.argv and "--export" in sys.argv[sys.argv.index("--") + 1:]
-detail_names = ("collar", "glovepad", "bootpanel", "smile")
+detail_names = ("collar", "glovepad", "bootpanel", "smile", "hand_left", "hand_right")
 if export_only:
     parts = {name: bpy.context.scene.objects[name.title()] for name in (*PROFILES, *detail_names)}
 else:
     bpy.ops.wm.read_factory_settings(use_empty=True)
     parts = {name: build(name, profile) for name, profile in PROFILES.items()}
     parts.update(geometric_parts())
+    parts["hand_left"], parts["hand_right"] = sculpt_hand(-1), sculpt_hand(1)
     for i, model in enumerate(parts.values()):
         model.location = ((i % 4 - 1.5) * 1.50, (i // 4) * 1.5, 0)
 

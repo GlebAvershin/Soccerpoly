@@ -1,3 +1,24 @@
+# Footbolapolia v0.17.0
+
+## Коллекция футболистов
+
+В ростере шесть стилизованных портретов. Это Лионель Месси, Криштиану Роналду, Килиан Мбаппе, Ламин Ямаль, Эрлинг Холанд и Винисиус Жуниор. В Blender смоделированы профили, челюсти, причёски, кисти и форма. Цветовые панели нанесены на полигоны футболок, поэтому читаются под разными углами и движутся вместе с корпусом. Формы созданы для игры по мотивам цветов сборных. Портретные снимки использованы как референсы. [Портреты FIFA](https://www.fifa.com/en/articles/stars-portrait-photographs-messi-ronaldo-mbappe) · [Ямаль на UEFA](https://www.uefa.com/uefachampionsleague/clubs/players/250176450--lamine-yamal/).
+
+У Месси, Ямаля и Холанда удар выполняется левой ногой. Для шести футболистов заданы отдельные ключи празднования. Прыжок и разворот Роналду учитываются при постановке кадра. У вратаря в повторах собственная модель. [Редактируемые скульпты](../art/player-sculpts.blend) · [Кисти и детали комплектов](../art/pawn-shapes.blend) · [Ключи анимации](../art/pawn-motion.blend) · [Сцена ростера](../art/player-lineup-v0170.blend).
+
+```sh
+blender_app=/Applications/Blender.app/Contents/MacOS/Blender
+"$blender_app" -b art/player-sculpts.blend -t 2 --python-exit-code 1 --python scripts/make-player-sculpts.py -- --export
+"$blender_app" -b art/pawn-motion.blend -t 2 --python-exit-code 1 --python scripts/make-pawn-motion.py -- --export
+make build
+```
+
+## Клетки и проверка
+
+У 32 клеток светлая поверхность с фаской. Клубы обозначены тёмным названием, отдельной ценой и цветовой полосой лиги. Для узкого экрана используется сочетание коротких имён и кодов. Полное название можно открыть касанием. [Поле в Roblox Studio](../art/studio-table-v0170.png) · [Портретный режим](../art/studio-portrait-v0170.png).
+
+Локальные прогоны Roblox Studio проверяют загрузку всех шести голов и комплектов формы, левый и правый удары, движение колена на бегу, читаемость 32 подписей, покупку клуба и сцену гола. Публичный плейс, использующий сборку мешей на клиенте, должен иметь включённые Mesh / Image APIs. [Справка Roblox](https://create.roblox.com/docs/reference/engine/classes/EditableMesh).
+
 # Footbolapolia v0.16.0
 
 ## Наблюдения в Business Tour

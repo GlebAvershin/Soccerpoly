@@ -10,6 +10,15 @@ type Print = {
 	transform: CFrame, width: number, depth: number,
 }
 
+local mobileTitles = {
+	SEV = "Sevilla", ARS = "Arsenal", ACM = "Milan", INT = "Inter", JUV = "Juve",
+	NAP = "Napoli", RMA = "Real", FCB = "Barça", BAY = "Bayern", ASM = "Monaco",
+	OM = "OM", OL = "Lyon", SB = "Bernabéu", OT = "Trafford", SS = "San Siro", AA = "Allianz",
+}
+local mobileEvents = {
+	kickoff = "Kickoff", chance = "Chance", tax = "Tax", tour = "Away", championship = "Cup", bench = "Bench",
+}
+
 local shortTitles = {
 	["Bayer Leverkusen"] = "Leverkusen",
 	["Olympique Lyonnais"] = "Lyon",
@@ -19,6 +28,9 @@ local shortTitles = {
 	["Manchester United"] = "Manchester\nUnited",
 	["Manchester City"] = "Manchester\nCity",
 	["Santiago Bernabéu"] = "Santiago\nBernabéu",
+	["Atlético Madrid"] = "Atlético\nMadrid",
+	["FC Barcelona"] = "Barcelona",
+	["Liverpool FC"] = "Liverpool",
 }
 
 local function text(parent: Instance, name: string, color: Color3, maxSize: number, font: Enum.Font): TextLabel
@@ -42,12 +54,13 @@ return function(root: Frame, translate: (string) -> string)
 		tile.Size = UDim2.fromScale(1, 1)
 		local stripe = UI.box(tile, "Ownership mark", Art.paper, 2)
 		stripe.AnchorPoint, stripe.Visible = Vector2.one * .5, false
-		local price = text(tile, "Club cost", Art.ink, 16, Enum.Font.BuilderSansBold)
+		local price = text(tile, "Club cost", Art.paper, 16, Enum.Font.BuilderSansBold)
 		local holding = Instance.new("UICorner")
-		holding.CornerRadius, holding.Parent = UDim.new(0, 3), price
+		holding.CornerRadius, holding.Parent = UDim.new(0, 2), price
+		price.BackgroundColor3 = Art.printInk
 		prints[index] = {
-			name = text(tile, "Club name", Art.paper, 23, Enum.Font.BuilderSansExtraBold),
-			value = price, league = text(tile, "League mark", Art.paper, 11, Enum.Font.BuilderSansBold), stripe = stripe,
+			name = text(tile, "Club name", Art.printInk, 18, Enum.Font.BuilderSansExtraBold),
+			value = price, league = text(tile, "League mark", Art.printInk, 11, Enum.Font.BuilderSansExtraBold), stripe = stripe,
 			transform = CFrame.new(cell.X, Art.tileTop + .09, cell.Z) * CFrame.Angles(0, Geometry.tileYaw(index), 0),
 			width = dimensions.X, depth = dimensions.Y,
 		}
@@ -60,12 +73,15 @@ return function(root: Frame, translate: (string) -> string)
 			local owner = if match then match.clubs[i].owner else 0
 			local value = if owner ~= 0 then match.gates[i] else tile.price
 			local translated = translate(tile.name)
-			entry.name.Text = if compact then tile.code elseif translated == tile.name then shortTitles[tile.name] or translated else translated
+			local title = if translated == tile.name then shortTitles[tile.name] or translated else translated
+			if compact then
+				local concise = if tile.price == 0 then mobileEvents[tile.kind] else mobileTitles[tile.code]
+				local length = utf8.len(translated)
+				title = if concise and translated == tile.name then concise elseif length and length < 9 then translated else tile.code
+			end
+			entry.name.Text = title
 			entry.value.Text = if value > 0 then tostring(value) .. (if compact then "" else " CR") else ""
 			entry.value.BackgroundTransparency = if value > 0 then 0 else 1
-			local accent = Art.accent(tile.kind, tile.league)
-			entry.name.TextColor3 = if tile.price == 0 then accent else Art.paper
-			entry.value.BackgroundColor3 = accent:Lerp(Art.paper, .24)
 			entry.league.Text = if not compact and tile.league > 0 then Board.leagues[tile.league].code else ""
 			entry.stripe.Visible = owner ~= 0
 			if owner ~= 0 then
@@ -108,11 +124,11 @@ return function(root: Frame, translate: (string) -> string)
 				end
 				local tile = Board.tiles[i]
 				local corner = (i - 1) % 8 == 0
-				local titleDepth = if corner or tile.price == 0 then .28 elseif tile.kind == "venue" then .105 else -.028
-				local nameHeight = pixels * (if tile.league > 0 then .40 else .31)
-				place(info.name, titleDepth, .93, math.max(10, nameHeight))
-				place(info.value, .324, if compact then .53 else .72, math.max(7, pixels * .218))
-				place(info.league, -.369, .66, math.max(7, pixels * .176))
+				local titleDepth = if corner then .36 elseif tile.price == 0 then .30 elseif tile.kind == "venue" then .128 else -.055
+				local nameHeight = pixels * (if tile.league > 0 then .47 else .33)
+				place(info.name, titleDepth, .91, math.max(10, nameHeight))
+				place(info.value, .340, if compact then .53 else .60, math.max(7, pixels * .213))
+				place(info.league, -.375, .66, math.max(7, pixels * .176))
 				place(info.stripe, .447, .78, math.max(1.4, pixels * .044))
 			end
 		end,

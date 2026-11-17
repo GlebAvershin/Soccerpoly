@@ -1,6 +1,6 @@
 # Footbolapolia
 
-![Настольный стадион Footbolapolia v0.16.0 в Roblox Studio](art/studio-table-v0160.png)
+![Настольный стадион Footbolapolia v0.17.0 в Roblox Studio](art/studio-table-v0170.png)
 
 **Footbolapolia** — футбольная стратегия на четверых. На 32 клетках расположены 20 клубов из пяти лиг, четыре стадиона и клетки событий. В одиночной партии свободные места занимают боты.
 

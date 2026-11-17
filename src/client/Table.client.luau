@@ -519,7 +519,7 @@ local function lobbyPanel(data: any)
 	textArea.Position, textArea.Size = UDim2.new(0, 11, 0, if mode == "dock" then 16 else 5), UDim2.new(0.60, -11, 1, -16)
 	UI.stack(textArea, 3)
 	UI.label(textArea, "#" .. figure.number .. "  /  " .. t("Choose your figure"), 10, {font = BOLD, color = figureColor})
-	UI.label(textArea, figure.name, 20, {font = BLACK})
+	UI.label(textArea, if russian then figure.localName else figure.name, if #figure.name > 15 then 17 else 20, {font = BLACK})
 	UI.label(textArea, if russian then figure.ru else figure.role, 13, {font = BOLD, color = figureColor})
 
 	local viewport = Instance.new("ViewportFrame")
@@ -538,7 +538,7 @@ local function lobbyPanel(data: any)
 	row.Size = UDim2.new(1, 0, 0, 43)
 	for i, candidate in Board.figures do
 		local available = i ~= selected and not taken[i]
-		local b = UI.button(row, "Figure" .. i, candidate.number, 43, if available then function() send("figure", i) end else nil,
+		local b = UI.button(row, "Figure" .. i, candidate.countryCode, 43, if available then function() send("figure", i) end else nil,
 			if i == selected then hex(candidate.color) else colors.surface,
 			if i == selected then colors.ink elseif available then hex(candidate.color) else colors.muted)
 		local count = #Board.figures

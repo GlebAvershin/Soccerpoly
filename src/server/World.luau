@@ -34,17 +34,17 @@ end
 
 local function cornerProp(parent: Instance, index: number, pose: CFrame, accent: Color3)
 	if index == 1 then
-		part(parent, "Kickoff plinth", Vector3.new(5.25, .42, 2.7), pose * CFrame.new(0, .27, -1), C("849B47"))
+		part(parent, "Kickoff plinth", Vector3.new(5.25, .42, 2.7), pose * CFrame.new(0, .27, -1), C("54734F"))
 		for _, side in {-1, 1} do
 			part(parent, "Pennant mast", Vector3.new(.14, 4.5, .14), pose * CFrame.new(side * 2.1, 2.25, -1), Art.paper)
 		end
-		part(parent, "Pennant", Vector3.new(4.25, 1.34, .16), pose * CFrame.new(0, 3.25, -1), C("90A648"))
+		part(parent, "Pennant", Vector3.new(4.25, 1.34, .16), pose * CFrame.new(0, 3.25, -1), C("699453"))
 	elseif index == 9 then
 		mesh(parent, "Football", "ball", Vector3.one * 4.3, pose * CFrame.new(0, 2.35, -1))
 		part(parent, "Terminal", Vector3.new(5.85, .36, 5.85), pose * CFrame.new(0, .18, -1), accent:Lerp(Art.ink, .25))
 	elseif index == 17 then
-		mesh(parent, "Continental Cup arena", "champions", Vector3.new(10.2, 4.91, 9.45), pose * CFrame.new(0, 2.53, -1.05))
-		part(parent, "Championship podium", Vector3.new(9.2, .56, 8.9), pose * CFrame.new(0, .28, -1.05), C("84A042"))
+		mesh(parent, "Continental Cup arena", "champions", Vector3.new(9.1, 3.56, 7.95), pose * CFrame.new(0, 1.86, -3.17))
+		part(parent, "Championship podium", Vector3.new(8.4, .44, 7.7), pose * CFrame.new(0, .22, -3.17), C("84A042"))
 	else
 		mesh(parent, "Substitutes' bench", "dugout", Vector3.new(8.0, 3.97, 4.6), pose * CFrame.new(0, 2, -1))
 	end
@@ -54,27 +54,26 @@ local function drawTile(tray: Folder, index: number, tile: Board.Tile)
 	local at = Geometry.cells[index]
 	local yaw = Geometry.tileYaw(index)
 	local dims = Geometry.tileSize(index)
-	local width, depth = dims.X - .105, dims.Y - .105
+	local width, depth = dims.X - .38, dims.Y - .38
 	local pose = CFrame.new(at.X, Art.tileTop, at.Z) * CFrame.Angles(0, yaw, 0)
 	local accent = Art.accent(tile.kind, tile.league)
 	local cell = folder(tray, string.format("%02d %s", index, tile.name))
 	local isCorner = (index - 1) % 8 == 0
-	local surfaceColor = if tile.league > 0 then Art.tile:Lerp(accent, .09) else Art.tile
-	mesh(cell, "Molded tile case", "tile_case", Vector3.new(width, .53, depth),
-		pose * CFrame.new(0, -.31, 0), accent:Lerp(Art.ink, .70))
-	local face = mesh(cell, "Porcelain face", "tile_enamel", Vector3.new(width - .26, .26, depth - .25),
-		pose * CFrame.new(0, -.10, 0), surfaceColor)
+	local surfaceColor = Art.tile:Lerp(accent, if tile.league > 0 then .065 else .14)
+	mesh(cell, "Molded tile case", "tile_case", Vector3.new(width, .57, depth),
+		pose * CFrame.new(0, -.31, 0), accent:Lerp(Art.ink, .35))
+	local face = mesh(cell, "Porcelain face", "tile_enamel", Vector3.new(width - .12, .29, depth - .12),
+		pose * CFrame.new(0, -.12, 0), surfaceColor)
 	face.CastShadow = false
-	local insetDepth = if isCorner then depth * .66 elseif tile.price > 0 and tile.league > 0 then depth * .23 else depth * .56
-	local insetOffset = -.5 * depth + .5 * insetDepth + .17
-	local insetTint = accent:Lerp(Art.ink, if tile.league > 0 then .60 else .76)
-	mesh(cell, "League enamel inlay", "tile_enamel", Vector3.new(width - .33, .066, insetDepth),
-		pose * CFrame.new(0, .061, insetOffset), insetTint).CastShadow = false
 	if tile.league > 0 then
-		for _, side in {-1, 1} do
-			part(cell, "League trim", Vector3.new(width * .19, .045, .135),
-				pose * CFrame.new(side * width * .36, .043, insetOffset + insetDepth * .5 + .18), accent).CastShadow = false
-		end
+		local brim = mesh(cell, "League color band", "tile_enamel", Vector3.new(width - .68, .07, 3.22),
+			pose * CFrame.new(0, .045, -6.70), accent)
+		brim.CastShadow = false
+		part(cell, "Print divider", Vector3.new(width * .77, .022, .06),
+			pose * CFrame.new(0, .035, 3.27), accent:Lerp(Art.tile, .12)).CastShadow = false
+	elseif isCorner then
+		mesh(cell, "Event tile inlay", "tile_enamel", Vector3.new(width - .7, .07, depth * .57),
+			pose * CFrame.new(0, .047, -2.98), accent:Lerp(Art.tile, .33)).CastShadow = false
 	end
 	local printLayer = part(cell, "Printed tile", Vector3.new(width, .02, depth), pose * CFrame.new(0, .045, 0), Art.paper)
 	printLayer.CastShadow, printLayer.Transparency = false, 1
@@ -83,11 +82,11 @@ local function drawTile(tray: Folder, index: number, tile: Board.Tile)
 		cornerProp(cell, index, pose, accent)
 	elseif tile.kind == "chance" then
 		mesh(cell, "Chance cards", "event_card", Vector3.new(5.9, .71, 6.20),
-			pose * CFrame.new(0, .43, -2.95)).CastShadow = false
+			pose * CFrame.new(0, .43, -3.40)).CastShadow = false
 	elseif tile.kind == "tax" then
 		for page = 1, 3 do
 			part(cell, "Tax notice", Vector3.new(2.95, .12, 3.30), pose * CFrame.new(0, .16 + page * .09, -2.55)
-				* CFrame.Angles(0, -.22 + page * .08, 0), if page == 3 then Art.paper else C("C9AC78"))
+				* CFrame.Angles(0, -.22 + page * .08, 0), if page == 3 then C("D78C64") else C("A95F4B"))
 		end
 	elseif tile.kind == "venue" then
 		mesh(cell, "Miniature stadium", "arena", Vector3.new(5.15, 2.3, 4.2), pose * CFrame.new(0, 1.20, -2.72), accent)

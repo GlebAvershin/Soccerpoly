@@ -413,6 +413,25 @@ def event_card():
 
 
 
+def ticket_shell(height, corner, radius, inset):
+    # The game board tiles have clipped shoulders and a shallow polished edge.
+    x, z = 6, 8.4
+    outline = [(-x + corner, -z), (x - corner, -z), (x, -z + corner),
+               (x, z - corner), (x - corner, z), (-x + corner, z),
+               (-x, z - corner), (-x, -z + corner)]
+    points = [
+        blender((px * scale, y, pz * scale))
+        for y, scale in [(-height / 2, 1 - inset), (-height * .20, 1), (height / 2, 1 - inset * .70)]
+        for px, pz in outline
+    ]
+    faces = [tuple(range(8)), tuple(reversed(range(16, 24)))]
+    for ring in range(2):
+        for i in range(8):
+            a, b = ring * 8 + i, ring * 8 + (i + 1) % 8
+            faces.append((b, a, a + 8, b + 8))
+    return bevel(from_faces(points, faces, None), radius, 3)
+
+
 def build_scene():
     bpy.ops.wm.read_factory_settings(use_empty=True)
     builders = (
@@ -422,8 +441,8 @@ def build_scene():
         lambda: hair("curls"), lambda: hair("sweep"), lambda: hair("cap"), club_crest,
         lambda: block((0, 0, 0), (1, 1, 1), radius=.13, segments=5),
         chance_wheel, champions_arena,
-        lambda: block((0, 0, 0), (12, .60, 14), radius=.27, segments=4),
-        lambda: block((0, 0, 0), (12, .32, 14), radius=.145, segments=4),
+        lambda: ticket_shell(.64, .71, .12, .024),
+        lambda: ticket_shell(.37, .68, .065, .013),
         lambda: hair("fade"), arena_plinth, night_stand, pitch_mark, braided_hair, swept_quiff, event_card,
     )
     objects = []

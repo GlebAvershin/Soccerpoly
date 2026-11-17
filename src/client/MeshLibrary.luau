@@ -1,5 +1,6 @@
 --!strict
 local AssetService = game:GetService("AssetService")
+local Portraits = require(script.Parent.PlayerSculptData)
 local PawnData = require(script.Parent.PawnMeshData)
 local StadiumData = require(script.Parent.StadiumMeshData)
 
@@ -76,6 +77,7 @@ local function loadPending()
 	while #waiting > 0 do
 		local name = table.remove(waiting, 1) :: string
 		local shape = (PawnData :: {[string]: Shape})[name] or (StadiumData :: {[string]: Shape})[name]
+			or (Portraits :: {[string]: Shape})[name]
 		local success, template = pcall(loadTemplate, shape)
 		local pending = requests[name]
 		requests[name] = nil
