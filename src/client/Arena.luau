@@ -39,27 +39,18 @@ end
 local function position(index: number, slot: number?, count: number?): Vector3
 	local tile = Geometry.cells[index]
 	local size = Geometry.tileSize(index)
-	local edge = math.floor((index-1)/8)
-	local row = math.floor(((slot or 1)-1)/2)
-	local pair = math.min(2,(count or 1)-2*row)
-	local offset = (((slot or 1)-1)%2 - (pair-1)*.5)*8.3
-	-- The figurines occupy the inside edge of their ticket. Face and boots stay
-	-- separate from its printed name even when all four arrive on the corner.
-	local corner = (index-1)%8 == 0
-	local inward = Vector3.new(-math.sin((edge+1)*math.pi*.5),0,-math.cos((edge+1)*math.pi*.5))
-	local tangent = Vector3.new(-inward.Z,0,inward.X)
-	local at
-	if corner then
-		-- Spread the figurines along the touchline so each face has its own column.
-		local lane = (slot or 1)-1
-		local first = if (count or 1)>1 then 20 else 32
-		at = Vector3.new(math.sign(tile.X)*(first-lane*8.5),0,
-			tile.Z-math.sign(tile.Z)*(5.5+lane%2*3))
-	else
-		local inset = if edge%2==0 then 23 else size.Y*.70
-		at = tile + inward*(inset+row*6.8) + tangent*offset
-	end
-	return Vector3.new(at.X, Art.tileTop + .04 - Art.figureScale * .376, at.Z)
+	local sideways = math.floor((index - 1) / 8) % 2 == 0
+	local width = if sideways then size.Y else size.X
+	local depth = if sideways then size.X else size.Y
+	local total, ordinal = count or 1, slot or 1
+	local row = math.floor((ordinal-1)/2)
+	local onRow = math.min(2,total-row*2)
+	local col = (ordinal-1)%2
+	-- Place the boots on the artwork. Two pairs share a corner at kickoff.
+	local x = tile.X + (col-(onRow-1)*.5)*width*.43
+	local depthOffset = if total <= 2 then .20 else .02+row*.32
+	local z = tile.Z-depth*depthOffset
+	return Vector3.new(x, Art.tileTop + .04 - Art.figureScale * .376, z)
 end
 
 local function settled(point: Vector3): CFrame
@@ -162,11 +153,6 @@ function Arena.new(myId: number, root: Frame, translate: (string) -> string, pla
 	local replaying = false
 
 	local models: {[number]: Model} = {}
-	local seatPins: {[number]: BasePart} = {}
-	local function clearPins()
-		for _, pin in seatPins do pin:Destroy() end
-		table.clear(seatPins)
-	end
 	local activeId = 0
 	local cheerId, cheerUntil = 0, 0
 	local idleTick = -1
@@ -210,7 +196,7 @@ function Arena.new(myId: number, root: Frame, translate: (string) -> string, pla
 		local tangent = math.tan(math.rad(fov) * .5)
 		portraitCamera = aspect < .86
 		shortLandscape = aspect > 1 and root.AbsoluteSize.Y < 430
-		local angle = math.rad(if portraitCamera then 52 else 40)
+		local angle = math.rad(if portraitCamera then 63 else 40)
 		local orbit = Vector3.zAxis * math.cos(angle) + Vector3.yAxis * math.sin(angle)
 		local span = Geometry.width
 		local width = .85
@@ -220,8 +206,7 @@ function Arena.new(myId: number, root: Frame, translate: (string) -> string, pla
 		if portraitCamera or shortLandscape then
 			-- Fit the near corners, with four logical pixels clear on either side.
 			local widthPixels = math.max(1, math.min(root.AbsoluteSize.X,size.X) - (if shortLandscape then 208 else 8))
-			local plaqueHeight = math.clamp(math.round(math.min(size.X,size.Y)*.049),17,23)
-			local heightPixels = if shortLandscape then math.max(1,size.Y-2*(2*plaqueHeight+8))
+			local heightPixels = if shortLandscape then math.max(1,size.Y-16)
 				else math.max(size.Y*.39,root.AbsoluteSize.Y-224)
 			-- Studio devices can render behind a notch; measure the actual projection.
 			camera.FieldOfView = fov
@@ -338,7 +323,6 @@ function Arena.new(myId: number, root: Frame, translate: (string) -> string, pla
 			replay.clear()
 			activeId, cheerId = 0, 0
 			finishFlight()
-			clearPins()
 			effects:ClearAllChildren()
 			signature = ""
 			markers:ClearAllChildren()
@@ -370,7 +354,6 @@ function Arena.new(myId: number, root: Frame, translate: (string) -> string, pla
 		table.clear(previews)
 		local sameMatch = serial == snapshot.serial
 		if not sameMatch then
-			clearPins()
 			replay.clear()
 			lastRoll = 0
 			finishFlight()
@@ -391,35 +374,20 @@ function Arena.new(myId: number, root: Frame, translate: (string) -> string, pla
 			if seat.bankrupt then continue end
 			tileCounts[seat.position] = (tileCounts[seat.position] or 0) + 1
 		end
-		for seatIndex, seat in s.seats do
+		for _, seat in s.seats do
 			local model = models[seat.id]
 			if seat.bankrupt then
 				if model then model:Destroy(); models[seat.id] = nil end
-				if seatPins[seat.id] then seatPins[seat.id]:Destroy(); seatPins[seat.id] = nil end
 				continue
 			end
 			if not model then
 				model = Pawn.make(seat.figure, matchPawns, true)
 				model:ScaleTo(Art.figureScale)
 				models[seat.id] = model
-				local foot = medallion(model,"Seat enamel",model:GetPivot().Position+Vector3.yAxis*(.376*Art.figureScale-.04),
-					6.6,.08,Art.seatColors[seatIndex])
-				foot.Transparency = .24
 			end
 			local slot = (tileSlots[seat.position] or 0) + 1
 			tileSlots[seat.position] = slot
 			local destination = position(seat.position, slot, tileCounts[seat.position])
-			local pin = seatPins[seat.id]
-			if not pin then
-				pin = part(localParts,"Seat touchline",Vector3.one,Vector3.zero,Art.seatColors[seatIndex])
-				pin.Transparency = .22
-				seatPins[seat.id] = pin
-			end
-			local cell = Geometry.cells[seat.position]
-			local onCard = Vector3.new(cell.X,Art.tileTop+.09,cell.Z)
-			local base = Vector3.new(destination.X,onCard.Y,destination.Z)
-			pin.Size = Vector3.new(.37,.045,(base-onCard).Magnitude)
-			pin.CFrame = CFrame.lookAt((base+onCard)*.5,onCard)
 			if moved and s.motion.who == seat.id and s.motion.steps > 0 and not reduced then
 				local at = model:GetPivot().Position
 				local color = Art.hex(Board.figures[seat.figure].color)
@@ -461,9 +429,6 @@ function Arena.new(myId: number, root: Frame, translate: (string) -> string, pla
 			root:SetAttribute("ShotPlaying",replaying)
 			labels.show(not replaying)
 			matchPawns.Parent = if replaying then nil else localParts
-		end
-		for id, pin in seatPins do
-			pin.LocalTransparencyModifier = if frame or (entry and entry.model==models[id]) then 1 else 0
 		end
 		if frame then
 			camera.CFrame = frame
@@ -630,8 +595,6 @@ function Arena.new(myId: number, root: Frame, translate: (string) -> string, pla
 		end,
 		pickTile = function(point: Vector3): number?
 			if replaying then return nil end
-			local caption = labels.pickCaption(point)
-			if caption then return caption end
 			local camera = workspace.CurrentCamera
 			if not camera then return nil end
 			local ray = camera:ScreenPointToRay(point.X, point.Y)

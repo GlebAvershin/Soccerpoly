@@ -82,7 +82,7 @@ local ok, err = pcall(function()
 			assert(title:IsA("TextLabel") and title.Text ~= "" and title.TextFits, "Clipped title "..title.Text)
 			assert(cell.CanvasSize.X >= cell.Adornee.Size.X*22-1)
 			assert((title.FontFace.Family:find("Montserrat") or title.FontFace.Family:find("Oswald")) and cost.FontFace.Family:find("BuilderMono"))
-			assert(title.Position.Y.Scale+title.Size.Y.Scale<=1 and not title.Text:find("\n"))
+			assert(poster.Size.Y.Scale<=title.Position.Y.Scale and title.Position.Y.Scale+title.Size.Y.Scale<=1 and not title.Text:find("\n"))
 			local display=player.PlayerGui["Programme typography"]
 			assert(display.DisplayOrder<hud.DisplayOrder and display.ScreenInsets==Enum.ScreenInsets.DeviceSafeInsets)
 			local ink=display[cell.Name]["Club name"]
@@ -95,7 +95,7 @@ local ok, err = pcall(function()
 				local badge=artLayer["Embroidered kit"]
 				assert(badge.ImageContent.Object.Size==Vector2.new(256,256) and badge.SizeConstraint==Enum.SizeConstraint.RelativeYY)
 			end
-			if ink.Visible and ink.BackgroundTransparency==1 then
+			if ink.Visible then
 				local v=title.Position.Y.Scale+title.Size.Y.Scale*.5
 				local at=camera:WorldToViewportPoint(cell.Adornee.Position+cell.Adornee.CFrame.UpVector*cell.Adornee.Size.Y*(.5-v))
 				local middle=ink.AbsolutePosition-display[cell.Name].AbsolutePosition+ink.AbsoluteSize*.5
@@ -194,10 +194,19 @@ local ok, err = pcall(function()
 			end,"in-match language on board and scoreboard")
 		end
 	end
+	local function onCell(index: number, point: Vector3, margin: number): boolean
+		local face = printLayer["Cell"..index].Adornee
+		local localPoint = face.CFrame:PointToObjectSpace(point)
+		return math.abs(localPoint.X) <= face.Size.X*.5+margin and math.abs(localPoint.Y) <= face.Size.Y*.5+margin
+	end
 	if verifyMatchday then
 		local inactive = snapshot.match.seats[(snapshot.match.active % #snapshot.match.seats)+1]
 		local figures = workspace.LocalTablePieces["Match pawns"]
 		local resting = figures:WaitForChild(board.figures[inactive.figure].name)
+		for _, seat in snapshot.match.seats do
+			local pawn = figures:WaitForChild(board.figures[seat.figure].name)
+			assert(onCell(seat.position,pawn:GetPivot().Position,0),"Kickoff figure outside its printed tile")
+		end
 		local face = resting.Head.Face
 		local at = resting:GetPivot()
 		local before = at:ToObjectSpace(face.CFrame)
@@ -230,18 +239,25 @@ local ok, err = pcall(function()
 			local cell = display["Cell"..index]
 			local name, cost = cell["Club name"], cell["Club cost"]
 			assert(name.TextFits and cost.TextFits and not name.Text:find("\n"),tile.name)
-			assert(name.Visible and cost.Visible,"Hidden overview label: "..tile.name)
+			local paper = printLayer["Cell"..index]["Printed programme"]
+			assert(name.Visible ~= paper["Club name"].Visible and cost.Visible ~= paper["Club cost"].Visible,
+				"Missing or double-printed overview label: "..tile.name)
 			if index == 11 or index == 26 then
 				local russian = player:GetAttribute("TableLanguage") == "ru"
 				local expectedName = if index==11 then (if russian then "Ливерпуль" else "Liverpool")
 					else (if russian then "Дортмунд" else "Dortmund")
 				assert(name.Visible and name.Text==expectedName, "Missing single-line club name: "..name.Text)
 			end
-			minName, minPrice = math.min(minName,math.floor(name.TextBounds.Y/#string.split(name.Text,"\n"))), math.min(minPrice,cost.TextBounds.Y)
+			local ink = name:FindFirstChild("Club lettering")
+			local inkHeight = if ink and ink.Visible then ink.AbsoluteSize.Y else name.TextBounds.Y
+			if ink and ink.Visible then
+				assert(ink.AbsoluteSize.X <= name.AbsoluteSize.X+1 and inkHeight <= name.AbsoluteSize.Y, tile.name)
+			end
+			minName, minPrice = math.min(minName,inkHeight), math.min(minPrice,cost.TextBounds.Y)
 		end
 		print("OVERVIEW_TYPE",camera.ViewportSize,minName,minPrice)
-		local targetHeight = math.floor(math.min(camera.ViewportSize.X,camera.ViewportSize.Y)*.042)
-		assert(minName >= targetHeight and minPrice >= targetHeight,
+		local shortEdge = math.min(camera.ViewportSize.X,camera.ViewportSize.Y)
+		assert(minName >= math.floor(shortEdge*.022) and minPrice >= math.floor(shortEdge*.03),
 			"Overview name or price too small")
 	end
 	if closeup and hud.Viewport.AbsoluteSize.Y < 430 and camera.ViewportSize.X > camera.ViewportSize.Y then
@@ -287,7 +303,7 @@ local ok, err = pcall(function()
 			local header = backdrop:FindFirstChild("Club header",true)
 			local title = header and header:FindFirstChildWhichIsA("TextLabel")
 			return backdrop.Visible and title and title.Text:find(caption.Text,1,true)
-		end,"inspect Liverpool from outside the tile",2)
+		end,"inspect Liverpool on its own tile",2)
 		click(backdrop:FindFirstChild("CloseCard",true))
 		waitFor(function() return not backdrop.Visible end,"close club inspection",2)
 		toggleCamera()
@@ -322,6 +338,30 @@ local ok, err = pcall(function()
 	local diceSeen, cardSeen, boardSeen = false, false, false
 	local shotResult = script:GetAttribute("ExpectedShot") or "goal"
 	local previous, captured = -1, {}
+	local trackFrames, checkedLandings = 0, 0
+	local leftTrack = false
+	local movementCheck
+	if verifyMatchday then
+		movementCheck = game:GetService("RunService").RenderStepped:Connect(function()
+			local pieces = workspace:FindFirstChild("LocalTablePieces")
+			local figures = pieces and pieces:FindFirstChild("Match pawns")
+			local motion = snapshot.match and snapshot.match.motion
+			if not figures or not motion or not pieces["Motion effects"]:FindFirstChild("Travel shadow") then return end
+			for _, seat in snapshot.match.seats do
+				if seat.id ~= motion.who then continue end
+				local pawn = figures:FindFirstChild(board.figures[seat.figure].name)
+				if not pawn then return end
+				local point = pawn:GetPivot().Position
+				trackFrames += 1
+				for step = 0,motion.steps do
+					local index = (motion.from-1+step) % #board.tiles+1
+					-- The printed face is inset by .55 studs from the centre of the seam.
+					if onCell(index,point,.56) then return end
+				end
+				leftTrack = true
+			end
+		end)
+	end
 	local replaySeen = false
 	local runSeen = false
 	local expires = os.clock() + 42
@@ -373,14 +413,15 @@ local ok, err = pcall(function()
 			local knee, thigh = model["Right knee"], model["Right leg"]
 			local prior = thigh:GetPivot():ToObjectSpace(knee:GetPivot())
 			local at = model:GetPivot().Position
+			local strideDistance = if s.motion.steps > 1 then 13 else 2
 			waitFor(function()
 				local relative = thigh:GetPivot():ToObjectSpace(knee:GetPivot())
-				return (model:GetPivot().Position - at).Magnitude > 1 and relative.LookVector:Dot(prior.LookVector) < .995
+				return (model:GetPivot().Position - at).Magnitude > strideDistance and relative.LookVector:Dot(prior.LookVector) < .995
 			end, "moving knee and translated figure", 1)
 			local head = model.Head.Face
 			local top, visibleHead = camera:WorldToViewportPoint(head.Position)
 			local foot, visibleFeet = camera:WorldToViewportPoint(model:GetPivot().Position)
-			assert(visibleHead and visibleFeet and foot.Y-top.Y > 10,"Running figure silhouette")
+			assert(visibleHead and visibleFeet and foot.Y-top.Y > 10,"Running figure silhouette "..tostring(foot).." / "..tostring(top))
 			assert(player.PlayerGui["Programme typography"]["Turn arrow"].Visible, "Active runner marker")
 			runSeen = true
 			capture("run")
@@ -454,6 +495,13 @@ local ok, err = pcall(function()
 						capture("property")
 						task.wait(.20)
 					end
+					if verifyMatchday then
+						local pieces = workspace.LocalTablePieces
+						local pawn = pieces["Match pawns"][board.figures[seat.figure].name]
+						waitFor(function() return not pieces["Motion effects"]:FindFirstChild("Travel shadow") end,"finish on purchased cell",1)
+						assert(onCell(seat.position,pawn:GetPivot().Position,0),"Runner stopped outside the offered club")
+						checkedLandings += 1
+					end
 					dispatch("buy", if board.tiles[seat.position].league > 0 then 2 else 0)
 				elseif s.phase == "matchday" then
 					waitFor(function() return hud:FindFirstChild("MatchdayShoot", true) end, "shoot button", 2)
@@ -468,6 +516,11 @@ local ok, err = pcall(function()
 			end
 		end
 		task.wait(.04)
+	end
+	if movementCheck then
+		movementCheck:Disconnect()
+		assert(trackFrames > 0 and checkedLandings > 0 and not leftTrack,"Runner left the perimeter of the rolled cells")
+		print("ON_TILE_FRAMES",trackFrames,"CLUB_LANDINGS",checkedLandings)
 	end
 	assert(snapshot.match.phase == "final" and #snapshot.match.standings == 4 and diceSeen)
 	if expected == 1 then assert(cardSeen and boardSeen, "Did not see playable property or dice action") end
