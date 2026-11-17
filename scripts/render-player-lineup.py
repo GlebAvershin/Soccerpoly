@@ -17,7 +17,10 @@ from blender_export import portrait_shader
 root = Path(__file__).resolve().parents[1]
 rows = Path(sys.argv[sys.argv.index("--") + 1]).read_text().splitlines()
 rows = [line.split("FIGURE_EXPORT\t", 1)[1].split("\t") for line in rows if "FIGURE_EXPORT\t" in line]
-assert len(rows) > 250 and {int(row[0]) for row in rows} == set(range(1, 7))
+assert {int(row[0]) for row in rows} == set(range(1, 7))
+for i in range(1,7):
+    parts = [row[1] for row in rows if int(row[0]) == i]
+    assert parts.count("Face") == parts.count("Jersey") == 1 and parts.count("Molded outsole") == 2
 bpy.ops.wm.read_factory_settings(use_empty=True)
 scene = bpy.context.scene
 basis = Matrix(((1, 0, 0), (0, 0, -1), (0, 1, 0)))
@@ -102,8 +105,13 @@ for row in rows:
     obj = bpy.data.objects.new(name, mesh)
     collections[figure].objects.link(obj)
     orient = Matrix([rot[i:i + 3] for i in range(0, 9, 3)])
-    swatch = material(tuple(rgb), .28 if name.startswith(("Turntable", "Heel")) else .07, .36 if shape != "jersey" else .48)
-    if mesh.color_attributes.get("PortraitPigment"):
+    cloth = shape in {"shorts","waistband","jersey","sleeve","sock","collar"}
+    metal = .23 if name.startswith("Turntable") else 0
+    roughness = .82 if cloth else .61 if shape in {"hand_left","hand_right","forearm"} else .47
+    swatch = material(tuple(rgb), metal, roughness)
+    if mesh.uv_layers.get("Portrait"):
+        pass  # Packed albedo and painted material travel with the mesh.
+    elif mesh.color_attributes.get("PortraitPigment"):
         mesh.materials.clear()
         mesh.materials.append(portrait_shader())
     elif mesh.materials:
@@ -136,8 +144,8 @@ floor.name = "Studio graphite floor"
 floor.data.materials.append(floor_mat)
 for i, (name, number) in enumerate(figures):
     x = (i - 2.5) * spacing
-    text(name.title() + " nameplate", name, (x, -2.08, .26), .253, ivory)
-    text(name.title() + " squad number", number, (x, -2.08, .033), .185, palette)
+    text(name.title() + " nameplate", name, (x, -2.55, .10), .253, ivory)
+    text(name.title() + " squad number", number, (x, -3.45, .045), .185, palette)
 
 def light(name, location, power, tint, size, target):
     data = bpy.data.lights.new(name, "AREA")
@@ -162,12 +170,12 @@ camera.rotation_euler = (Vector((0, 0, 2.92)) - camera.location).to_track_quat("
 camera.data.type, camera.data.ortho_scale = "ORTHO", 25.2
 scene.camera = camera
 scene.render.engine = "CYCLES"
-scene.cycles.samples = 28
+scene.cycles.samples = 24
 scene.cycles.use_denoising = True
 scene.render.resolution_x, scene.render.resolution_y = 1920, 700
 scene.render.resolution_percentage = 100
 scene.render.threads_mode, scene.render.threads = "FIXED", 6
-scene.render.filepath = "//blender-lineup-v0180.png"
+scene.render.filepath = "//blender-lineup-v0190.png"
 for screen in bpy.data.screens:
     for area in screen.areas:
         if area.type == "VIEW_3D":
@@ -176,5 +184,5 @@ for screen in bpy.data.screens:
             area.spaces.active.region_3d.view_perspective = "CAMERA"
 bpy.ops.object.select_all(action="DESELECT")
 bpy.context.preferences.filepaths.save_version = 0
-bpy.ops.wm.save_as_mainfile(filepath=str(root / "art" / "player-lineup-v0180.blend"), compress=True)
+bpy.ops.wm.save_as_mainfile(filepath=str(root / "art" / "player-lineup-v0190.blend"), compress=True)
 bpy.ops.render.render(write_still=True)

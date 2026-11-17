@@ -1,4 +1,8 @@
-# World Draft visual kit
+# Footbolapolia · материалы игры
+
+[Фигурки, роспись и поле в v0.19.0](../docs/ART_DIRECTION.md) · [Сцена команды в Blender](player-lineup-v0190.blend)
+
+## Архив
 
 - **studio-table-v0120.png**, **studio-property-v0120.png** — кадры быстрого стола из Studio. В стадионном файле Blender добавлены кубик, колесо «Шанс» и арена чемпионата.
 

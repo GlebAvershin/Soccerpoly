@@ -164,6 +164,7 @@ function Arena.new(myId: number, root: Frame, translate: (string) -> string, pla
 	local focusOrbit = Vector3.zero
 	local focusDistance = 0
 	local boardPose: CFrame? = nil
+	local lastPrint = -1
 
 	local function finishFlight()
 		local flight = activeFlight
@@ -277,6 +278,7 @@ function Arena.new(myId: number, root: Frame, translate: (string) -> string, pla
 	local function sync(snapshot: any)
 		local s = snapshot.match
 		labels.update(snapshot)
+		projected = nil
 		if s == nil then
 			replay.clear()
 			activeId, cheerId = 0, 0
@@ -391,8 +393,25 @@ function Arena.new(myId: number, root: Frame, translate: (string) -> string, pla
 			boardPose = if (last.Position - target.Position).Magnitude < .08 or reduced
 				then target else last:Lerp(target, 1 - math.exp(-dt * 9))
 			camera.CFrame, camera.Focus, camera.FieldOfView = boardPose :: CFrame, CFrame.identity, Art.boardFov
-			if projected ~= camera.CFrame then
-				labels.project(camera, portraitCamera, focus ~= nil)
+			if projected ~= camera.CFrame or (entry and clock-lastPrint >= .06) then
+				lastPrint = clock
+				local masks = {}
+				for _, playerModel in models do
+					-- Use the actual head and feet so letters never print over a moving figure.
+					local foot = playerModel:GetPivot().Position + Vector3.yAxis * 1.05
+					local head = playerModel:FindFirstChild("Head")
+					if not head or not head:IsA("Model") then continue end
+					local face = head:FindFirstChild("Face")
+					if not face or not face:IsA("BasePart") then continue end
+					local cap = face.Position + Vector3.yAxis * face.Size.Y * .52
+					local top = camera:WorldToScreenPoint(cap)
+					local base = camera:WorldToScreenPoint(foot)
+					local side = camera:WorldToScreenPoint(foot + camera.CFrame.RightVector * 3.65)
+					local half = math.abs(side.X-base.X)+1
+					table.insert(masks, Rect.new(math.min(base.X,top.X)-half, math.min(top.Y,base.Y)-1,
+						math.max(base.X,top.X)+half, math.max(top.Y,base.Y)+1))
+				end
+				labels.project(camera, portraitCamera, focus ~= nil, masks)
 				projected = camera.CFrame
 			end
 		end
@@ -509,6 +528,7 @@ function Arena.new(myId: number, root: Frame, translate: (string) -> string, pla
 		end,
 		relocalize = function()
 			labels.translate()
+			projected = nil
 		end,
 		playShot = function(outcome: string, figure: number, impact: () -> ())
 			replay.play(outcome, figure, impact, reduced)

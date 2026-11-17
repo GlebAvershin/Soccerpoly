@@ -1,12 +1,14 @@
 --!strict
 local AssetService = game:GetService("AssetService")
 local Portraits = require(script.Parent.PlayerSculptData)
+local HeadPaint = require(script.Parent.HeadPaint)
+local EncodingService = game:GetService("EncodingService")
 local PawnData = require(script.Parent.PawnMeshData)
 local StadiumData = require(script.Parent.StadiumMeshData)
 
 type Shape = {
 	points: {number}, normals: {number}, triangles: {number},
-	normalIndices: {number}?, colors: {number}?, faceColors: {number}?, vertexColors: {number}?,
+	uvs: {number}?, uvIndices: {number}?, normalIndices: {number}?, colors: {number}?, faceColors: {number}?, vertexColors: {number}?,
 }
 type Pending = {source: BasePart, legacy: {Instance}?}
 local requests: {[string]: {Pending}} = {}
@@ -36,9 +38,34 @@ local function replace(request: Pending, template: MeshPart)
 	end
 end
 
-local function loadTemplate(data: Shape): MeshPart?
+type Paint = {width: number, height: number, palette: string, pixels: string}
+
+local function texture(paint: Paint): EditableImage?
+	local dims = Vector2.new(paint.width, paint.height)
+	local image = AssetService:CreateEditableImage({Size = dims})
+	if not image then return nil end
+	local entries = EncodingService:Base64Decode(buffer.fromstring(paint.palette))
+	local indices = EncodingService:Base64Decode(buffer.fromstring(paint.pixels))
+	local rgba = buffer.create(paint.width * paint.height * 4)
+	local colors = {}
+	for i = 0, buffer.len(entries) / 3 - 1 do
+		colors[i] = bit32.bor(buffer.readu16(entries, i * 3), bit32.lshift(buffer.readu8(entries, i * 3 + 2), 16), 0xFF000000)
+	end
+	for i = 0, buffer.len(indices) - 1 do
+		buffer.writeu32(rgba, i * 4, colors[buffer.readu8(indices, i)])
+	end
+	image:WritePixelsBuffer(Vector2.zero, dims, rgba)
+	return image
+end
+
+local function loadTemplate(data: Shape, paint: Paint?): MeshPart?
 	local mesh = AssetService:CreateEditableMesh()
 	if not mesh then return nil end
+	local image: EditableImage? = nil
+	if paint then
+		local ok, result = pcall(texture, paint)
+		if ok then image = result end
+	end
 	local verts, normals, colors = {}, {}, {}
 	for i = 1, #data.points, 3 do
 		verts[(i + 2) / 3] = mesh:AddVertex(Vector3.new(data.points[i], data.points[i + 1], data.points[i + 2]) / 10000)
@@ -46,17 +73,27 @@ local function loadTemplate(data: Shape): MeshPart?
 	for i = 1, #data.normals, 3 do
 		normals[(i + 2) / 3] = mesh:AddNormal(Vector3.new(data.normals[i], data.normals[i + 1], data.normals[i + 2]).Unit)
 	end
-	if data.colors then
+	if data.colors and not image then
 		for i, hex in data.colors do
 			colors[i] = mesh:AddColor(Color3.fromRGB(bit32.rshift(hex, 16), bit32.extract(hex, 8, 8), bit32.extract(hex, 0, 8)), 1)
+		end
+	end
+	local uvs = {}
+	if data.uvs then
+		for i = 1, #data.uvs, 2 do
+			uvs[(i + 1) / 2] = mesh:AddUV(Vector2.new(data.uvs[i], data.uvs[i + 1]) / 10000)
 		end
 	end
 	local corners = data.normalIndices or data.triangles
 	for i = 1, #data.triangles, 3 do
 		local a, b, c = data.triangles[i], data.triangles[i + 1], data.triangles[i + 2]
 		local face = mesh:AddTriangle(verts[a], verts[b], verts[c])
+		if data.uvIndices then
+			local uv = data.uvIndices
+			mesh:SetFaceUVs(face, {uvs[uv[i]], uvs[uv[i+1]], uvs[uv[i+2]]})
+		end
 		mesh:SetFaceNormals(face, {normals[corners[i]], normals[corners[i + 1]], normals[corners[i + 2]]})
-		if data.vertexColors then
+		if data.vertexColors and not image then
 			local tint = data.vertexColors
 			mesh:SetFaceColors(face, {colors[tint[a]], colors[tint[b]], colors[tint[c]]})
 		elseif data.faceColors then
@@ -73,7 +110,12 @@ local function loadTemplate(data: Shape): MeshPart?
 		content = baked
 		mesh:Destroy()
 	end
-	return AssetService:CreateMeshPartAsync(content, {CollisionFidelity = Enum.CollisionFidelity.Box})
+	local part = AssetService:CreateMeshPartAsync(content, {CollisionFidelity = Enum.CollisionFidelity.Box})
+	if image then
+		part.TextureContent = Content.fromObject(image)
+		part:SetAttribute("PaintedAtlas", true)
+	end
+	return part
 end
 
 local function loadPending()
@@ -81,7 +123,7 @@ local function loadPending()
 		local name = table.remove(waiting, 1) :: string
 		local shape = (PawnData :: {[string]: Shape})[name] or (StadiumData :: {[string]: Shape})[name]
 			or (Portraits :: {[string]: Shape})[name]
-		local success, template = pcall(loadTemplate, shape)
+		local success, template = pcall(loadTemplate, shape, (HeadPaint :: {[string]: Paint})[name])
 		local pending = requests[name]
 		requests[name] = nil
 		if success and template then

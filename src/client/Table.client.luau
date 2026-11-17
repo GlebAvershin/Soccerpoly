@@ -502,8 +502,10 @@ local function scorecards(s: any)
 			miniature.Ambient, miniature.LightColor = hex(0xB6BBCB), hex(0xFFF3D7)
 			miniature.LightDirection = Vector3.new(-1, -2, -4)
 			local camera = Instance.new("Camera")
-			camera.FieldOfView = 25
-			camera.CFrame = CFrame.lookAt(Vector3.new(2.5, 5.25, 6.5), Vector3.new(0, 4.4, 0))
+			camera.FieldOfView = 27
+			local eyeLine = 0.45 + 5.62 * Board.figures[seat.figure].height
+			local target = Vector3.new(0, eyeLine - .43, 0)
+			camera.CFrame = CFrame.lookAt(target + Vector3.new(.78, .26, 5.05), target)
 			camera.Parent, miniature.CurrentCamera = miniature, camera
 			Pawn.make(seat.figure, miniature, true)
 			portraits[seat.figure] = miniature
@@ -543,8 +545,9 @@ local function lobbyPanel(data: any)
 	viewport.LightColor, viewport.Ambient, viewport.LightDirection = hex(0xFFFFFF), hex(0xC5DCFA), Vector3.new(-2, -5, -6)
 	viewport.Parent = feature
 	local camera = Instance.new("Camera")
-	camera.FieldOfView = 35
-	camera.CFrame = CFrame.lookAt(Vector3.new(3.1, 3.75, 8.9), Vector3.new(0, 2.95, 0))
+	camera.FieldOfView = 30
+	local bust = Vector3.new(0, .45 + figure.height * 4.95, 0)
+	camera.CFrame = CFrame.lookAt(bust + Vector3.new(.98, .34, 6.65), bust)
 	camera.Parent, viewport.CurrentCamera = viewport, camera
 	tableView.preview(Pawn.make(selected, viewport))
 

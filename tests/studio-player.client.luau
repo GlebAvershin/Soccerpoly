@@ -48,11 +48,29 @@ local ok, err = pcall(function()
 		return current and current.CameraType == Enum.CameraType.Scriptable and current.ViewportSize.X > 2 and current
 	end, "scriptable play camera", 8)
 	waitFor(function()
-		return printLayer.Cell1["Club name"].AbsoluteSize.X > (if camera.ViewportSize.Y < 430 then 18 else 25)
+		local title = printLayer.Cell1["Club name"]
+		return title.AbsoluteSize.X >= 8 and title.AbsoluteSize.Y <= 22 and title.Position.X.Offset > 0
 	end, "projected board print")
-	for _, cell in printLayer:GetChildren() do
-		assert(cell["Club name"].Text ~= "" and cell["Club name"].TextFits, "Unreadable title " .. cell.Name)
+	local function verifyPrint()
+		local occupied = {}
+		local shown = 0
+		for _, cell in printLayer:GetChildren() do
+			for _, name in {"Club name", "Club cost"} do
+				local label = cell[name]
+				if not label.Visible then continue end
+				local a, b = label.AbsolutePosition, label.AbsolutePosition + label.AbsoluteSize
+				assert(label.Text ~= "" and label.TextFits, "Clipped print " .. cell.Name .. " " .. label.Text)
+				for _, other in occupied do
+					assert(a.X >= other.b.X or a.Y >= other.b.Y or b.X <= other.a.X or b.Y <= other.a.Y,
+						"Overlapping print " .. cell.Name .. " and " .. other.name)
+				end
+				table.insert(occupied, {a=a, b=b, name=cell.Name})
+				if name == "Club name" then shown += 1 end
+			end
+		end
+		assert(shown >= 4, "Board print visibility")
 	end
+	verifyPrint()
 	for _, part in stage.Board:GetDescendants() do
 		if part:IsA("BasePart") and part:GetAttribute("BoardIndex") then
 			local point, shown = camera:WorldToViewportPoint(part.Position)
@@ -74,7 +92,8 @@ local ok, err = pcall(function()
 				local figure = roster:FindFirstChild(footballer.name)
 				local head = figure and figure:FindFirstChild("Face", true)
 				local jersey = figure and figure:FindFirstChild("Jersey", true)
-				if not (head and head:IsA("MeshPart") and jersey and jersey:IsA("MeshPart")) then return false end
+				if not (head and head:IsA("MeshPart") and head:GetAttribute("PaintedAtlas")
+					and jersey and jersey:IsA("MeshPart") and jersey:GetAttribute("PaintedAtlas")) then return false end
 			end
 			return true
 		end, "six portrait sculpts and six match kits")
@@ -156,6 +175,7 @@ local ok, err = pcall(function()
 			return (camera.CFrame.Position - before).Magnitude < 1.4
 		end
 		waitFor(settledView, "settled close-up", 2)
+		verifyPrint()
 		capture("focused-board")
 		task.wait(.24)
 		toggleCamera()
@@ -169,6 +189,7 @@ local ok, err = pcall(function()
 			end
 			return true
 		end, "full board button and all tile centers", 2)
+		verifyPrint()
 		capture("full-board")
 		task.wait(.24)
 		toggleCamera()

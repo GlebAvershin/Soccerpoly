@@ -11,9 +11,9 @@ from blender_export import ROOT, blender, studio
 
 def point(x, y, z):
     if y > 2.20:
-        y = 2.865 + (y - 2.20) * 1.035
+        y = 3.2675 + (y - 2.20) * 1.035
     elif y > .45:
-        y = .45 + (y - .45) * 1.38
+        y = .45 + (y - .45) * 1.61
     return x * .87, y, z * .94
 
 
@@ -104,6 +104,7 @@ CELEBRATIONS = {
 for index, name in enumerate(CELEBRATIONS):
     start = 225 + index * 32
     RANGES[name] = (start, start + 24)
+    RANGES[name+"_idle"] = (start+192, start+216)
 
 
 
@@ -137,14 +138,14 @@ def figure_rig():
     sculpt_file = ROOT / "art/player-sculpts.blend"
     with bpy.data.libraries.load(str(sculpt_file), link=False) as (_, imported):
         imported.objects = ["messi_jersey", "messi"]
-    for mesh, joint, y in zip(imported.objects, ("Torso", "Head"), (3.00, 4.59)):
+    for mesh, joint, y in zip(imported.objects, ("Torso", "Head"), (3.07, 4.55)):
         scene.collection.objects.link(mesh)
         mesh.parent = rig[joint]
         mesh.location = blender(point(0, y, 0)) - blender(JOINTS[joint])
         if joint == "Torso":
-            mesh.scale = (1.97, 1.30, 1.65)
+            mesh.scale = (1.84, 1.12, 1.55)
         else:
-            mesh.scale = (1.44 * .87, 1.48 * .94, 1.21 * 1.035)
+            mesh.scale = (1.12 * .87, 1.07 * .94, .95 * 1.035)
     previews = {"Torso": [((0, 3.82, 0), (.58, .45, .63), "Skin")]}
     for label, side in (("Left", -1), ("Right", 1)):
         previews[label + " arm"] = [((side * 1.10, 3.24, 0), (.76, .83, .80), "Kit")]
@@ -159,7 +160,7 @@ def figure_rig():
             model = bpy.context.object
             model.parent = rig[name]
             model.location = blender(point(*pos)) - blender(JOINTS[name])
-            model.scale = size[0] * .87, size[2] * .94, size[1] * (1.38 if pos[1] < 2.20 else 1.035)
+            model.scale = size[0] * .87, size[2] * .94, size[1] * (1.61 if pos[1] < 2.20 else 1.035)
             material = bpy.data.materials.get(surface)
             if not material:
                 material = bpy.data.materials.new(surface)
@@ -214,6 +215,25 @@ def figure_rig():
         record(rig, name, .74, land, -.13 if name == "ronaldo" else .02)
         record(rig, name, .91, land)
         record(rig, name, 1, NEUTRAL)
+    # Each player settles onto a different support leg. Counter-rotation through
+    # shoulders and head keeps the gaze on the pitch as the chest rises.
+    stances = {
+        "messi": ((4, -6, 2), (1, 7, -2), (-13, 3, -6), (9, -4, 6), (-7, 0, 1), (3, 0, -3), -27, -13),
+        "ronaldo": ((-2, 7, -2), (-3, -9, 1), (11, -7, -9), (5, 5, 9), (2, 0, 4), (-6, 0, -4), -26, -24),
+        "mbappe": ((4, 5, -2), (1, -7, 2), (-4, 7, -6), (-14, -6, 6), (3, 0, 2), (-9, 0, -3), -19, -35),
+        "yamal": ((3, -8, 3), (-4, 12, -2), (-16, 4, -6), (10, -4, 8), (-9, 0, 3), (3, 0, -2), -22, -17),
+        "haaland": ((2, 4, -1), (-2, -6, 1), (5, 2, -9), (7, -3, 9), (3, 0, 4), (-5, 0, -3), -18, -17),
+        "vinicius": ((5, -9, 4), (2, 14, -3), (8, 4, -5), (-19, -3, 8), (-6, 0, 1), (6, 0, -2), -22, -31),
+    }
+    for name, stance in stances.items():
+        clip = name + "_idle"
+        HINGES[clip] = {}
+        for t, lift in ((0,0), (.5,1), (1,0)):
+            turns = list(stance[:6])
+            pitch, yaw, roll = turns[1]
+            turns[1] = (pitch-2*lift, yaw+3*lift, roll)
+            HINGES[clip][t] = (stance[6]-2*lift, stance[7]+2*lift, 7, 9, -4, -5)
+            record(rig, clip, t, turns, .025*lift)
     for screen in bpy.data.screens:
         for area in screen.areas:
             if area.type == "VIEW_3D":

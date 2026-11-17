@@ -1,5 +1,6 @@
 """Encode evaluated Blender objects as local Roblox mesh data."""
 from collections import Counter
+import numpy as np
 from pathlib import Path
 
 import bpy
@@ -54,6 +55,8 @@ def export_shapes(models, target, include_bounds=False):
         points = [round(10000 * ((v[i] - low[i]) / extent[i] - .5)) for v in positions for i in range(3)]
         normals, normal_ids = {}, []
         triangles, face_colors = [], []
+        uv_ids, uv_corners = {}, []
+        painted = mesh.uv_layers.get("Portrait")
         colors, vertex_colors = [], []
         pigment = mesh.color_attributes.get("PortraitPigment")
         if pigment:
@@ -64,16 +67,37 @@ def export_shapes(models, target, include_bounds=False):
                 packed = (rgb[0] << 16) + (rgb[1] << 8) + rgb[2]
                 vertex_colors.append(palette.setdefault(packed, len(palette) + 1))
             colors = list(palette)
-        for mat in (() if pigment else mesh.materials):
+        if painted:
+            # Low-memory clients can keep the sampled paint on the mesh even
+            # when Roblox declines an editable texture allocation.
+            image = next(node.image for node in mesh.materials[0].node_tree.nodes if node.type == "TEX_IMAGE")
+            width, height = image.size
+            rgba = np.empty(width * height * 4, dtype=np.float32)
+            image.pixels.foreach_get(rgba)
+            linear = rgba.reshape(height, width, 4)[:, :, :3]
+            rgb = np.where(linear < .0031308, 12.92*linear, 1.055*np.power(linear, 1/2.4)-.055)
+            palette = {}
+            vertex_colors = [1] * len(positions)
+            for loop in mesh.loops:
+                u,v = painted.data[loop.index].uv
+                sample = np.clip(np.rint(rgb[int((v % 1)*(height-1)), int((u % 1)*(width-1))]*63)*4,0,255)
+                r,g,b = map(int,sample)
+                vertex_colors[loop.vertex_index] = palette.setdefault((r<<16)+(g<<8)+b,len(palette)+1)
+            colors = list(palette)
+        for mat in (() if pigment or painted else mesh.materials):
             rgba = [round(255 * channel) for channel in mat.diffuse_color]
             colors.append((rgba[0] << 16) + (rgba[1] << 8) + rgba[2])
         for tri in mesh.loop_triangles:
             triangles.extend(index + 1 for index in tri.vertices)
             for loop in tri.loops:
+                if painted:
+                    u, v = painted.data[loop].uv
+                    key = (round(u * 10000), round((1 - v) * 10000))
+                    uv_corners.append(uv_ids.setdefault(key, len(uv_ids)+1))
                 normal = studio(mesh.corner_normals[loop].vector)
                 normal = tuple(round(v * 10000) for v in normal)
                 normal_ids.append(normals.setdefault(normal, len(normals) + 1))
-            if colors and not pigment:
+            if colors and not vertex_colors:
                 face_colors.append(tri.material_index + 1)
         count = len(triangles) // 3
         assert 0 < count <= 6000, (model.name, count)
@@ -84,6 +108,7 @@ def export_shapes(models, target, include_bounds=False):
             lines.append(array("center", [round((a + b) / 2, 5) for a, b in zip(low, high)]))
         for key, values in (("points", points), ("normals", [v for n in normals for v in n]),
                             ("triangles", triangles), ("normalIndices", normal_ids),
+                            ("uvs", [v for pair in uv_ids for v in pair]), ("uvIndices", uv_corners),
                             ("colors", colors), ("faceColors", face_colors), ("vertexColors", vertex_colors)):
             if values:
                 lines.append(array(key, values))
