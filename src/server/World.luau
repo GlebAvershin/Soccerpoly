@@ -59,13 +59,22 @@ local function drawTile(tray: Folder, index: number, tile: Board.Tile)
 	local pose = CFrame.new(at.X, Art.tileTop, at.Z) * CFrame.Angles(0, yaw, 0)
 	local accent = Art.accent(tile.kind, tile.league)
 	local cell = folder(tray, string.format("%02d %s", index, tile.name))
-	part(cell, "Tile edges", Vector3.new(width + .04, .53, depth + .04), pose * CFrame.new(0, -.32, 0), C("C7BDC2"))
-	local face = part(cell, "Tile body", Vector3.new(width, .30, depth), pose * CFrame.new(0, -.149, 0), Art.paper)
-	face.CastShadow = false
 	local isCorner = (index - 1) % 8 == 0
-	local innerFill = if isCorner then accent:Lerp(Art.paper, .12) else accent:Lerp(Art.paper, .50)
-	part(cell, "Property color", Vector3.new(width - .10, .034, if isCorner then depth - .10 else depth * .645),
-		pose * CFrame.new(0, .019, if isCorner then 0 else -depth * .176), innerFill).CastShadow = false
+	mesh(cell, "Molded tile case", "tile_case", Vector3.new(width, .53, depth),
+		pose * CFrame.new(0, -.31, 0), accent:Lerp(Art.ink, .70))
+	local face = mesh(cell, "Porcelain face", "tile_enamel", Vector3.new(width - .15, .26, depth - .15),
+		pose * CFrame.new(0, -.10, 0), Art.paper)
+	face.CastShadow = false
+	local insetDepth = if isCorner then depth * .66 elseif tile.price > 0 and tile.league > 0 then depth * .23 else depth * .56
+	local insetOffset = -.5 * depth + .5 * insetDepth + .17
+	local insetTint = accent:Lerp(Art.paper, if isCorner then .42 else .66)
+	if tile.league > 0 then insetTint = accent:Lerp(Art.ink, .54) end
+	mesh(cell, "League enamel inlay", "tile_enamel", Vector3.new(width - .33, .066, insetDepth),
+		pose * CFrame.new(0, .061, insetOffset), insetTint).CastShadow = false
+	if tile.league > 0 then
+		part(cell, "League stripe", Vector3.new(width - .57, .025, .075),
+			pose * CFrame.new(0, .043, insetOffset + insetDepth * .5 + .19), accent:Lerp(Art.paper, .12)).CastShadow = false
+	end
 	local printLayer = part(cell, "Printed tile", Vector3.new(width, .02, depth), pose * CFrame.new(0, .045, 0), Art.paper)
 	printLayer.CastShadow, printLayer.Transparency = false, 1
 	printLayer:SetAttribute("BoardIndex", index)
@@ -87,18 +96,18 @@ end
 
 local function pitch(stage: Folder)
 	local field = folder(stage, "Continental Cup stadium")
-	plate(field, "Pitch rim", 0, -.07, 0, 90.4, .43, 90.4, C("727278"))
+	plate(field, "Pitch rim", 0, -.07, 0, 90.4, .43, 90.4, C("344B57"))
 	for _, side in {-1, 1} do
 		for i = -5, 5 do
-			plate(field, "Dashed touchline", i * 8.05, .158, side * 43.55, 4.8, .016, .13, C("D8D0CD")).CastShadow = false
-			plate(field, "Dashed touchline", side * 43.55, .158, i * 8.05, .13, .016, 4.8, C("D8D0CD")).CastShadow = false
+			plate(field, "Dashed touchline", i * 8.05, .158, side * 43.55, 4.8, .016, .13, C("E0BD7B")).CastShadow = false
+			plate(field, "Dashed touchline", side * 43.55, .158, i * 8.05, .13, .016, 4.8, C("E0BD7B")).CastShadow = false
 		end
 	end
 	for strip = 0, 5 do
 		plate(field, "Grass strip", 0, .205, (strip - 2.5) * 14, 84, .16, 14,
-			if strip % 2 == 0 then C("ACBE5E") else C("A9B95A")).CastShadow = false
+			if strip % 2 == 0 then C("699C61") else C("608F56")).CastShadow = false
 	end
-	local line = C("CAD979")
+	local line = C("D5EAC1")
 	plate(field, "Halfway line", 0, .298, 0, .42, .029, 65, line).CastShadow = false
 	for _, side in {-1, 1} do
 		plate(field, "Sideline", 0, .30, side * 32.5, 75, .028, .38, line).CastShadow = false
@@ -117,7 +126,7 @@ end
 
 local function surroundings(stage: Folder)
 	local scene = folder(stage, "Arena surroundings")
-	local back = plate(scene, "Sky backdrop", 0, -14, 0, 1900, .35, 1900, C("9AC3DE"))
+	local back = plate(scene, "Sky backdrop", 0, -14, 0, 1900, .35, 1900, C("324F67"))
 	back.CastShadow = false
 	local surf = Instance.new("SurfaceGui")
 	surf.Face, surf.CanvasSize = Enum.NormalId.Top, Vector2.new(1024, 1024)
@@ -129,10 +138,10 @@ local function surroundings(stage: Folder)
 	local grad = Instance.new("UIGradient")
 	grad.Rotation = 135
 	grad.Color = ColorSequence.new({
-		ColorSequenceKeypoint.new(0, C("87BADE")),
-		ColorSequenceKeypoint.new(.42, C("87BADE")),
-		ColorSequenceKeypoint.new(.58, C("D4EAED")),
-		ColorSequenceKeypoint.new(1, C("D4EAED")),
+		ColorSequenceKeypoint.new(0, C("24394C")),
+		ColorSequenceKeypoint.new(.42, C("24394C")),
+		ColorSequenceKeypoint.new(.58, C("527286")),
+		ColorSequenceKeypoint.new(1, C("527286")),
 	})
 	grad.Parent = fill
 	for _, side in {-1, 1} do
@@ -162,7 +171,7 @@ return function()
 	stage.Name = "WorldDraftArena"
 	surroundings(stage)
 	local tray = folder(stage, "Board")
-	for i, band in {{-2.45, .38, C("B9B0B7")}, {-1.79, 1.10, C("7D6057")}, {-.91, .64, C("D9CED4")}, {-.40, .40, C("F1E5E8")}} do
+	for i, band in {{-2.45, .38, C("263C4B")}, {-1.79, 1.10, C("1C2D3A")}, {-.91, .64, C("D7AE71")}, {-.40, .40, C("3A5264")}} do
 		plate(tray, "Board layer " .. i, 0, band[1] :: number, 0, SIZE + .27, band[2] :: number, SIZE + .27, band[3] :: Color3)
 	end
 	pitch(stage)

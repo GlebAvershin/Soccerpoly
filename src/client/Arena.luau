@@ -14,6 +14,7 @@ local Pawn = require(script.Parent.Pawn)
 local Meshes = require(script.Parent.MeshLibrary)
 local rollDice = require(script.Parent.TableDice)
 local BoardLabels = require(script.Parent.BoardLabels)
+local MatchdayReplay = require(script.Parent.MatchdayReplay)
 local Arena = {}
 local TAU = math.pi * 2
 local C = Color3.fromHex
@@ -109,10 +110,14 @@ function Arena.new(myId: number, root: Frame, translate: (string) -> string, pla
 	end)
 	local localParts = Instance.new("Folder")
 	localParts.Name, localParts.Parent = "LocalTablePieces", workspace
+	local matchPawns = Instance.new("Folder")
+	matchPawns.Name, matchPawns.Parent = "Match pawns", localParts
 	local markers = Instance.new("Folder")
 	markers.Name, markers.Parent = "Markers", localParts
 	local effects = Instance.new("Folder")
 	effects.Name, effects.Parent = "Motion effects", localParts
+	local replay = MatchdayReplay(effects, playSound)
+	local replaying = false
 
 	local models: {[number]: Model} = {}
 	local activeId = 0
@@ -210,6 +215,7 @@ function Arena.new(myId: number, root: Frame, translate: (string) -> string, pla
 		local s = snapshot.match
 		labels.update(snapshot)
 		if s == nil then
+			replay.clear()
 			activeId, cheerId = 0, 0
 			finishFlight()
 			effects:ClearAllChildren()
@@ -243,6 +249,7 @@ function Arena.new(myId: number, root: Frame, translate: (string) -> string, pla
 		table.clear(previews)
 		local sameMatch = serial == snapshot.serial
 		if not sameMatch then
+			replay.clear()
 			lastRoll = 0
 			finishFlight()
 			for id, model in models do model:Destroy(); models[id] = nil end
@@ -269,7 +276,7 @@ function Arena.new(myId: number, root: Frame, translate: (string) -> string, pla
 				continue
 			end
 			if not model then
-				model = Pawn.make(seat.figure, localParts)
+				model = Pawn.make(seat.figure, matchPawns)
 				model:ScaleTo(Art.figureScale)
 				models[seat.id] = model
 			end
@@ -299,14 +306,23 @@ function Arena.new(myId: number, root: Frame, translate: (string) -> string, pla
 		camera.CameraType = Enum.CameraType.Scriptable
 		if oldSize ~= camera.ViewportSize or oldRoot ~= root.AbsoluteSize or not cameraTarget then layout(camera) end
 		local entry = activeFlight
-		camera.CFrame = cameraTarget :: CFrame
-		camera.Focus = CFrame.identity
-		if projected ~= camera.CFrame then
-			labels.project(camera)
-			projected = camera.CFrame
-		end
-
 		local clock = os.clock()
+		replay.step(clock, reduced)
+		local frame = replay.framing(camera)
+		if replaying ~= (frame ~= nil) then
+			replaying = frame ~= nil
+			labels.show(not replaying)
+			matchPawns.Parent = if replaying then nil else localParts
+		end
+		if frame then
+			camera.CFrame = frame
+		else
+			camera.CFrame, camera.Focus, camera.FieldOfView = cameraTarget :: CFrame, CFrame.identity, 7.5
+			if projected ~= camera.CFrame then
+				labels.project(camera)
+				projected = camera.CFrame
+			end
+		end
 		local portrait = portraitModel
 		if portrait and not portrait.Parent then portraitModel = nil end
 		local portraitFrame = math.floor(clock * 24)
@@ -403,7 +419,11 @@ function Arena.new(myId: number, root: Frame, translate: (string) -> string, pla
 		relocalize = function()
 			labels.translate()
 		end,
+		playShot = function(outcome: string, figure: number, impact: () -> ())
+			replay.play(outcome, figure, impact, reduced)
+		end,
 		pickTile = function(point: Vector3): number?
+			if replaying then return nil end
 			local camera = workspace.CurrentCamera
 			if not camera then return nil end
 			local ray = camera:ScreenPointToRay(point.X, point.Y)

@@ -18,12 +18,13 @@ local function stop(kind: string, name: string, code: string, award: number?): B
 	return table.freeze({kind = kind, name = name, code = code, city = "", league = 0, price = 0, gate = 0, award = award or 0})
 end
 
+Board.sponsorBonus = 110
 Board.tiles = table.freeze({
 	stop("kickoff", "Kickoff", "KO"),
 	club("Sevilla FC", "SEV", 1, 80, 20),
 	stop("tax", "League tax", "TAX", -100),
 	club("Atlético Madrid", "ATM", 1, 120, 30),
-	stop("chance", "Chance", "CH"),
+	stop("chance", "Chance", "CH", Board.sponsorBonus),
 	club("FC Barcelona", "FCB", 1, 160, 45),
 	club("Real Madrid", "RMA", 1, 200, 60),
 	venue("Santiago Bernabéu", "SB"),
@@ -31,7 +32,7 @@ Board.tiles = table.freeze({
 	club("Arsenal", "ARS", 2, 160, 40),
 	club("Liverpool FC", "LIV", 2, 180, 45),
 	club("Manchester City", "MCI", 2, 200, 55),
-	stop("chance", "Chance", "CH"),
+	stop("chance", "Chance", "CH", Board.sponsorBonus),
 	club("Manchester United", "MUN", 2, 220, 60),
 	venue("Old Trafford", "OT"),
 	club("AC Milan", "ACM", 4, 180, 45),
@@ -39,7 +40,7 @@ Board.tiles = table.freeze({
 	club("Inter Milan", "INT", 4, 180, 45),
 	venue("San Siro", "SS"),
 	club("Juventus", "JUV", 4, 200, 55),
-	stop("chance", "Chance", "CH"),
+	stop("chance", "Chance", "CH", Board.sponsorBonus),
 	club("Napoli", "NAP", 4, 160, 40),
 	club("Bayer Leverkusen", "B04", 3, 140, 35),
 	club("RB Leipzig", "RBL", 3, 120, 30),
@@ -69,4 +70,9 @@ Board.maxSeats = 4
 Board.tour, Board.id = true, "continental_tour_v1"
 Board.benchTile = 25
 Board.matchSeconds, Board.turnSeconds = 20 * 60, 15
+Board.formats = table.freeze({
+	table.freeze({matchSeconds = Board.matchSeconds, turnSeconds = Board.turnSeconds, label = "Quick · 20 min"}),
+	table.freeze({matchSeconds = 60 * 60, turnSeconds = 30, label = "Long · 60 min"}),
+})
+Board.matchdaySeconds = 8
 return table.freeze(Board)

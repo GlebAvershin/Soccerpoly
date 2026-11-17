@@ -37,6 +37,7 @@ local ok, err = pcall(function()
 	end, "lobby", 24)
 	local start = waitFor(function() return hud:FindFirstChild("StartSeason", true) end, "start button")
 	assert(start.AbsoluteSize.Y >= 40)
+	local verifyMatchday = script:GetAttribute("VerifyMatchday") == true
 	local stage = workspace:WaitForChild("WorldDraftArena")
 	local printLayer = hud.Viewport:WaitForChild("BoardPrint")
 	assert(#printLayer:GetChildren() == 32)
@@ -67,6 +68,18 @@ local ok, err = pcall(function()
 			return sound and sound.IsLoaded and sound.IsPlaying
 		end, "music")
 	end
+	if verifyMatchday then
+		waitFor(function()
+			local enamel = stage.Board:FindFirstChild("Porcelain face", true)
+			local sole = hud:FindFirstChild("Molded outsole", true)
+			return enamel and enamel:IsA("MeshPart") and sole and sole:IsA("MeshPart")
+		end, "Blender tile and outsole")
+		dispatch("format", 2)
+		waitFor(function() return snapshot.format == 2 end, "long format")
+		dispatch("format", 1)
+		waitFor(function() return snapshot.format == 1 end, "quick format")
+		capture("lobby")
+	end
 	report:FireServer("READY")
 	if data.host == player.UserId then
 		waitFor(function() return report:GetAttribute("ReadyCount") == expected end, "ready players", 25)
@@ -76,10 +89,31 @@ local ok, err = pcall(function()
 	assert(#snapshot.match.seats == board.maxSeats)
 	local diceSeen, cardSeen, boardSeen = false, false, false
 	local previous, captured = -1, {}
+	local replaySeen = false
 	local expires = os.clock() + 42
 	while snapshot.match.phase ~= "final" and os.clock() < expires do
 		local s = snapshot.match
 		local effects = workspace:FindFirstChild("LocalTablePieces")
+		local replay = effects and effects["Motion effects"]:FindFirstChild("Matchday players")
+		if verifyMatchday and replay and s.last.who == player.UserId and not replaySeen then
+			replaySeen = true
+			assert(s.last.kind == "goal" and s.last.amount == 140, "Expected a goal and its reward")
+			waitFor(function() return not printLayer.Visible and camera.FieldOfView > 10 end, "shot camera", 1)
+			capture("strike")
+			local ball = effects["Motion effects"]:FindFirstChild("Matchday ball")
+			assert(ball and ball.PrimaryPart and replay:FindFirstChild("Goalkeeper") and replay:FindFirstChild("Striker"))
+			local from = ball:GetPivot().Position
+			local sounds = game:GetService("SoundService")["Footbolapolia Effects"]
+			waitFor(function()
+				return sounds.kick.IsLoaded and sounds.kick.IsPlaying and (ball:GetPivot().Position - from).Magnitude > 4
+			end, "kick sound and moving ball", 1)
+			waitFor(function()
+				return sounds.goal.IsLoaded and sounds.goal.IsPlaying and replay:FindFirstChild("Matchday goal"):IsA("MeshPart")
+			end, "goal sound and goal mesh", 1)
+			task.wait(.25)
+			capture("goal")
+			waitFor(function() return printLayer.Visible and math.abs(camera.FieldOfView - 7.5) < .1 end, "board camera restored", 3)
+		end
 		local dice = effects and effects["Motion effects"]:FindFirstChild("Dice roll")
 		if dice and not diceSeen then
 			diceSeen = true
@@ -138,6 +172,9 @@ local ok, err = pcall(function()
 						task.wait(.20)
 					end
 					dispatch("buy", if board.tiles[seat.position].league > 0 then 2 else 0)
+				elseif s.phase == "matchday" then
+					waitFor(function() return hud:FindFirstChild("MatchdayShoot", true) end, "shoot button", 2)
+					dispatch(if verifyMatchday then "shoot" else "safe")
 				elseif s.phase == "upgrade" or s.phase == "rebuy" or s.phase == "championship" or s.phase == "shield" then
 					dispatch("skip")
 				elseif s.phase == "tour" then
@@ -151,6 +188,7 @@ local ok, err = pcall(function()
 	end
 	assert(snapshot.match.phase == "final" and #snapshot.match.standings == 4 and diceSeen)
 	if expected == 1 then assert(cardSeen and boardSeen, "Did not see playable property or dice action") end
+	if verifyMatchday then assert(replaySeen, "Did not see a Matchday replay") end
 	assert(hud:FindFirstChild("Rank1", true), "Final table missing")
 	print("TOUR_QA", workspace.CurrentCamera.ViewportSize, snapshot.match.rollSerial, snapshot.match.finishReason, cardSeen)
 	if snapshot.host == player.UserId then

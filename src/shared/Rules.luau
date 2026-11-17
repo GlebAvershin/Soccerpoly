@@ -496,15 +496,16 @@ local function withBoard(board: Board, edition: Edition)
 		elseif kind == "tour" then
 			seat.touring = true
 		elseif kind == "championship" then
-			for i, holding in s.clubs do
-				if holding.owner == seat.id and board.tiles[i].league > 0 then
-					s.phase = "championship"
-					s.last = story(kind, tile.name, seat.id, index, 0, 0, crossed)
-					return
-				end
-			end
+			s.phase = "matchday"
+			s.last = story(kind, tile.name, seat.id, index, 0, 0, crossed)
+			return
 		elseif kind == "chance" then
-			if rng(1, 6) == 6 then
+			local event = rng(1, 6)
+			if event == 4 then
+				s.phase = "matchday"
+				s.last = story("matchday", tile.name, seat.id, index, 0, 0, crossed)
+				return
+			elseif event == 6 then
 				for i, holding in s.clubs do
 					if holding.owner == seat.id and board.tiles[i].league > 0 and not holding.shield then
 						s.phase = "shield"
@@ -513,11 +514,15 @@ local function withBoard(board: Board, edition: Edition)
 					end
 				end
 			end
-			kind = if rng(1, 2) == 1 then "goalDeck" else "offsideDeck"
-			card = draw(s.decks[kind], families[kind], rng)
-			local entry = edition.cards[card]
-			if entry.kind == "bench" then toBench(s, seat, rng); return end
-			amount = entry.amount
+			if event == 5 then
+				kind = "sponsor"
+			else
+				kind = if rng(1, 2) == 1 then "goalDeck" else "offsideDeck"
+				card = draw(s.decks[kind], families[kind], rng)
+				local entry = edition.cards[card]
+				if entry.kind == "bench" then toBench(s, seat, rng); return end
+				amount = entry.amount
+			end
 		end
 		s.last = story(kind, tile.name, seat.id, index, amount, card, crossed)
 		if amount < 0 then settleBill(s, seat, -amount, 0, index, false, rng)
@@ -568,6 +573,15 @@ local function withBoard(board: Board, edition: Edition)
 			elseif action ~= "skip" then return false end
 			advance(s, rng)
 			return true
+		elseif s.phase == "matchday" and action == "host" then
+			if s.last.kind ~= "championship" then return false end
+			for i, holding in s.clubs do
+				if holding.owner == seat.id and board.tiles[i].league > 0 then
+					s.phase = "championship"
+					return true
+				end
+			end
+			return false
 		elseif s.phase == "championship" then
 			if action == "festival" and index and s.clubs[index] and s.clubs[index].owner == seat.id and board.tiles[index].league > 0 then
 				s.festival = index
@@ -853,6 +867,7 @@ local function withBoard(board: Board, edition: Edition)
 	function Rules.tourDecision(s: Match): (string, number?)
 		local seat = s.seats[s.active]
 		if s.phase == "move" or s.phase == "bench" then return "roll", nil end
+		if s.phase == "matchday" then return (if seat.bot then Rules.botAction(s) else "safe"), nil end
 		if s.phase == "offer" then return (if seat.bot then "buy" else "skip"), nil end
 		if s.phase == "upgrade" then
 			return (if seat.bot and seat.cash >= Rules.upgradePrice(seat) + 400 then "upgrade" else "skip"), nil

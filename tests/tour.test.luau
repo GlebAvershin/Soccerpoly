@@ -97,4 +97,52 @@ for _, reason in {"line", "venues", "triple"} do
 	assert(s.phase == "final" and s.winner == 1 and s.finishReason == reason, reason)
 end
 
-print("Tour verified: 32 cells, indexed builds, doubles, bench, away tour, repurchase, debt and property victories")
+assert(Board.formats[1].matchSeconds == 1200 and Board.formats[1].turnSeconds == 15)
+assert(Board.formats[2].matchSeconds == 3600 and Board.formats[2].turnSeconds == 30)
+
+s = start()
+s.seats[1].position = 10
+assert(Game.apply(s, 1, "roll", roll(3, 4)) and s.phase == "matchday")
+assert(not Game.apply(s, 1, "host", first))
+assert(Game.apply(s, 1, "shoot", first))
+assert(s.last.kind == "goal" and s.seats[1].cash == Board.startCash + 140 and s.seats[1].trophies == 1)
+assert(s.active == 2)
+
+s = start()
+s.clubs[4].owner, s.seats[1].position = 1, 10
+assert(Game.apply(s, 1, "roll", roll(3, 4)) and Game.apply(s, 1, "host", first))
+assert(s.phase == "championship" and not Game.apply(s, 1, "festival", first, 2))
+assert(Game.apply(s, 1, "festival", first, 4) and s.festival == 4)
+
+for _, event in {4, 5, 6} do
+	s = start()
+	s.clubs[4].owner, s.seats[1].position = 1, 2
+	local rngValues = {1, 2, event}
+	local function draw(low: number, high: number): number
+		local value = table.remove(rngValues, 1) or low
+		assert(value >= low and value <= high)
+		return value
+	end
+	assert(Game.apply(s, 1, "roll", draw))
+	if event == 4 then
+		assert(s.phase == "matchday" and not Game.apply(s, 1, "host", first))
+		assert(Game.tourDecision(s) == "safe")
+		assert(Game.apply(s, 1, "safe", first) and s.seats[1].cash == Board.startCash + Edition.safe_cash)
+	elseif event == 5 then
+		assert(s.last.kind == "sponsor" and s.seats[1].cash == Board.startCash + Board.sponsorBonus)
+	else
+		assert(s.phase == "shield" and Game.apply(s, 1, "shield", first, 4) and s.clubs[4].shield)
+	end
+end
+
+for rollValue = 1, 6 do
+	s = start()
+	s.phase = "matchday"
+	local function shot(low: number, high: number): number
+		return if high == 6 then rollValue else low
+	end
+	assert(Game.apply(s, 1, "shoot", shot))
+	assert(s.last.kind == (if rollValue <= 3 then "goal" elseif rollValue <= 5 then "save" else "offside"))
+end
+
+print("Tour verified: 32 cells, indexed builds, doubles, bench, away tour, repurchase, debt, property victories, formats and Matchday outcomes")

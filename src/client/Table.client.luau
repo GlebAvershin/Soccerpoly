@@ -12,6 +12,8 @@ local Board = require(shared.TourBoard)
 local Edition = require(shared.EventCards)
 local Rules = require(shared.Rules)
 local Game = Rules.withBoard(Board, Edition)
+local shotCash: {[string]: number} = {}
+for _, shot in Edition.shots do shotCash[shot.result] = shot.cash end
 local Art = require(shared.Presentation)
 local ResultBanner = require(script.Parent.ResultBanner)
 local Pawn = require(script.Parent.Pawn)
@@ -221,7 +223,8 @@ local function drawDialog()
 		else
 			local text = if tile.kind == "goalDeck" then t("Draw a reward from the Goal deck.")
 				elseif tile.kind == "offsideDeck" then t("Draw a penalty or bench card.")
-				elseif tile.kind == "matchday" then t("A goal wins a cup and a cash bonus. A safe play keeps your budget steady.")
+				elseif tile.kind == "championship" then t("A goal wins a cup and a cash bonus. A safe play keeps your budget steady.")
+				elseif tile.kind == "chance" then t("Draw a card, earn a sponsor bonus, protect a club or shoot on goal.")
 				else t("Crossing Kickoff pays %d CR.", Board.kickoffCash)
 			UI.label(card, text, 14, {color = colors.ink})
 		end
@@ -312,6 +315,7 @@ local function drawDialog()
 			{"Clubs and rent", "Buy a free club, build when you land on yours, or pay rent on a rival's club. Some clubs can be repurchased after paying rent."},
 			{"Club deals", "Before rolling, you can propose one trade or sale. The other player must accept."},
 			{"Away tour and championship", "On your next turn, Away tour lets you select any destination. Choose a club to host the championship and double its rent."},
+			{"Matchday", "On Championship and some Chance cells, shoot for a trophy or take a guaranteed bonus."},
 			{"Win the table", "Win with three leagues, an entire side or all four venues. You also win as the last solvent player or by leading in value at full time."},
 		}
 
@@ -490,11 +494,11 @@ local function lobbyPanel(data: any)
 		footer(0)
 		return
 	end
-	footer(96)
+	footer(132)
 	local figure = Board.figures[selected]
 	local figureColor = hex(figure.color)
 	local feature = UI.box(body, "FootballerCard", colors.surface, 12)
-	feature.Size = UDim2.new(1, 0, 0, if mode == "dock" then 103 else 88)
+	feature.Size = UDim2.new(1, 0, 0, if mode == "dock" then 170 else 104)
 	UI.stroke(feature, figureColor:Lerp(colors.outline, 0.54))
 	local textArea = UI.box(feature, "FootballerDetails")
 	textArea.Position, textArea.Size = UDim2.new(0, 11, 0, if mode == "dock" then 16 else 5), UDim2.new(0.60, -11, 1, -16)
@@ -511,7 +515,7 @@ local function lobbyPanel(data: any)
 	viewport.Parent = feature
 	local camera = Instance.new("Camera")
 	camera.FieldOfView = 35
-	camera.CFrame = CFrame.lookAt(Vector3.new(3.55, 3.85, 9.85), Vector3.new(0, 2.95, 0))
+	camera.CFrame = CFrame.lookAt(Vector3.new(3.1, 3.75, 8.9), Vector3.new(0, 2.95, 0))
 	camera.Parent, viewport.CurrentCamera = viewport, camera
 	tableView.preview(Pawn.make(selected, viewport))
 
@@ -527,9 +531,12 @@ local function lobbyPanel(data: any)
 	end
 	local isHost = data.host == Player.UserId
 	if isHost then primary = function() send("start") end end
+	local format = UI.button(actions, "MatchFormat", t(Board.formats[data.format].label), 34,
+		if isHost then function() send("format", 3 - data.format) end else nil, colors.surface, colors.text)
+	format.Position = UDim2.fromOffset(0, 47)
 	local start = UI.button(actions, "StartSeason", t(if isHost then "Start season" else "Waiting for the host"), 48, primary,
 		if isHost then colors.mint else colors.surface, if isHost then colors.ink else colors.muted)
-	start.Position = UDim2.fromOffset(0, 48)
+	start.Position = UDim2.fromOffset(0, 84)
 end
 
 local function showContract(data: any, seat: any, choice: number?)
@@ -611,6 +618,32 @@ local function rollPanel(s: any, mine: boolean)
 		local message = UI.label(turnPrompt, t("%s's turn", sessionName(player.id)), 15,
 			{font = BOLD, color = colors.ink, align = CENTER, ellipsis = true})
 		message.Size, message.Position = UDim2.fromOffset(218, 31), UDim2.fromOffset(13, 50)
+	end
+end
+
+local function matchdayPanel(s: any, seat: any)
+	title("Matchday", t("A goal earns %d CR and a trophy. A save earns %d CR. Offside costs %d CR.",
+		shotCash.goal, shotCash.save, -shotCash.offside))
+	local canHost = false
+	if s.last.kind == "championship" then
+		for index, asset in s.clubs do
+			if asset.owner == seat.id and Board.tiles[index].league > 0 then
+				canHost = true
+				break
+			end
+		end
+	end
+	footer(if canHost then 89 else 43)
+	primary = function() send("shoot") end
+	alternate = function() send("safe") end
+	local shoot = UI.button(actions, "MatchdayShoot", t("Shoot · %d%% goal", math.round(Game.goalChance * 100)),
+		43, primary, colors.mint, colors.ink)
+	local safe = UI.button(actions, "MatchdaySafe", t("Play safe · +%d CR", Edition.safe_cash), 43, alternate)
+	shoot.Size, safe.Size = UDim2.new(.5, -3, 0, 43), UDim2.new(.5, -3, 0, 43)
+	safe.Position = UDim2.new(.5, 3, 0, 0)
+	if canHost then
+		local host = UI.button(actions, "MatchdayHost", t("Host championship"), 41, function() send("host") end)
+		host.Position = UDim2.fromOffset(0, 48)
 	end
 end
 
@@ -715,7 +748,7 @@ render = function()
 	local mine = seat and seat.id == Player.UserId and not seat.bot
 	if dealButton then dealButton.Visible = mine and s.phase == "move" and not s.tradeUsed end
 	panel.Visible = s == nil or (not waiting and (data.auction ~= nil or s.phase == "final"
-		or (mine and (s.phase == "championship" or s.phase == "debt" or s.phase == "tour" or s.phase == "shield"))))
+		or (mine and (s.phase == "matchday" or s.phase == "championship" or s.phase == "debt" or s.phase == "tour" or s.phase == "shield"))))
 	if opened ~= "inspect" then propertyCard.hide() end
 	if not data then
 		phase.Text = "FOOTBOLAPOLIA"
@@ -733,6 +766,9 @@ render = function()
 		elseif mine and (s.phase == "offer" or s.phase == "upgrade" or s.phase == "rebuy") then
 			opened = ""
 			showContract(data, seat)
+		elseif mine and s.phase == "matchday" then
+			phase.Text = t(Board.tiles[seat.position].name)
+			matchdayPanel(s, seat)
 		elseif mine and (s.phase == "championship" or s.phase == "debt" or s.phase == "tour" or s.phase == "shield") then
 			phase.Text = if s.phase == "debt" then t("Settlement") else t(Board.tiles[seat.position].name)
 			selectionPanel(s, seat)
@@ -803,7 +839,8 @@ local intent = net:WaitForChild("Intent") :: RemoteEvent
 local snapshots = net:WaitForChild("Snapshot") :: RemoteEvent
 remote = intent
 local outcomes = {
-	goal = "GOAL!", offside = "Offside", save = "Save",
+	goal = "GOAL!", offside = "Offside", save = "Save", safe = "Guaranteed bonus",
+	sponsor = "Sponsor bonus", festival = "Championship awarded",
 	buy = "Club signed", upgrade = "Stadium upgraded", league = "League complete",
 	tradeSale = "Club sold", tradeSwap = "Clubs swapped", var = "VAR review",
 	shield = "Club protected", shieldDrawn = "Club shield", sentOff = "Sent to the bench", rebuy = "Club repurchased",
@@ -866,6 +903,15 @@ snapshots.OnClientEvent:Connect(function(data)
 		elseif last.kind == "tradeSale" or last.kind == "tradeSwap" then
 			caption = t(Board.tiles[last.tile].name) .. "  /  " ..
 				(if last.kind == "tradeSwap" then t(Board.tiles[last.otherTile].name) else string.format("%d CR", last.amount))
+		elseif last.kind == "goal" or last.kind == "save" or last.kind == "offside"
+			or last.kind == "safe" or last.kind == "sponsor" then
+			caption = name .. string.format("  /  %+d CR", last.amount)
+			if last.kind == "goal" then
+				caption ..= "  /  " .. t("+1 trophy")
+				tint = GOLD
+			elseif last.kind == "offside" then
+				tint = colors.pink
+			end
 		elseif last.kind == "sold" then
 			caption = name .. "  /  " .. t(Board.tiles[last.tile].name) .. string.format("  /  +%d CR", last.amount)
 		elseif last.card > 0 then
@@ -887,15 +933,24 @@ snapshots.OnClientEvent:Connect(function(data)
 		if snapshot.version ~= data.version and (snapshot.match.last.who ~= last.who or snapshot.match.last.kind ~= last.kind or snapshot.match.last.tile ~= last.tile) then return end
 		local title = t(headline)
 		local exciting = final or last.kind == "goal" or last.kind == "league" or last.kind == "auctionLeague"
+		local shot = not final and last.card == 0 and (last.kind == "goal" or last.kind == "save" or last.kind == "offside")
 		local function reveal()
 			if snapshot.serial ~= data.serial or not snapshot.match then return end
 			if not final and snapshot.match.phase == "final" then return end
-			if not final then
+			if not final and not shot then
 				audio.play(if last.card > 0 or last.kind == "auctionEmpty" then "card" else "sign")
 			end
 			resultBanner.reveal(title, caption, tint, reduced(), mode,
 				.55)
 			if exciting then tableView.celebrate(last.tile, true) elseif last.kind == "upgrade" then tableView.celebrate(last.tile, false) end
+		end
+		if shot then
+			for _, actor in match.seats do
+				if actor.id == last.who then
+					tableView.playShot(last.kind, actor.figure, reveal)
+					return
+				end
+			end
 		end
 		reveal()
 	end)

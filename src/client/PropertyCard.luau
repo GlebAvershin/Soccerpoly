@@ -6,7 +6,7 @@ local Art = require(shared.Presentation)
 local Meshes = require(script.Parent.MeshLibrary)
 local UI = require(script.Parent.Components)
 local C = Color3.fromHex
-local PAPER, INK, BLUE = C("F2EBE0"), C("352F2C"), C("1795C8")
+local PAPER, INK, BLUE = Art.paper, Art.ink, C("1795C8")
 local CENTER = Enum.TextXAlignment.Center
 local BOLD = Enum.Font.BuilderSansExtraBold
 
@@ -117,10 +117,12 @@ function Card.new(root: Frame)
 			local paper = UI.box(wrapper, "Front paper", PAPER, 13)
 			paper.Size = UDim2.fromScale(1, 1)
 			UI.stroke(paper, C("D6C9BA"))
-			local header = UI.box(paper, "Title ribbon", BLUE)
-			header.Position, header.Size = UDim2.fromOffset(-5, -3), UDim2.new(1, 10, 0, 33)
-			gradient(header, C("33B1E1"), C("188BBB"))
-			local title = text(header, string.upper(info.title), 33, 0, 17, Color3.new(1, 1, 1))
+			local tile = Board.tiles[info.index]
+			local league = Art.accent(tile.kind, tile.league)
+			local header = UI.box(paper, "Title ribbon", league:Lerp(INK, .72))
+			header.Position, header.Size = UDim2.fromOffset(-5, -3), UDim2.new(1, 10, 0, 36)
+			gradient(header, league:Lerp(INK, .62), league:Lerp(INK, .86))
+			local title = text(header, info.title, 36, 0, 20, Color3.new(1, 1, 1))
 			title.Font, title.Size = BOLD, UDim2.new(1, -54, 1, 0)
 			local exit = UI.button(header, "CloseCard", "×", 33, info.close, BLUE, Color3.new(1, 1, 1))
 			exit.BackgroundTransparency, exit.TextSize = 1, 25
@@ -142,7 +144,7 @@ function Card.new(root: Frame)
 				end
 				row(200, info.columns or {}, C("E1D5C4"), true)
 				for i, item in options do
-					local fill = if item.highlighted then C("B9CF6F") elseif i % 2 == 0 then C("E7DEC9") else C("F0EBE1")
+					local fill = if item.highlighted then C("CCE7CC") elseif i % 2 == 0 then C("E7DEC9") else C("F0EBE1")
 					local columns = row(226 + (i - 1) * 28, item.cells, fill, item.highlighted == true)
 					if item.press then
 						local button = UI.button(columns, "ChooseLevel" .. i, "", 26, item.press, fill)

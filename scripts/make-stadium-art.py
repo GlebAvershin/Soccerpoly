@@ -16,7 +16,7 @@ from blender_export import ROOT, blender, export_shapes
 
 NAMES = (
     "table", "enamel", "stand", "tunnel", "dugout", "goal", "lights",
-    "cup", "ball", "academy", "arena", "curls", "sweep", "cap", "crest", "die", "chance", "champions",
+    "cup", "ball", "academy", "arena", "curls", "sweep", "cap", "crest", "die", "chance", "champions", "tile_case", "tile_enamel", "fade",
 )
 INK, NAVY, SLATE = "23334A", "254671", "3C6BA1"
 TEAL, MINT, GOLD = "2679BB", "76CFE2", "EAB561"
@@ -291,13 +291,28 @@ def hair(style):
         ellipsoid((0, 0, -.04), (1.0, .50, .91), None)
         ellipsoid((0, -.13, .31), (.88, .078, .74), None)
         return
+    if style == "fade":
+        ellipsoid((0, -.085, -.08), (.98, .50, .98), None)
+        ellipsoid((0, .03, -.09), (.90, .42, .90), None)
+        for i in range(6):
+            x = (i - 2.5) * .128
+            ellipsoid((x, .145 - abs(x) * .24, .095 - abs(x) * .23),
+                      (.255, .21, .57), None, -.14)
+        return
+    if style == "curls":
+        ellipsoid((0, -.06, -.12), (.98, .44, .89), None)
+        for row, z in enumerate((-.36, -.06, .24, .40)):
+            for column in range(5):
+                x = (column - 2) * .196 + (.065 if row % 2 else 0)
+                crown_height = .18 - .39 * (abs(x) ** 1.65) - .21 * abs(z)
+                ellipsoid((x, crown_height, z - abs(x) * .16),
+                          (.27, .22 + .034 * sin(column * 2.1 + row), .29), None, .18 * sin(column))
+        return
     ellipsoid((0, -.045, -.07), (1.0, .43, 1.0), None)
     for i in range(7):
         x = (i - 3) * .122
-        if style == "curls":
-            ellipsoid((x, .07 + .068 * sin(i * 1.6), .23 - abs(x) * .16), (.31, .24, .36), None)
-        else:
-            ellipsoid((x, .08 - i * .024, .25 - abs(x) * .42), (.32, .22, .48 - i * .021), None, .39)
+        ellipsoid((x, .08 - i * .024, .25 - abs(x) * .42),
+                  (.30 - i * .009, .24 - i * .014, .57 - i * .039), None, .48)
 
 
 def chance_wheel():
@@ -332,6 +347,9 @@ def build_scene():
         lambda: hair("curls"), lambda: hair("sweep"), lambda: hair("cap"), club_crest,
         lambda: block((0, 0, 0), (1, 1, 1), radius=.13, segments=5),
         chance_wheel, champions_arena,
+        lambda: block((0, 0, 0), (12, .60, 14), radius=.27, segments=4),
+        lambda: block((0, 0, 0), (12, .32, 14), radius=.145, segments=4),
+        lambda: hair("fade"),
     )
     objects = []
     for name, build in zip(NAMES, builders):

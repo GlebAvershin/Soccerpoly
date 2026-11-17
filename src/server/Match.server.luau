@@ -17,7 +17,7 @@ local function nextInteger(a: number, b: number): number return rng:NextInteger(
 local bots = table.freeze({"Atlas", "Vega", "Nova"})
 local MAX_SEATS = Board.maxSeats
 local ALLOWED = table.freeze({
-	sync = true, start = true, lobby = true, figure = true, roll = true, rebuy = true,
+	sync = true, start = true, lobby = true, figure = true, format = true, host = true, roll = true, rebuy = true,
 	buy = true, upgrade = true, skip = true, shoot = true, safe = true, bid = true, release = true, sell = true,
 	sellUpgrades = true, trade = true, tradeAccept = true, tradeDecline = true, travel = true, festival = true, shield = true, bankrupt = true,
 })
@@ -30,6 +30,7 @@ if RunService:IsStudio() then
 	if ok then studioArgs = args end
 end
 local fast = studioArgs == "WorldDraftSmoke" or studioArgs == "WorldDraftDuo" or studioArgs == "WorldDraftFour"
+local scriptedMatchday = fast and script:GetAttribute("StudioMatchdaySmoke") == true
 local network = Instance.new("Folder")
 network.Name = "WorldDraft"
 local intent = Instance.new("RemoteEvent")
@@ -49,6 +50,7 @@ local fastRng = Random.new(74214)
 local entryNumber, version, serial, auctionToken = 0, 0, 0, 0
 local tradeToken, tradeExpires, tradeBotAt = 0, 0, 0
 local mode, variant = "solo", "none"
+local formatIndex = 1
 
 local function seatList(): {LobbySeat}
 	local result = {}
@@ -85,7 +87,7 @@ local function output(viewer: Player?)
 			festival = s.festival, winner = s.winner, finishReason = s.finishReason,
 		} else nil,
 		deadline = deadline, availableAt = availableAt, matchEndsAt = matchEndsAt, scores = scores, gates = gates,
-		variant = variant, auction = auction, trade = privateTrade,
+		format = formatIndex, variant = variant, auction = auction, trade = privateTrade,
 	}
 end
 
@@ -150,12 +152,12 @@ local function setClock(duration: number, delay: number?)
 	deadline, availableAt = now + duration, now + (delay or MIN_ACTION_SECONDS)
 end
 
-local function clockTurn(s: Rules.Match, moved: boolean)
+local function clockTurn(s: Rules.Match, moved: boolean, replay: boolean?)
 	if s.phase == "final" then
 		deadline = 0
 		return
 	end
-	local intro = if moved then .75 + s.motion.steps * .09 else MIN_ACTION_SECONDS
+	local intro = if replay then 1.90 elseif moved then .75 + s.motion.steps * .09 else MIN_ACTION_SECONDS
 	if s.phase == "auction" then
 		auctionToken = version + 1
 		setClock(AUCTION_SECONDS + intro, intro)
@@ -167,7 +169,7 @@ local function clockTurn(s: Rules.Match, moved: boolean)
 		setClock(intro + .16, intro)
 	else
 		local seconds = if bot then (if move then BOT_MOVE_SECONDS else BOT_OFFER_SECONDS)
-			else Board.turnSeconds
+			elseif s.phase == "matchday" then Board.matchdaySeconds else Board.formats[formatIndex].turnSeconds
 		setClock(seconds + intro, intro)
 	end
 end
@@ -198,7 +200,7 @@ local function start()
 	match = s
 	serial += 1
 	startedAt = os.clock()
-	matchEndsAt = workspace:GetServerTimeNow() + (if fast then 25 else Board.matchSeconds)
+	matchEndsAt = workspace:GetServerTimeNow() + (if fast then 25 else Board.formats[formatIndex].matchSeconds)
 	clockTurn(s, false)
 	for _, seat in s.seats do
 		if not seat.bot then
@@ -230,6 +232,13 @@ local function action(s: Rules.Match, verb: string, player: Player?, index: numb
 			nextDie += 1
 			return if nextDie <= 2 then nextDie else studioRoll(low, high)
 		end
+	elseif scriptedMatchday and verb == "roll" and not seat.bot and seat.position == 4 then
+		local values = {4, 5, 4}
+		roll = function(low: number, high: number): number
+			return table.remove(values, 1) or studioRoll(low, high)
+		end
+	elseif scriptedMatchday and verb == "shoot" then
+		roll = function(low: number, _high: number): number return low end
 	end
 	local accepted: boolean
 	if verb == "closeAuction" then
@@ -246,7 +255,7 @@ local function action(s: Rules.Match, verb: string, player: Player?, index: numb
 	end
 	if not accepted then return false end
 	local moved = s.motion.serial ~= previousMotion
-	if s.phase ~= previousPhase or previousActive ~= s.active or (verb ~= "sell" and verb ~= "sellUpgrades") then clockTurn(s, moved) end
+	if s.phase ~= previousPhase or previousActive ~= s.active or (verb ~= "sell" and verb ~= "sellUpgrades") then clockTurn(s, moved, verb == "shoot") end
 	publish()
 	if player then
 		local funnel = funnels[player]
@@ -335,6 +344,13 @@ intent.OnServerEvent:Connect(function(player, verb, revision, value)
 	elseif verb == "lobby" then
 		if s and s.phase == "final" then
 			match, deadline = nil, 0
+			publish()
+		end
+	elseif verb == "format" then
+		local listed = seatList()
+		if not s and listed[1] and listed[1].id == seat.id and type(value) == "number"
+			and Board.formats[value] and value ~= formatIndex then
+			formatIndex = value
 			publish()
 		end
 	elseif verb == "figure" then

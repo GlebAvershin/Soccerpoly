@@ -56,7 +56,10 @@ function Pawn.make(figure: number, parent: Instance, onPitch: boolean?, uniform:
 		soft("Knee", .62, .62, .64, x * 1.10, 1.63, .03, if figure == 5 then trim else skin)
 		Meshes.apply("sock", soft("Ribbed sock", .59, 1.05, .64, x * 1.13, 1.18, .045, if figure == 5 then trim else kit))
 		soft("Sock band", .58, .15, .65, x * 1.13, 1.46, .05, ivory)
-		soft("Studded sole", .76, .19, 1.08, x * 1.15, .50, .25, rubber)
+		Meshes.apply("outsole", soft("Molded outsole", .78, .18, 1.11, x * 1.15, .50, .25, rubber))
+		for _, stud in {-.13, .37} do
+			soft("Cleat", .42, .12, .25, x * 1.15, .44, .28 + stud, kit)
+		end
 		Meshes.apply("boot", soft("Leather boot", .74, .49, 1.06, x * 1.15, .69, .24, trim:Lerp(rubber, .35)))
 		for seam = 1, 3 do
 			soft("Boot lace", .29, .04, .067, x * 1.15, .92 - seam * .032, .22 + seam * .13, ivory).CastShadow = false
@@ -70,7 +73,17 @@ function Pawn.make(figure: number, parent: Instance, onPitch: boolean?, uniform:
 	Meshes.apply("jersey", soft("Jersey", 2.23, 1.72, 1.36, 0, 3.01, 0, kit))
 	soft("Collar ribbing", .87, .27, .80, 0, 3.82, 0, trim)
 	soft("Neck", .56, .48, .61, 0, 3.94, 0, skin)
-	soft("Chest piping", 1.38, .105, .12, 0, 3.36, .622, ivory)
+	if figure == 1 or figure == 3 then
+		soft("Two-tone sash", .34, 1.21, .108, .06, 3.11, .638, trim:Lerp(kit, .22), if figure == 1 then .48 else -.48)
+		soft("Sash stitch", .058, 1.14, .11, -.15, 3.15, .646, ivory, if figure == 1 then .48 else -.48)
+	elseif figure == 2 or figure == 4 then
+		for _, height in {3.35, 3.21} do
+			soft("Chest stripe", 1.47, .123, .14, 0, height, .596, trim:Lerp(kit, .28))
+		end
+	else
+		soft("Zip seam", .067, .96, .12, 0, 3.29, .618, trim)
+		soft("Zip pull", .106, .17, .09, 0, 3.63, .652, ivory)
+	end
 	soft("Woven crest", .25, .33, .10, -.50, 3.24, .626, trim)
 	soft("Crest embroidery", .13, .12, .025, -.50, 3.30, .686, Art.gold).CastShadow = false
 	local tag = piece("Player number", .68, .52, .04, .21, 3.08, .669, kit)
@@ -116,9 +129,11 @@ function Pawn.make(figure: number, parent: Instance, onPitch: boolean?, uniform:
 	for _, side in {-1, 1} do
 		local x = side * .377
 		soft("Ear", .32, .44, .36, side * .819, 4.53, .06, skin)
-		soft("Eyes", .36, .285, .124, x, 4.65, .715, ivory)
-		soft("Iris", .181, .22, .084, x + .033, 4.64, .775, trim:Lerp(rubber, .58))
-		soft("Catchlight", .056, .060, .027, x + .060, 4.697, .817, ivory).CastShadow = false
+		local eyeHeight = if figure == 4 or figure == 5 then .20 else .235
+		soft("Lid", .365, eyeHeight + .048, .135, x, 4.659, .706, skin:Lerp(hair, .45), side * .065)
+		soft("Eyes", .324, eyeHeight, .127, x, 4.647, .741, ivory, side * .065)
+		soft("Iris", .157, eyeHeight * .82, .084, x + .031, 4.643, .798, trim:Lerp(rubber, .58))
+		soft("Catchlight", .056, .060, .027, x + .060, 4.680, .838, ivory).CastShadow = false
 		soft("Eyebrow", .29, .087, .08, x, 4.875, .678, hair, -side * .11)
 	end
 	if figure == 5 then
@@ -132,7 +147,10 @@ function Pawn.make(figure: number, parent: Instance, onPitch: boolean?, uniform:
 		Meshes.apply("sweep", crown, {fringe})
 		soft(if figure == 2 then "Ponytail" else "Bun", .74, if figure == 2 then 1.38 else .82, .76, .42, 4.69, -.68, hair, .29)
 		soft("Hair tie", .64, .15, .67, .37, 5.00, -.51, kit)
-	elseif figure == 1 or figure == 4 then
+	elseif figure == 4 then
+		Meshes.apply("fade", soft("Keeper fade", 1.78, .60, 1.62, 0, 5.105, -.065, hair))
+		soft("Keeper band", 1.78, .16, 1.59, 0, 4.99, -.01, kit:Lerp(ivory, .42))
+	elseif figure == 1 then
 		local crown = soft("Curl base", 1.82, .70, 1.66, 0, 5.175, .015, hair)
 		local curls: {Instance} = {}
 		for i = -2, 2 do
@@ -140,7 +158,6 @@ function Pawn.make(figure: number, parent: Instance, onPitch: boolean?, uniform:
 			table.insert(curls, soft("Sculpted curl", .60, .54, .60, i * .31, 5.17 + .065 * (2 - math.abs(i)), .35, tint))
 		end
 		Meshes.apply("curls", crown, curls)
-		if figure == 4 then soft("Keeper band", 1.83, .17, 1.58, 0, 4.95, .02, kit) end
 	else
 		local crown = soft("Tapered hair", 1.86, .70, 1.53, 0, 5.02, -.13, hair)
 		local fringe: {Instance} = {}
@@ -150,7 +167,7 @@ function Pawn.make(figure: number, parent: Instance, onPitch: boolean?, uniform:
 		Meshes.apply("sweep", crown, fringe)
 	end
 	head.model.WorldPivot = head.rest
-	head.model:ScaleTo(1.23)
+	head.model:ScaleTo(if figure == 4 then 1.12 else 1.16)
 	rigs[model] = {body, head, arms[1], arms[2], legs[1], legs[2]}
 	model.Parent = parent
 	return model
