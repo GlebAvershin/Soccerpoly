@@ -158,7 +158,12 @@ function Arena.new(myId: number, root: Frame, translate: (string) -> string, pla
 	local oldSize: Vector2? = nil
 	local oldRoot: Vector2? = nil
 	local projected: CFrame? = nil
-	local cameraTarget: CFrame? = nil
+	local overview: CFrame? = nil
+	local portraitCamera = false
+	local followTurn = true
+	local focusOrbit = Vector3.zero
+	local focusDistance = 0
+	local boardPose: CFrame? = nil
 
 	local function finishFlight()
 		local flight = activeFlight
@@ -174,10 +179,13 @@ function Arena.new(myId: number, root: Frame, translate: (string) -> string, pla
 		local aspect = size.X / size.Y
 		local fov = Art.boardFov
 		local tangent = math.tan(math.rad(fov) * .5)
-		local angle = math.rad(33.2)
-		local orbit = Art.boardNear * math.cos(angle) + Vector3.yAxis * math.sin(angle)
-		local span = Geometry.width * (Art.boardNear.X + Art.boardNear.Z)
-		local width = if aspect < .85 then .83 else .85
+		portraitCamera = aspect < .86
+		local angle = math.rad(if portraitCamera then 53 else 33.2)
+		local azimuth = if portraitCamera then math.rad(9) else Art.boardYaw
+		local heading = Vector3.new(math.sin(azimuth), 0, math.cos(azimuth))
+		local orbit = heading * math.cos(angle) + Vector3.yAxis * math.sin(angle)
+		local span = Geometry.width * (heading.X + heading.Z)
+		local width = if portraitCamera then .920 else .85
 		local height = if size.Y < 550 then .60 else .718
 		local distance = math.max(span / (2 * tangent * aspect * width), span * math.sin(angle) / (2 * tangent * height))
 		local base = CFrame.lookAt(orbit * distance, Vector3.zero)
@@ -185,10 +193,20 @@ function Arena.new(myId: number, root: Frame, translate: (string) -> string, pla
 		local near = base:PointToObjectSpace(Vector3.new(half, Art.tileTop, half))
 		local far = base:PointToObjectSpace(Vector3.new(-half, Art.tileTop, -half))
 		local centerY = (near.Y / -near.Z + far.Y / -far.Z) * .5
-		local targetY = if aspect < .85 then .05 else -.071
-		cameraTarget = base * CFrame.new(0, (centerY - targetY * tangent) * distance, 0)
-		projected = nil
+		local targetY = if portraitCamera then .07 else -.071
+		overview = base * CFrame.new(0, (centerY - targetY * tangent) * distance, 0)
+		focusOrbit, focusDistance = orbit, distance * .58
+		projected, boardPose = nil, nil
 		oldSize, oldRoot, camera.FieldOfView = size, root.AbsoluteSize, fov
+	end
+
+	local function focusedBoard(): CFrame?
+		local pawn = models[activeId]
+		if not (portraitCamera and followTurn and pawn) then return nil end
+		local point = pawn:GetPivot().Position
+		-- Keep the action at the outside of frame so neighboring tiles and the pitch are in view.
+		local clamped = Vector3.new(math.clamp(point.X, -36, 36), Art.tileTop, math.clamp(point.Z, -37, 37))
+		return CFrame.lookAt(clamped + focusOrbit * focusDistance, clamped)
 	end
 
 	local function pulse(at: Vector3, color: Color3, impact: boolean)
@@ -350,11 +368,11 @@ function Arena.new(myId: number, root: Frame, translate: (string) -> string, pla
 		activeId = if s.phase == "final" then 0 else active.id
 	end
 
-	RunService:BindToRenderStep("WorldDraftCamera", Enum.RenderPriority.Camera.Value + 1, function()
+	RunService:BindToRenderStep("WorldDraftCamera", Enum.RenderPriority.Camera.Value + 1, function(dt)
 		local camera = workspace.CurrentCamera
 		if not camera or camera.ViewportSize.X < 2 or camera.ViewportSize.Y < 2 then return end
 		camera.CameraType = Enum.CameraType.Scriptable
-		if oldSize ~= camera.ViewportSize or oldRoot ~= root.AbsoluteSize or not cameraTarget then layout(camera) end
+		if oldSize ~= camera.ViewportSize or oldRoot ~= root.AbsoluteSize or not overview then layout(camera) end
 		local entry = activeFlight
 		local clock = os.clock()
 		replay.step(clock, reduced)
@@ -367,9 +385,14 @@ function Arena.new(myId: number, root: Frame, translate: (string) -> string, pla
 		if frame then
 			camera.CFrame = frame
 		else
-			camera.CFrame, camera.Focus, camera.FieldOfView = cameraTarget :: CFrame, CFrame.identity, Art.boardFov
+			local focus = focusedBoard()
+			local target = focus or (overview :: CFrame)
+			local last = boardPose or (overview :: CFrame)
+			boardPose = if (last.Position - target.Position).Magnitude < .08 or reduced
+				then target else last:Lerp(target, 1 - math.exp(-dt * 9))
+			camera.CFrame, camera.Focus, camera.FieldOfView = boardPose :: CFrame, CFrame.identity, Art.boardFov
 			if projected ~= camera.CFrame then
-				labels.project(camera)
+				labels.project(camera, portraitCamera, focus ~= nil)
 				projected = camera.CFrame
 			end
 		end
@@ -469,6 +492,9 @@ function Arena.new(myId: number, root: Frame, translate: (string) -> string, pla
 
 	return {
 		sync = sync,
+		setFollow = function(enabled: boolean)
+			followTurn = enabled
+		end,
 		stadiumMessage = function(title: string, tint: Color3)
 			local textLabel = ribbonText
 			if not textLabel then return end

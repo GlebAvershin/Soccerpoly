@@ -4,14 +4,17 @@ Run with Blender's --background --python flags. Open player-sculpts.blend and
 rerun with -- --export to export edits to the saved mesh objects.
 """
 from dataclasses import dataclass
-from math import asin, cos, exp, pi, sin, sqrt, tau
+import json
+from math import atan2, cos, exp, pi, sin, sqrt, tau
 from pathlib import Path
 import sys
 
 import bpy
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from blender_export import ROOT, blender, export_shapes
+from blender_export import ROOT, blender, export_shapes, portrait_shader
+
+FITS = json.loads((ROOT / "art/portrait-fits.json").read_text())
 
 
 @dataclass(frozen=True)
@@ -85,12 +88,13 @@ class Sculpt:
     def __init__(self, name, p):
         self.name, self.p = name, p
         self.points, self.faces, self.indices, self.colors = [], [], [], []
+        self.pigment = {}
         self.skin = self.color(p.skin)
         self.hair = self.color(p.hair)
         self.brow = self.color(0x36251F if p.style == "tied" else p.hair)
         self.lip = self.color(0x72423B if p.skin >= 0xA00000 else 0x5B3028)
-        self.eye = self.color(0xE1D2BA)
-        self.iris = self.color(0x3E4F57 if p.style == "tied" else 0x302219)
+        self.eye = self.color(0x9D9186)
+        self.iris = self.color(0x405660 if p.style == "tied" else 0x37241D)
         self.outline = self.color(0x281B19)
 
     def color(self, color):
@@ -133,6 +137,121 @@ class Sculpt:
             a = start + 2 * i
             self.faces.append((a, a + 2, a + 3, a + 1))
             self.indices.append(color)
+
+    def fit_face(self, reference):
+        """Join the measured face to a closed cranial shell."""
+        p = self.p
+        points = [(x, y * p.length, z * .76 - .038) for x, y, z in reference["points"]]
+        skin = tuple((p.skin >> shift) & 255 for shift in (16, 8, 0))
+        base = tuple(round(.56 * a + .44 * b) for a, b in zip(skin, reference["base"]))
+        self.skin = self.color((base[0] << 16) + (base[1] << 8) + base[2])
+        self.points.extend(map(blender, points[:468]))
+        self.faces.extend(map(tuple, FITS["faces"]))
+        self.indices.extend([self.skin] * len(FITS["faces"]))
+        for i, rgb in enumerate(reference["pigment"][:468]):
+            self.pigment[i] = tuple(min(255, max(0, value + target - observed))
+                                    for value, target, observed in zip(rgb, base, reference["base"]))
+
+        # Strengthen the brow shape at table distance while preserving its measured arch.
+        brow_lines = ((70, 63, 105, 66, 107, 46, 53, 52, 65, 55),
+                      (300, 293, 334, 296, 336, 276, 283, 282, 295, 285))
+        brow = self.colors_rgb(self.hair)
+        strength = .40 if p.style == "tied" else .57
+        for line in brow_lines:
+            for index in line:
+                self.pigment[index] = tuple(round((1 - strength) * a + strength * b)
+                                            for a, b in zip(self.pigment[index], brow))
+
+        # Subdivide the eyes toward the measured iris centers. The eye surface
+        # stays inside the existing eyelid silhouette so it reads in profile as well.
+        eyes = (
+            ([33, 246, 161, 160, 159, 158, 157, 173, 133, 155, 154, 153, 145, 144, 163, 7], 468),
+            ([263, 249, 390, 373, 374, 380, 381, 382, 362, 398, 384, 385, 386, 387, 388, 466], 473),
+        )
+        mouth_top = [78, 191, 80, 81, 82, 13, 312, 311, 310, 415, 308]
+        mouth_bottom = [78, 95, 88, 178, 87, 14, 317, 402, 318, 324, 308]
+        smile = points[13][1] - points[14][1] > .022
+        openings = [set(ring) for ring, _ in eyes]
+        if smile:
+            openings.append(set(mouth_top + mouth_bottom))
+        kept = [(face, idx) for face, idx in zip(self.faces, self.indices)
+                if not any(set(face) <= opening for opening in openings)]
+        self.faces, self.indices = map(list, zip(*kept))
+        for ring, iris in eyes:
+            x, y, z = points[iris]
+            z = max(z, sum(points[index][2] for index in ring) / len(ring)) + .008
+            center = len(self.points)
+            self.points.append(blender((x, y, z)))
+            self.pigment[center] = (31, 21, 20)
+            for ratio, bump in ((.52, .006), (.68, .004)):
+                for index in ring:
+                    rx, ry, _ = points[index]
+                    i = len(self.points)
+                    self.points.append(blender((x + (rx - x) * ratio, y + (ry - y) * ratio, z + bump)))
+                    self.pigment[i] = self.colors_rgb(self.iris if ratio < .6 else self.eye)
+            n = len(ring)
+            start = center + 1
+            for j in range(n):
+                k = (j + 1) % n
+                self.faces.extend(((center, start + k, start + j),
+                                   (start + k, start + n + k, start + n + j, start + j),
+                                   (start + n + k, ring[k], ring[j], start + n + j)))
+                self.indices.extend((self.iris, self.eye, self.eye))
+
+        if smile:
+            teeth = self.color(0xE0C9B0)
+            shadow = self.color(0x532822)
+            inner = []
+            for upper, lower in zip(mouth_top, mouth_bottom):
+                ux, uy, uz = points[upper]
+                lx, ly, lz = points[lower]
+                inner.append(len(self.points))
+                self.points.append(blender((ux * .47 + lx * .53, uy * .47 + ly * .53, uz * .47 + lz * .53 - .009)))
+            for j in range(len(inner) - 1):
+                k = j + 1
+                self.faces.extend(((mouth_top[j], inner[j], inner[k], mouth_top[k]),
+                                   (inner[j], mouth_bottom[j], mouth_bottom[k], inner[k])))
+                self.indices.extend((teeth, shadow))
+                # Set the lip cavity color explicitly while retaining the observed lip contour.
+                self.pigment[inner[j]] = (209, 182, 156) if j in range(2, 9) else (101, 59, 49)
+
+        if p.beard:
+            for i, (x, y, _) in enumerate(points[:468]):
+                jaw = max(0, min(1, (-y - .268 + 1.30 * abs(x) ** 2) / .13))
+                whiskers = .55 * bulge(x, y, 0, -.198, .24, .054)
+                strength = max(jaw * .85, whiskers)
+                rgb = self.pigment[i]
+                self.pigment[i] = tuple(round((1 - strength) * a + strength * b)
+                                        for a, b in zip(rgb, (78, 52, 39)))
+
+        boundary = FITS["oval"]
+        prior = boundary
+        for row in range(1, 10):
+            angle = row / 10 * pi / 2
+            contour = []
+            for i in boundary:
+                x, y, z = points[i]
+                collar = min(1, max(0, (y + .3) / .87))
+                x *= cos(angle) * (1 + .09 * sin(angle * 2))
+                y = .02 + (y - .02) * cos(angle) + collar * .14 * sin(angle * 2)
+                z = z * cos(angle) - .53 * sin(angle)
+                contour.append(len(self.points))
+                self.points.append(blender((x, y, z)))
+            for j in range(len(prior)):
+                k = (j + 1) % len(prior)
+                self.faces.append((prior[k], contour[k], contour[j], prior[j]))
+                self.indices.append(self.skin)
+            prior = contour
+        self.faces.append(tuple(prior))
+        self.indices.append(self.skin)
+        for side, index in ((-1, 234), (1, 454)):
+            x, y, z = points[index]
+            self.oval(x + side * .021, y - .101, z - .065, .085, .147, .088, self.skin, 14)
+            self.oval(x + side * .043, y - .096, z + .006, .024, .075, .020,
+                      self.color((int(base[0] * .76) << 16) + (int(base[1] * .65) << 8) + int(base[2] * .62)), 10)
+
+    def colors_rgb(self, index):
+        return tuple((self.colors[index] >> shift) & 255 for shift in (16, 8, 0))
 
     def build_face(self):
         p = self.p
@@ -193,14 +312,46 @@ class Sculpt:
     def haircut(self):
         p = self.p
         # Front, temple, nape, height. Fade sides sit high over the ear.
+        measured = self.name in FITS["players"]
+        from mathutils.bvhtree import BVHTree
+        scalp = BVHTree.FromPolygons(self.points, self.faces) if measured else None
         front_line, temple, nape, volume = {
-            "part": (.351, .166, -.019, .069),
-            "quiff": (.474, .205, .017, .090),
-            "crop": (.426, .315, .170, .019),
-            "curls": (.374, .256, .088, .083),
-            "tied": (.486, .292, .011, .046),
-            "highfade": (.465, .300, .151, .072),
+            "part": (.493, .153, -.042, .067),
+            "quiff": (.475, .193, .001, .128),
+            "crop": (.465, .270, .119, .028),
+            "curls": (.399, .210, .063, .160),
+            "tied": (.538, .256, .020, .043),
+            "highfade": (.449, .279, .116, .133),
         }[p.style]
+
+        def hairline(angle):
+            side, facing = sin(angle), cos(angle)
+            front = max(0, facing)
+            edge = (temple + (front_line - temple) * sqrt(front) if facing >= 0
+                    else temple + (nape - temple) * facing * facing)
+            if p.style == "part":
+                edge += .042 * side * front
+            elif p.style == "quiff":
+                edge += .018 * cos(angle * 3 - .62) * front
+            elif p.style in ("curls", "highfade"):
+                edge += .016 * front * cos(angle * 19)
+            elif p.style == "tied":
+                edge += .034 * exp(-(side / .13) ** 2) * front
+            return edge
+
+        if measured:
+            # Paint the scalp continuously under the sculpted hair. This also
+            # gives the short cuts a shade gradient at the clipped temples.
+            skin = self.colors_rgb(self.skin)
+            hair = self.colors_rgb(self.hair)
+            for i, point in enumerate(self.points):
+                x, y, z = point.x, point.z, -point.y
+                angle = atan2(x, z + .055)
+                excess = y / p.length - hairline(angle)
+                if excess > .018:
+                    strength = min(1, (excess - .018) / .050)
+                    original = self.pigment.get(i, skin)
+                    self.pigment[i] = tuple(round((1 - strength) * a + strength * b) for a, b in zip(original, hair))
         rows = []
         steps = 56
         for row in range(13):
@@ -210,30 +361,33 @@ class Sculpt:
                 angle = tau * i / steps
                 side, facing = sin(angle), cos(angle)
                 front = max(0, facing)
-                edge = (temple + (front_line - temple) * sqrt(front) if facing >= 0
-                        else temple + (nape - temple) * facing * facing)
+                edge = hairline(angle)
                 ridge = .007 * sin(angle * 11 - t * 7)
                 lift = sin(pi * t) ** .76
                 if p.style == "part":
-                    edge += .042 * side * front
                     ridge += .026 * front * sin(side * 6 + t * 6)
                 elif p.style == "quiff":
-                    edge += .018 * cos(angle * 3 - .62) * front
                     ridge += .054 * front * exp(-((side + .40) / .54) ** 2) * lift
-                elif p.style in ("curls", "highfade"):
+                elif p.style in ("curls", "highfade", "crop"):
                     curl = cos(angle * 13 + row * 1.18) + sin(angle * 7 - row)
-                    ridge += .025 * curl * lift
-                    edge += .016 * front * cos(angle * 19)
+                    ridge += (.004 if p.style == "crop" else .016 if p.style == "curls" else .012) * curl * lift
                 elif p.style == "tied":
                     ridge *= 1.7
-                    edge += .034 * exp(-(side / .13) ** 2) * front
                 y = edge + (.682 - edge) * t
                 w, d, c = radius(p, y)
                 padding = (.012 + ridge) * (1 - t * .45)
-                x = (w + padding) * side
+                x = (w + padding + (.024 * sin(pi * t) if p.style == "curls" else 0)) * side
                 z = c + (d + .013 + padding) * facing
                 tuft = volume * (t + .45 * lift * front) + ridge * lift
-                ring.append((x, y * p.length + tuft, z))
+                yy = y * p.length + tuft
+                if scalp:
+                    center = -.055
+                    ray = blender((side, 0, facing))
+                    hit, _, _, depth = scalp.ray_cast(blender((0, yy, center)), ray, 1.2)
+                    if hit is not None:
+                        radial = max(depth + (.018 if p.style == "crop" else .026), side * x + facing * (z - center))
+                        x, z = radial * side, radial * facing + center
+                ring.append((x, yy, z))
             rows.append(ring)
         first = len(self.indices)
         self.band(rows, self.hair)
@@ -247,12 +401,26 @@ class Sculpt:
                 for i in range(steps):
                     if abs(sin(tau * (i + .5) / steps)) > .47 or cos(tau * i / steps) < 0:
                         self.indices[first + row * steps + i] = color
+        if measured and p.style in ("quiff", "curls", "highfade"):
+            count = 14 if p.style == "quiff" else 18
+            first_row = rows[3 if p.style == "curls" else 4]
+            second_row = rows[6]
+            for i in range(count):
+                j = (i * 13) % steps
+                x, y, z = (first_row if i % 3 else second_row)[j]
+                bump = .027 + .010 * (i % 4)
+                shade = self.color(p.hair + (0x090604 if i % 3 else 0x030304))
+                self.oval(x * .965, y - bump * .19, z * .969, .064 + bump, .037 + bump, .069 + bump, shade, 8)
         if p.style == "tied":
             self.oval(0, .448 * p.length, -.445, .153, .119, .172, self.hair, 16)
             self.oval(0, .448 * p.length, -.401, .150, .033, .161, self.outline, 16)
 
     def object(self):
-        self.build_face()
+        reference = FITS["players"].get(self.name)
+        if reference:
+            self.fit_face(reference)
+        else:
+            self.build_face()
         self.haircut()
         return self.bake()
 
@@ -270,6 +438,15 @@ class Sculpt:
         for face, index in zip(mesh.polygons, self.indices):
             face.use_smooth = True
             face.material_index = index
+        if self.pigment:
+            layer = mesh.color_attributes.new(name="PortraitPigment", type="BYTE_COLOR", domain="POINT")
+            for face, index in zip(mesh.polygons, self.indices):
+                rgb = self.colors_rgb(index)
+                for vertex in face.vertices:
+                    layer.data[vertex].color_srgb = (*[channel / 255 for channel in self.pigment.get(vertex, rgb)], 1)
+            material = portrait_shader()
+            for slot in range(len(mesh.materials)):
+                mesh.materials[slot] = material
         return model
 
 

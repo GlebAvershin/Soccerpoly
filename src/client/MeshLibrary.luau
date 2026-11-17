@@ -6,7 +6,7 @@ local StadiumData = require(script.Parent.StadiumMeshData)
 
 type Shape = {
 	points: {number}, normals: {number}, triangles: {number},
-	normalIndices: {number}?, colors: {number}?, faceColors: {number}?,
+	normalIndices: {number}?, colors: {number}?, faceColors: {number}?, vertexColors: {number}?,
 }
 type Pending = {source: BasePart, legacy: {Instance}?}
 local requests: {[string]: {Pending}} = {}
@@ -56,7 +56,10 @@ local function loadTemplate(data: Shape): MeshPart?
 		local a, b, c = data.triangles[i], data.triangles[i + 1], data.triangles[i + 2]
 		local face = mesh:AddTriangle(verts[a], verts[b], verts[c])
 		mesh:SetFaceNormals(face, {normals[corners[i]], normals[corners[i + 1]], normals[corners[i + 2]]})
-		if data.faceColors then
+		if data.vertexColors then
+			local tint = data.vertexColors
+			mesh:SetFaceColors(face, {colors[tint[a]], colors[tint[b]], colors[tint[c]]})
+		elseif data.faceColors then
 			local color = colors[data.faceColors[(i + 2) / 3]]
 			mesh:SetFaceColors(face, {color, color, color})
 		end

@@ -22,6 +22,22 @@ def array(name, values):
     return f"\t\t{name} = {{\n" + "".join(f"\t\t\t{row},\n" for row in rows) + "\t\t},\n"
 
 
+def portrait_shader():
+    name = "Painted portrait resin"
+    existing = bpy.data.materials.get(name)
+    if existing:
+        return existing
+    material = bpy.data.materials.new(name)
+    material.use_nodes = True
+    nodes = material.node_tree.nodes
+    pigment = nodes.new("ShaderNodeVertexColor")
+    pigment.layer_name = "PortraitPigment"
+    shader = nodes.get("Principled BSDF")
+    shader.inputs["Roughness"].default_value = .49
+    material.node_tree.links.new(pigment.outputs["Color"], shader.inputs["Base Color"])
+    return material
+
+
 def export_shapes(models, target, include_bounds=False):
     totals = Counter()
     lines = ["--!strict\n-- Generated from Blender. Edit the source scene and re-export.\nreturn table.freeze({\n"]
@@ -38,8 +54,17 @@ def export_shapes(models, target, include_bounds=False):
         points = [round(10000 * ((v[i] - low[i]) / extent[i] - .5)) for v in positions for i in range(3)]
         normals, normal_ids = {}, []
         triangles, face_colors = [], []
-        colors = []
-        for mat in mesh.materials:
+        colors, vertex_colors = [], []
+        pigment = mesh.color_attributes.get("PortraitPigment")
+        if pigment:
+            palette = {}
+            for sample in pigment.data:
+                rgb = [round(255 * channel) for channel in sample.color_srgb[:3]]
+                rgb = tuple(min(255, round(channel / 5) * 5) for channel in rgb)
+                packed = (rgb[0] << 16) + (rgb[1] << 8) + rgb[2]
+                vertex_colors.append(palette.setdefault(packed, len(palette) + 1))
+            colors = list(palette)
+        for mat in (() if pigment else mesh.materials):
             rgba = [round(255 * channel) for channel in mat.diffuse_color]
             colors.append((rgba[0] << 16) + (rgba[1] << 8) + rgba[2])
         for tri in mesh.loop_triangles:
@@ -48,7 +73,7 @@ def export_shapes(models, target, include_bounds=False):
                 normal = studio(mesh.corner_normals[loop].vector)
                 normal = tuple(round(v * 10000) for v in normal)
                 normal_ids.append(normals.setdefault(normal, len(normals) + 1))
-            if colors:
+            if colors and not pigment:
                 face_colors.append(tri.material_index + 1)
         count = len(triangles) // 3
         assert 0 < count <= 6000, (model.name, count)
@@ -59,7 +84,7 @@ def export_shapes(models, target, include_bounds=False):
             lines.append(array("center", [round((a + b) / 2, 5) for a, b in zip(low, high)]))
         for key, values in (("points", points), ("normals", [v for n in normals for v in n]),
                             ("triangles", triangles), ("normalIndices", normal_ids),
-                            ("colors", colors), ("faceColors", face_colors)):
+                            ("colors", colors), ("faceColors", face_colors), ("vertexColors", vertex_colors)):
             if values:
                 lines.append(array(key, values))
         lines.append("\t},\n")

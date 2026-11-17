@@ -38,6 +38,7 @@ local ok, err = pcall(function()
 	end, "lobby", 24)
 	local start = waitFor(function() return hud:FindFirstChild("StartSeason", true) end, "start button")
 	assert(start.AbsoluteSize.Y >= 40)
+	local closeup = script:GetAttribute("VerifyBlenderArt") == true
 	local verifyMatchday = script:GetAttribute("VerifyMatchday") == true
 	local stage = workspace:WaitForChild("WorldDraftArena")
 	local printLayer = hud.Viewport:WaitForChild("BoardPrint")
@@ -122,6 +123,57 @@ local ok, err = pcall(function()
 	end
 	waitFor(function() return snapshot and snapshot.match end, "kickoff")
 	assert(#snapshot.match.seats == board.maxSeats)
+	if closeup and camera.ViewportSize.X < camera.ViewportSize.Y * .86 then
+		local cameraButton = hud.Viewport:FindFirstChild("BoardCamera")
+		waitFor(function()
+			local active = snapshot.match.seats[snapshot.match.active]
+			local pieces = workspace:FindFirstChild("LocalTablePieces")
+			local figures = pieces and pieces:FindFirstChild("Match pawns")
+			local actor = figures and figures:FindFirstChild(board.figures[active.figure].name)
+			if not actor or not cameraButton or not cameraButton.Visible then return false end
+			local point, visible = camera:WorldToViewportPoint(actor:GetPivot().Position)
+			local a = camera:WorldToViewportPoint(Vector3.new(-63, art.tileTop, 54))
+			local b = camera:WorldToViewportPoint(Vector3.new(63, art.tileTop, 54))
+			local title = printLayer.Cell1["Club name"]
+			return visible and point.Y > camera.ViewportSize.Y * .18 and point.Y < camera.ViewportSize.Y * .81
+				and math.abs(b.X - a.X) > camera.ViewportSize.X * 1.33
+				and title.Visible and title.Rotation == 0 and title.TextFits
+		end, "portrait turn close-up and horizontal type", 3)
+		local input = assert(game:GetService("UserInputService"):CreateVirtualInput())
+		local function toggleCamera()
+			input:SendKey(true, Enum.KeyCode.V, false)
+			task.wait(.06)
+			input:SendKey(false, Enum.KeyCode.V, false)
+		end
+		local function span()
+			local a = camera:WorldToViewportPoint(Vector3.new(-63, art.tileTop, 54))
+			local b = camera:WorldToViewportPoint(Vector3.new(63, art.tileTop, 54))
+			return math.abs(b.X - a.X) / camera.ViewportSize.X
+		end
+		local function settledView()
+			local before = camera.CFrame.Position
+			task.wait(.06)
+			return (camera.CFrame.Position - before).Magnitude < 1.4
+		end
+		waitFor(settledView, "settled close-up", 2)
+		capture("focused-board")
+		task.wait(.24)
+		toggleCamera()
+		waitFor(function()
+			if span() >= 1 or not settledView() then return false end
+			for _, part in stage.Board:GetDescendants() do
+				if part:IsA("BasePart") and part:GetAttribute("BoardIndex") then
+					local _, shown = camera:WorldToViewportPoint(part.Position)
+					if not shown then return false end
+				end
+			end
+			return true
+		end, "full board button and all tile centers", 2)
+		capture("full-board")
+		task.wait(.24)
+		toggleCamera()
+		waitFor(function() return span() > 1.33 end, "return to active turn", 2)
+	end
 	if verifyMatchday then
 		waitFor(function()
 			local music = game:GetService("SoundService")["Footbolapolia Music"]
@@ -215,6 +267,7 @@ local ok, err = pcall(function()
 				local lowerRight = scoreboard.AbsolutePosition + scoreboard.AbsoluteSize
 				for _, cell in printLayer:GetChildren() do
 					local label = cell["Club name"]
+					if not label.Visible then continue end
 					local center = label.AbsolutePosition + label.AbsoluteSize * .5
 					assert(center.Y > lowerRight.Y or center.X < scoreboard.AbsolutePosition.X or center.X > lowerRight.X,
 						"Scoreboard obscures " .. label.Text)

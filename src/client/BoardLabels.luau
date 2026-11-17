@@ -46,7 +46,7 @@ end
 
 return function(root: Frame, translate: (string) -> string)
 	local layer = UI.box(root, "BoardPrint")
-	layer.Size, layer.Interactable = UDim2.fromScale(1, 1), false
+	layer.Size, layer.Interactable, layer.ClipsDescendants = UDim2.fromScale(1, 1), false, true
 	local prints: {Print} = {}
 	for index, cell in Geometry.cells do
 		local dimensions = Geometry.tileSize(index)
@@ -66,7 +66,7 @@ return function(root: Frame, translate: (string) -> string)
 		}
 	end
 	local match: any
-	local compact = false
+	local compact, portrait = false, false
 	local function refresh()
 		for i, entry in prints do
 			local tile = Board.tiles[i]
@@ -80,10 +80,10 @@ return function(root: Frame, translate: (string) -> string)
 				title = if concise and translated == tile.name then concise elseif length and length < 9 then translated else tile.code
 			end
 			entry.name.Text = title
-			entry.value.Text = if value > 0 then tostring(value) .. (if compact then "" else " CR") else ""
+			entry.value.Text = if value > 0 then tostring(value) .. (if portrait then "" else " CR") else ""
 			entry.value.BackgroundTransparency = if value > 0 then 0 else 1
-			entry.league.Text = if not compact and tile.league > 0 then Board.leagues[tile.league].code else ""
-			entry.stripe.Visible = owner ~= 0
+			entry.league.Text = if not portrait and tile.league > 0 then tile.code else ""
+			entry.stripe.Visible = owner ~= 0 and (not portrait or entry.name.Visible)
 			if owner ~= 0 then
 				for j, seat in match.seats do
 					if seat.id == owner then
@@ -104,14 +104,45 @@ return function(root: Frame, translate: (string) -> string)
 		show = function(visible: boolean)
 			layer.Visible = visible
 		end,
-		project = function(camera: Camera)
-			local small = camera.ViewportSize.X < 650
-			if small ~= compact then
-				compact = small
+		project = function(camera: Camera, isPortrait: boolean, isFocused: boolean)
+			local small = (isPortrait and not isFocused) or (not isPortrait and camera.ViewportSize.X < 650)
+			if small ~= compact or portrait ~= isPortrait then
+				compact, portrait = small, isPortrait
 				refresh()
 			end
+			local score = root:FindFirstChild("Scoreboard")
+			local header = if score and score:IsA("GuiObject") and score.Visible
+				then score.AbsolutePosition.Y + score.AbsoluteSize.Y - root.AbsolutePosition.Y + 4 else 0
 			for i, info in prints do
 				local pose, width, depth = info.transform, info.width, info.depth
+				local tile = Board.tiles[i]
+				if portrait then
+					local center, shown = camera:WorldToScreenPoint(pose.Position)
+					info.name.Visible, info.value.Visible, info.league.Visible = false, false, false
+					if not shown then
+						info.stripe.Visible = false
+						continue
+					end
+					local right = camera:WorldToScreenPoint(pose * Vector3.new(width * .5, 0, 0))
+					local edge = camera:WorldToScreenPoint(pose * Vector3.new(0, 0, depth * .5))
+					local xRoom = math.max(math.abs(right.X - center.X), math.abs(edge.X - center.X)) * 1.77
+					local yRoom = math.max(math.abs(right.Y - center.Y), math.abs(edge.Y - center.Y)) * 1.73
+					local hasPrice = tile.price > 0
+					local function flat(label: GuiObject, offset: number, w: number, h: number)
+						label.Position = UDim2.fromOffset(center.X, center.Y + offset)
+						label.Size, label.Rotation = UDim2.fromOffset(w, h), 0
+					end
+					local titleY = if hasPrice then -yRoom * .14 else yRoom * .26
+					local titleHeight = math.max(11, yRoom * (if hasPrice then .58 else .43))
+					local clear = center.Y + titleY - titleHeight * .5 > header
+					info.name.Visible, info.value.Visible = clear, clear
+					info.stripe.Visible = clear and match ~= nil and match.clubs[i].owner ~= 0
+					flat(info.name, titleY, xRoom, titleHeight)
+					flat(info.value, yRoom * .32, xRoom * .56, math.max(8, yRoom * .275))
+					flat(info.stripe, yRoom * .48, xRoom * .79, math.max(2, yRoom * .045))
+					continue
+				end
+				info.name.Visible, info.value.Visible, info.league.Visible = true, true, true
 				local left = camera:WorldToScreenPoint(pose * Vector3.new(-width * .5, 0, 0))
 				local right = camera:WorldToScreenPoint(pose * Vector3.new(width * .5, 0, 0))
 				local dx, dy = right.X - left.X, right.Y - left.Y
@@ -122,13 +153,12 @@ return function(root: Frame, translate: (string) -> string)
 					label.Position, label.Size = UDim2.fromOffset(point.X, point.Y), UDim2.fromOffset(pixels * scale, height)
 					label.Rotation = yaw
 				end
-				local tile = Board.tiles[i]
 				local corner = (i - 1) % 8 == 0
 				local titleDepth = if corner then .36 elseif tile.price == 0 then .30 elseif tile.kind == "venue" then .128 else -.055
 				local nameHeight = pixels * (if tile.league > 0 then .47 else .33)
 				place(info.name, titleDepth, .91, math.max(10, nameHeight))
 				place(info.value, .340, if compact then .53 else .60, math.max(7, pixels * .213))
-				place(info.league, -.375, .66, math.max(7, pixels * .176))
+				place(info.league, -.337, .66, math.max(8, pixels * .184))
 				place(info.stripe, .447, .78, math.max(1.4, pixels * .044))
 			end
 		end,

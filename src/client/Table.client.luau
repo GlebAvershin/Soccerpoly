@@ -406,6 +406,17 @@ local rulesButton = PropertyCard.button(root, "Rules", "?", function() show("rul
 local clubsButton = PropertyCard.button(root, "Clubs", "≡", function() show("clubs") end)
 dealButton = PropertyCard.button(root, "ClubDeals", "⇄", function() show("tradeClubs") end)
 dealButton.AnchorPoint, dealButton.Position, dealButton.Size = Vector2.new(1, .5), UDim2.new(1, -11, .62, 0), UDim2.fromOffset(41, 41)
+local followTurn = true
+local cameraView: TextButton
+local function toggleCamera()
+	followTurn = not followTurn
+	tableView.setFollow(followTurn)
+	cameraView.Text = t(if followTurn then "Full board" else "Follow turn")
+end
+cameraView = UI.button(root, "BoardCamera", t("Full board"), 43, toggleCamera, colors.ink, colors.text)
+cameraView.AnchorPoint, cameraView.Position = Vector2.new(0, 1), UDim2.new(0, 12, 1, -83)
+cameraView.Size, cameraView.Visible = UDim2.fromOffset(110, 43), false
+UI.stroke(cameraView, colors.outline)
 local closeButton = UI.button(dialog, "Close", "", 40, function() show(opened) end)
 closeButton.AnchorPoint, closeButton.Position, closeButton.Size = Vector2.new(1, 0), UDim2.new(1, -12, 0, 9), UDim2.fromOffset(104, 40)
 
@@ -413,6 +424,9 @@ local function arrange()
 	local size = root.AbsoluteSize
 	mode = if size.X >= 630 then "dock" else "portrait"
 	local shortLandscape = size.X > size.Y and size.Y < 430
+	if dealButton then
+		dealButton.Position = if size.X < size.Y * .86 then UDim2.new(1, -11, 1, -104) else UDim2.new(1, -11, .62, 0)
+	end
 	scores.Position = UDim2.new(.5, 0, 0, if size.X >= 1040 or shortLandscape then 8 else 41)
 	brand.Visible = not shortLandscape
 	matchClock.AnchorPoint = if shortLandscape then Vector2.new(0, 1) else Vector2.new(1, 0)
@@ -795,6 +809,9 @@ render = function()
 			rollPanel(s, mine)
 		end
 	end
+	local screen = root.AbsoluteSize
+	cameraView.Visible = s ~= nil and s.phase ~= "final" and screen.X < screen.Y * .86 and not panel.Visible
+	cameraView.Text = t(if followTurn then "Full board" else "Follow turn")
 	if opened ~= "inspect" then drawDialog() else dialogShade.Visible = false end
 end
 
@@ -812,7 +829,9 @@ Input.InputBegan:Connect(function(input, captured)
 		end
 		return
 	end
-	if input.KeyCode == Enum.KeyCode.One or input.KeyCode == Enum.KeyCode.Return then
+	if input.KeyCode == Enum.KeyCode.V and cameraView.Visible then
+		toggleCamera()
+	elseif input.KeyCode == Enum.KeyCode.One or input.KeyCode == Enum.KeyCode.Return then
 		if primary then primary() end
 	elseif input.KeyCode == Enum.KeyCode.Two then
 		if alternate then alternate() end

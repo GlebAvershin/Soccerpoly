@@ -59,21 +59,28 @@ local function drawTile(tray: Folder, index: number, tile: Board.Tile)
 	local accent = Art.accent(tile.kind, tile.league)
 	local cell = folder(tray, string.format("%02d %s", index, tile.name))
 	local isCorner = (index - 1) % 8 == 0
-	local surfaceColor = Art.tile:Lerp(accent, if tile.league > 0 then .065 else .14)
-	mesh(cell, "Molded tile case", "tile_case", Vector3.new(width, .57, depth),
-		pose * CFrame.new(0, -.31, 0), accent:Lerp(Art.ink, .35))
-	local face = mesh(cell, "Porcelain face", "tile_enamel", Vector3.new(width - .12, .29, depth - .12),
-		pose * CFrame.new(0, -.12, 0), surfaceColor)
+	local isProperty = tile.price > 0
+	local ground = if tile.league > 0 then C("E9E8D7") else C("D8E5DF")
+	local surfaceColor = ground:Lerp(accent, if isProperty then .11 else .24)
+	mesh(cell, "Molded tile case", "tile_case", Vector3.new(width, .60, depth),
+		pose * CFrame.new(0, -.335, 0), C("203B41"))
+	local face = mesh(cell, "Porcelain face", "tile_enamel", Vector3.new(width - .23, .29, depth - .23),
+		pose * CFrame.new(0, -.13, 0), surfaceColor)
 	face.CastShadow = false
 	if tile.league > 0 then
-		local brim = mesh(cell, "League color band", "tile_enamel", Vector3.new(width - .68, .07, 3.22),
-			pose * CFrame.new(0, .045, -6.70), accent)
-		brim.CastShadow = false
-		part(cell, "Print divider", Vector3.new(width * .77, .022, .06),
-			pose * CFrame.new(0, .035, 3.27), accent:Lerp(Art.tile, .12)).CastShadow = false
+		-- Ticket header and small side tabs repeat a league color across the board.
+		mesh(cell, "League header", "tile_enamel", Vector3.new(width - .82, .085, 4.46),
+			pose * CFrame.new(0, .045, -6.04), accent).CastShadow = false
+		for _, side in {-1, 1} do
+			mesh(cell, "Ticket edge tab", "tile_enamel", Vector3.new(.44, .063, 4.6),
+				pose * CFrame.new(side * (width * .5 - .54), .04, 4.64), accent).CastShadow = false
+		end
 	elseif isCorner then
-		mesh(cell, "Event tile inlay", "tile_enamel", Vector3.new(width - .7, .07, depth * .57),
-			pose * CFrame.new(0, .047, -2.98), accent:Lerp(Art.tile, .33)).CastShadow = false
+		mesh(cell, "Event tile inlay", "tile_enamel", Vector3.new(width - .75, .073, depth * .67),
+			pose * CFrame.new(0, .044, -2.41), accent:Lerp(C("35514D"), .42)).CastShadow = false
+	else
+		mesh(cell, "Event tile inlay", "tile_enamel", Vector3.new(width - .82, .070, depth * .48),
+			pose * CFrame.new(0, .045, -3.79), accent:Lerp(C("49645F"), .33)).CastShadow = false
 	end
 	local printLayer = part(cell, "Printed tile", Vector3.new(width, .02, depth), pose * CFrame.new(0, .045, 0), Art.paper)
 	printLayer.CastShadow, printLayer.Transparency = false, 1

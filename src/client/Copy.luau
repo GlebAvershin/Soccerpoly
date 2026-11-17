@@ -159,6 +159,7 @@ local ru: {[string]: string} = {
 	["Offside · goal disallowed"] = "Офсайд · гол отменён", ["Safe play"] = "Осторожная игра", ["%d cups"] = "Кубки: %d",
 	["THE WORLD DRAFT  /  SEASON 01"] = "МИРОВОЙ ДРАФТ  /  СЕЗОН 01",
 	["TABLE BRIEFING"] = "ПЕРЕД МАТЧЕМ", ["KICKOFF"] = "СТАРТ", ["ROUND %d / %d"] = "РАУНД %d / %d",
+	["Full board"] = "Всё поле", ["Follow turn"] = "К ходу",
 	["Choose your figure"] = "Выбери фигурку", ["All figures play by the same rules."] = "У всех фигурок одинаковые возможности.",
 	["Your selection"] = "Твоя фигурка", ["Start season"] = "Начать сезон", ["Waiting for the host"] = "Ждём организатора",
 	["%d online · bots fill empty seats"] = "В лобби: %d · боты дополнят стол",

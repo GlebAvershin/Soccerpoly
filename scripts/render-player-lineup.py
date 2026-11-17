@@ -11,6 +11,9 @@ import bpy
 from mathutils import Matrix, Vector
 from functools import lru_cache
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from blender_export import portrait_shader
+
 root = Path(__file__).resolve().parents[1]
 rows = Path(sys.argv[sys.argv.index("--") + 1]).read_text().splitlines()
 rows = [line.split("FIGURE_EXPORT\t", 1)[1].split("\t") for line in rows if "FIGURE_EXPORT\t" in line]
@@ -100,7 +103,10 @@ for row in rows:
     collections[figure].objects.link(obj)
     orient = Matrix([rot[i:i + 3] for i in range(0, 9, 3)])
     swatch = material(tuple(rgb), .28 if name.startswith(("Turntable", "Heel")) else .07, .36 if shape != "jersey" else .48)
-    if mesh.materials:
+    if mesh.color_attributes.get("PortraitPigment"):
+        mesh.materials.clear()
+        mesh.materials.append(portrait_shader())
+    elif mesh.materials:
         for i, source_material in enumerate(mesh.materials):
             mesh.materials[i] = material(tuple(source_material.diffuse_color[:3]), .04, .49)
     else:
@@ -161,7 +167,7 @@ scene.cycles.use_denoising = True
 scene.render.resolution_x, scene.render.resolution_y = 1920, 700
 scene.render.resolution_percentage = 100
 scene.render.threads_mode, scene.render.threads = "FIXED", 6
-scene.render.filepath = "//blender-lineup-v0170.png"
+scene.render.filepath = "//blender-lineup-v0180.png"
 for screen in bpy.data.screens:
     for area in screen.areas:
         if area.type == "VIEW_3D":
@@ -170,5 +176,5 @@ for screen in bpy.data.screens:
             area.spaces.active.region_3d.view_perspective = "CAMERA"
 bpy.ops.object.select_all(action="DESELECT")
 bpy.context.preferences.filepaths.save_version = 0
-bpy.ops.wm.save_as_mainfile(filepath=str(root / "art" / "player-lineup-v0170.blend"), compress=True)
+bpy.ops.wm.save_as_mainfile(filepath=str(root / "art" / "player-lineup-v0180.blend"), compress=True)
 bpy.ops.render.render(write_still=True)
