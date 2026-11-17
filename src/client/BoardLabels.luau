@@ -5,17 +5,12 @@ local Art = require(shared.Presentation)
 local illustrate = require(script.Parent.Programme)
 local UI = require(script.Parent.Components)
 local style = require(script.Parent.ProgrammeStyle)
-local lettering = require(script.Parent.ClubLettering)
-local loadImage = require(script.Parent.PrintTexture)
-local headline = Font.new("rbxasset://fonts/families/Montserrat.json", Enum.FontWeight.Bold)
-local numberFace = Font.new("rbxasset://fonts/families/BuilderMono.json", Enum.FontWeight.SemiBold)
-local terraceFace = Font.new("rbxasset://fonts/families/Oswald.json", Enum.FontWeight.Bold)
 local names = {
 	SEV={"Sevilla","Севилья"}, ATM={"Atlético","Атлетико"}, FCB={"Barça","Барса"}, RMA={"Real Madrid","Реал"},
 	ARS={"Arsenal","Арсенал"}, LIV={"Liverpool","Ливерпуль"}, MCI={"Man City","Ман Сити"}, MUN={"Man Utd","МЮ"},
 	ACM={"Milan","Милан"}, INT={"Inter","Интер"}, JUV={"Juve","Юве"}, NAP={"Napoli","Наполи"},
 	B04={"Bayer","Байер"}, RBL={"Leipzig","Лейпциг"}, BVB={"Dortmund","Дортмунд"}, BAY={"Bayern","Бавария"},
-	OL={"Lyon","Лион"}, OM={"Marseille","Марсель"}, ASM={"Monaco","Монако"}, PSG={"Paris SG","ПСЖ"},
+	OL={"Lyon","Лион"}, OM={"Marseille","Марсель"}, ASM={"Monaco","Монако"}, PSG={"PSG","ПСЖ"},
 	SB={"Bernabéu","Бернабеу"}, OT={"Trafford","Траффорд"}, SS={"San Siro","Сан-Сиро"}, AA={"Allianz","Альянц"},
 	KO={"Kickoff","Старт"}, TAX={"Tax","Сбор"}, CH={"Chance","Шанс"}, TOUR={"Away","Выезд"},
 	CUP={"Cup","Кубок"}, BENCH={"Bench","Скамья"},
@@ -35,36 +30,24 @@ local function intersects(a: Rect, b: Rect): boolean
 	return a.Min.X < b.Max.X and a.Max.X > b.Min.X and a.Min.Y < b.Max.Y and a.Max.Y > b.Min.Y
 end
 
--- In overview, give each price and name the same depth in studs on all four edges.
--- Top/bottom cells are deeper, so their extra space goes to the stadium panorama.
+-- Reserve a visible panorama on shallow side cards. Deeper end cards can
+-- use the extra space for artwork after both lines reach their target height.
 local function setLayout(entry, compact: boolean)
 	local artHeight = if entry.buyable then .45 else .55
 	local nameHeight = if entry.buyable then .32 else .40
 	local priceY, priceHeight = .775,.21
 	local name = entry.name
 	if compact and entry.buyable then
-		priceHeight = 6.35 / entry.part.Size.Y
-		nameHeight = (if entry.landscape then 5.4 elseif entry.part.Size.X > entry.part.Size.Y then 5.0 else 5.35) / entry.part.Size.Y
+		priceHeight = math.min(.502, 6.35 / entry.part.Size.Y)
+		nameHeight = math.min(.38, 5.4 / entry.part.Size.Y)
 		priceY = .99 - priceHeight
-		artHeight = priceY - nameHeight - .012
+		artHeight = priceY - nameHeight - .006
 	end
 	local inset = if compact then .028 else .035
 	entry.poster.Size = UDim2.fromScale(1,artHeight)
 	entry.title.Position, entry.title.Size = UDim2.fromScale(inset,artHeight), UDim2.fromScale(1-2*inset,nameHeight)
 	entry.cost.Position, entry.cost.Size = UDim2.fromScale(inset,priceY), UDim2.fromScale(1-2*inset,priceHeight)
 	entry.owner.Position, entry.owner.Size = UDim2.fromScale(0,artHeight), UDim2.fromScale(.026,1-artHeight)
-	entry.title.FontFace = if compact then terraceFace else headline
-	entry.nativeTitle.FontFace = entry.title.FontFace
-	local word = if compact and entry.ink then lettering.words[name] else nil
-	entry.word = word
-	if entry.ink then
-		entry.ink.Visible = word ~= nil
-		if word then
-			entry.ink.ImageRectOffset = Vector2.new(word.x,word.y)
-			entry.ink.ImageRectSize = Vector2.new(word.width,32)
-		end
-	end
-	entry.nativeTitle.TextTransparency = if word then 1 else 0
 	entry.title.Text, entry.nativeTitle.Text = name, name
 	for _, rule in entry.rules do rule.Visible = not compact end
 	entry.compact = compact
@@ -116,7 +99,6 @@ return function(root: Frame, translate: (string)->string)
 		overlay:Destroy()
 		group:Destroy()
 	end)
-	local inkSheet = loadImage(lettering.sheet)
 	local sheets = {}
 	local match, gates = nil, nil
 	local visible = true
@@ -159,8 +141,8 @@ return function(root: Frame, translate: (string)->string)
 		local poster = illustrate(card,tile)
 		poster.Size = UDim2.fromScale(1, if buyable then .45 else .55)
 		local color = style.title
-		local title = band(card, "Club name", if buyable then .45 else .55, if buyable then .32 else .40, headline, color)
-		local cost = band(card, "Club cost", .775, .21, numberFace, style.price)
+		local title = band(card, "Club name", if buyable then .45 else .55, if buyable then .32 else .40, style.clubFace, color)
+		local cost = band(card, "Club cost", .775, .21, style.amountFace, style.price)
 		cost.Visible = buyable
 		local rules = {}
 		if buyable then
@@ -181,18 +163,10 @@ return function(root: Frame, translate: (string)->string)
 			return copy
 		end
 		local nativeTitle, nativeCost = display(title), display(cost)
-		local ink
-		if inkSheet then
-			ink = Instance.new("ImageLabel")
-			ink.Name, ink.BackgroundTransparency = "Club lettering", 1
-			ink.ImageContent, ink.ImageColor3 = Content.fromObject(inkSheet), color
-			ink.AnchorPoint, ink.Position = Vector2.new(.5,.5), UDim2.fromScale(.5,.5)
-			ink.Visible, ink.Parent = false, nativeTitle
-		end
 		local layers = {{print=poster, native=display(poster)}, {print=title, native=nativeTitle}}
 		if buyable then table.insert(layers, {print=cost, native=nativeCost}) end
 		local entry = {part=part, surface=sheet, title=title, cost=cost, nativeTitle=nativeTitle,
-			nativeCost=nativeCost, ink=ink, owner=mark, layers=layers, poster=poster, rules=rules, buyable=buyable, compact=nil}
+			nativeCost=nativeCost, owner=mark, layers=layers, poster=poster, rules=rules, buyable=buyable, compact=nil}
 		sheets[i] = entry
 		setCopy(i, entry)
 	end
@@ -209,9 +183,7 @@ return function(root: Frame, translate: (string)->string)
 		translate=refresh,
 		layout=function(camera: Camera, masks: {Rect}, compact: boolean)
 			for _, entry in sheets do
-				local landscape = compact and camera.ViewportSize.X > camera.ViewportSize.Y
-				if entry.compact ~= compact or entry.landscape ~= landscape then
-					entry.landscape = landscape
+				if entry.compact ~= compact then
 					setLayout(entry,compact)
 				end
 				for _, layer in entry.layers do
@@ -220,15 +192,9 @@ return function(root: Frame, translate: (string)->string)
 					glyph.Position = UDim2.fromOffset(target.Min.X,target.Min.Y)
 					glyph.Size = UDim2.fromOffset(target.Width,target.Height)
 					local painted = target
-					if glyph == entry.nativeTitle and entry.word then
-						local aspect = entry.word.width/32
-						local height = math.min(target.Height*.83,target.Width/aspect)
-						entry.ink.Size = UDim2.fromOffset(math.round(height*aspect),math.round(height))
-					end
 					if glyph:IsA("TextLabel") and glyph.TextBounds.X > 0 then
 						local centre = (target.Min + target.Max) * .5
-						local inkSize = if glyph == entry.nativeTitle and entry.word then entry.ink.AbsoluteSize else glyph.TextBounds
-						local extent = inkSize * .5 + Vector2.one
+						local extent = glyph.TextBounds * .5 + Vector2.one
 						painted = Rect.new(centre - extent, centre + extent)
 					end
 					local exposed = true

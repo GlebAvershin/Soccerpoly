@@ -81,8 +81,8 @@ local ok, err = pcall(function()
 			assert(poster:FindFirstChild("Lithograph"), "Missing illustrated print "..tile.name)
 			assert(title:IsA("TextLabel") and title.Text ~= "" and title.TextFits, "Clipped title "..title.Text)
 			assert(cell.CanvasSize.X >= cell.Adornee.Size.X*22-1)
-			assert((title.FontFace.Family:find("Montserrat") or title.FontFace.Family:find("Oswald")) and cost.FontFace.Family:find("BuilderMono"))
-			assert(poster.Size.Y.Scale<=title.Position.Y.Scale and title.Position.Y.Scale+title.Size.Y.Scale<=1 and not title.Text:find("\n"))
+			assert(title.FontFace.Family:find("RobotoCondensed") and cost.FontFace.Family:find("/Roboto.json",1,true))
+			assert(poster.Size.Y.Scale >= .10 and poster.Size.Y.Scale<=title.Position.Y.Scale and title.Position.Y.Scale+title.Size.Y.Scale<=1 and not title.Text:find("\n"))
 			local display=player.PlayerGui["Programme typography"]
 			assert(display.DisplayOrder<hud.DisplayOrder and display.ScreenInsets==Enum.ScreenInsets.DeviceSafeInsets)
 			local ink=display[cell.Name]["Club name"]
@@ -248,12 +248,7 @@ local ok, err = pcall(function()
 					else (if russian then "Дортмунд" else "Dortmund")
 				assert(name.Visible and name.Text==expectedName, "Missing single-line club name: "..name.Text)
 			end
-			local ink = name:FindFirstChild("Club lettering")
-			local inkHeight = if ink and ink.Visible then ink.AbsoluteSize.Y else name.TextBounds.Y
-			if ink and ink.Visible then
-				assert(ink.AbsoluteSize.X <= name.AbsoluteSize.X+1 and inkHeight <= name.AbsoluteSize.Y, tile.name)
-			end
-			minName, minPrice = math.min(minName,inkHeight), math.min(minPrice,cost.TextBounds.Y)
+			minName, minPrice = math.min(minName,name.TextBounds.Y), math.min(minPrice,cost.TextBounds.Y)
 		end
 		print("OVERVIEW_TYPE",camera.ViewportSize,minName,minPrice)
 		local shortEdge = math.min(camera.ViewportSize.X,camera.ViewportSize.Y)

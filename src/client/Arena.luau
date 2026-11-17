@@ -196,7 +196,7 @@ function Arena.new(myId: number, root: Frame, translate: (string) -> string, pla
 		local tangent = math.tan(math.rad(fov) * .5)
 		portraitCamera = aspect < .86
 		shortLandscape = aspect > 1 and root.AbsoluteSize.Y < 430
-		local angle = math.rad(if portraitCamera then 63 else 40)
+		local angle = math.rad(if portraitCamera then 63 elseif shortLandscape then 42 else 40)
 		local orbit = Vector3.zAxis * math.cos(angle) + Vector3.yAxis * math.sin(angle)
 		local span = Geometry.width
 		local width = .85

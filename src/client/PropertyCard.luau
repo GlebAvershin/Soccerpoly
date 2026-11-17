@@ -10,9 +10,6 @@ local INK = Art.ink
 local CENTER = Enum.TextXAlignment.Center
 local BOLD = Enum.Font.BuilderSansBold
 local style = require(script.Parent.ProgrammeStyle)
-local headingFace = Font.new("rbxasset://fonts/families/Montserrat.json", Enum.FontWeight.Bold)
-local figuresFace = Font.new("rbxasset://fonts/families/BuilderMono.json", Enum.FontWeight.Medium)
-
 local function text(parent: Instance, content: string, height: number, y: number, size: number, color: Color3): TextLabel
 	local label = UI.label(parent, content, size, {font = Enum.Font.BuilderSans, color = color, align = CENTER, ellipsis = true})
 	label.Position, label.Size = UDim2.new(0, 10, 0, y), UDim2.new(1, -20, 0, height)
@@ -89,8 +86,8 @@ function Card.new(root: Frame)
 			header.Position, header.Size = UDim2.fromOffset(0, 0), UDim2.new(1, 0, 0, 37)
 			local tab = UI.box(header, "League accent", league)
 			tab.Position, tab.Size = UDim2.fromOffset(11, 10), UDim2.fromOffset(4, 17)
-			local title = text(header, info.title, 36, 0, 21, colors.text)
-			title.FontFace = headingFace
+			local title = text(header, info.title, 36, 0, 23, colors.text)
+			title.FontFace = style.clubFace
 			title.TextXAlignment = Enum.TextXAlignment.Left
 			title.Position, title.Size = UDim2.fromOffset(23, 0), UDim2.new(1, -67, 1, 0)
 			local exit = UI.button(header, "CloseCard", "×", 33, info.close, colors.ink, colors.text)
@@ -99,26 +96,27 @@ function Card.new(root: Frame)
 			for _, child in exit:GetChildren() do if child:IsA("UIStroke") then child:Destroy() end end
 			illustration(paper, info.index, 127 + extraArt)
 			local summary = text(paper, info.summary, 30, 169 + extraArt, 16, style.title)
-			summary.FontFace = headingFace
+			summary.FontFace = style.amountFace
 			if options then
 				local function row(y: number, cells: {string}, fill: Color3, heading: boolean, selected: boolean?)
 					local columns = UI.box(paper, "Prices", fill)
 					columns.Position, columns.Size = UDim2.fromOffset(13, y), UDim2.new(1, -26, 0, 26)
 					for i, cell in cells do
 						local label = text(columns, cell, 25, 0, 14, if selected then colors.ink elseif heading then style.price else style.title)
-						label.Position, label.Size = UDim2.fromScale((i - 1) / #cells, 0), UDim2.fromScale(1 / #cells, 1)
-						if i > 1 and not heading then label.FontFace = figuresFace else label.Font = BOLD end
+						label.Position, label.Size = UDim2.new((i - 1) / #cells, 7, 0, 0), UDim2.new(1 / #cells, -14, 1, 0)
+						label.TextXAlignment = if i == 1 then Enum.TextXAlignment.Left else Enum.TextXAlignment.Right
+						if i > 1 and not heading then label.FontFace = style.amountFace else label.Font = BOLD end
 					end
 					return columns
 				end
 				row(200 + extraArt, info.columns or {}, colors.ink, true)
 				for i, item in options do
-					local fill = if item.highlighted then C("DBEBB7") elseif i % 2 == 0 then ruled else bodyInk
+					local fill = if item.highlighted then C("CBE7D5") elseif i % 2 == 0 then ruled else bodyInk
 					local columns = row(226 + extraArt + (i - 1) * 28, item.cells, fill, false, item.highlighted)
 					if item.press then
 						local button = UI.button(columns, "ChooseLevel" .. i, "", 26, item.press, fill)
 						button.BackgroundTransparency, button.Size = 1, UDim2.fromScale(1, 1)
-						for _, child in button:GetChildren() do if child:IsA("UIStroke") then child.Color = if item.highlighted then C("7F9553") else ruled end end
+						for _, child in button:GetChildren() do if child:IsA("UIStroke") then child:Destroy() end end
 					end
 				end
 			end
