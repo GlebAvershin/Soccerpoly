@@ -105,6 +105,7 @@ local ok, err = pcall(function()
 	local diceSeen, cardSeen, boardSeen = false, false, false
 	local previous, captured = -1, {}
 	local replaySeen = false
+	local runSeen = false
 	local expires = os.clock() + 42
 	while snapshot.match.phase ~= "final" and os.clock() < expires do
 		local s = snapshot.match
@@ -132,6 +133,23 @@ local ok, err = pcall(function()
 			task.wait(.25)
 			capture("goal")
 			waitFor(function() return printLayer.Visible and math.abs(camera.FieldOfView - art.boardFov) < .1 end, "board camera restored", 3)
+		end
+		local moving = effects and effects["Motion effects"]:FindFirstChild("Travel shadow")
+		if verifyMatchday and moving and s.motion.who == player.UserId and not runSeen then
+			local roster = effects:FindFirstChild("Match pawns")
+			local seat = nil
+			for _, entry in s.seats do if entry.id == player.UserId then seat = entry; break end end
+			local model = roster and seat and roster:FindFirstChild(board.figures[seat.figure].name)
+			assert(model and model:FindFirstChild("Right knee") and model:FindFirstChild("Right elbow"), "Articulated figure missing")
+			local knee, thigh = model["Right knee"], model["Right leg"]
+			local prior = thigh:GetPivot():ToObjectSpace(knee:GetPivot())
+			local at = model:GetPivot().Position
+			waitFor(function()
+				local relative = thigh:GetPivot():ToObjectSpace(knee:GetPivot())
+				return (model:GetPivot().Position - at).Magnitude > 1 and relative.LookVector:Dot(prior.LookVector) < .995
+			end, "moving knee and translated figure", 1)
+			runSeen = true
+			capture("run")
 		end
 		local dice = effects and effects["Motion effects"]:FindFirstChild("Dice roll")
 		if dice and not diceSeen then
@@ -223,7 +241,7 @@ local ok, err = pcall(function()
 	end
 	assert(snapshot.match.phase == "final" and #snapshot.match.standings == 4 and diceSeen)
 	if expected == 1 then assert(cardSeen and boardSeen, "Did not see playable property or dice action") end
-	if verifyMatchday then assert(replaySeen, "Did not see a Matchday replay") end
+	if verifyMatchday then assert(runSeen and replaySeen, "Missing run or Matchday replay") end
 	assert(hud:FindFirstChild("Rank1", true), "Final table missing")
 	print("TOUR_QA", workspace.CurrentCamera.ViewportSize, snapshot.match.rollSerial, snapshot.match.finishReason, cardSeen)
 	if snapshot.host == player.UserId then

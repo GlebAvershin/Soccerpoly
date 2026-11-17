@@ -9,11 +9,53 @@ from mathutils import Euler, Matrix
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from blender_export import ROOT, blender, studio
 
-JOINTS = {
+def point(x, y, z):
+    if y > 2.20:
+        y = 2.865 + (y - 2.20) * 1.035
+    elif y > .45:
+        y = .45 + (y - .45) * 1.38
+    return x * .87, y, z * .94
+
+
+JOINTS = {name: point(*at) for name, at in {
     "Torso": (0, 2.18, 0), "Head": (0, 3.97, 0),
     "Left arm": (-.96, 3.45, 0), "Right arm": (.96, 3.45, 0),
-    "Left leg": (-.43, 2.09, 0), "Right leg": (.43, 2.09, 0),
+    "Left leg": (-.43, 2.14, 0), "Right leg": (.43, 2.14, 0),
+    "Left elbow": (-1.239, 3.00, .08), "Right elbow": (1.239, 3.00, .08),
+    "Left knee": (-.43, 1.419, .014), "Right knee": (.43, 1.419, .014),
+    "Left ankle": (-.43, .698, .014), "Right ankle": (.43, .698, .014),
+}.items()}
+PARENTS = {
+    "Left elbow": "Left arm", "Right elbow": "Right arm",
+    "Left knee": "Left leg", "Right knee": "Right leg",
+    "Left ankle": "Left knee", "Right ankle": "Right knee",
 }
+HINGES = {
+    "idle": {0: (-8, -6, 4, 7, -4, -7), .33: (-5, -13, 3, 6, -3, -6),
+             .67: (-11, -4, 7, 4, -7, -4), 1: (-8, -6, 4, 7, -4, -7)},
+    "stride": {0: (-54, -29, 17, 49, -17, -20), .25: (-35, -55, 52, 22, -17, -18),
+               .50: (-28, -53, 47, 18, -22, -17), .75: (-57, -38, 24, 49, -16, -22),
+               1: (-54, -29, 17, 49, -17, -20)},
+    "cheer": {0: (0, 0, 0, 0, 0, 0), .18: (-16, -25, 25, 29, -21, -23),
+              .40: (-42, -59, 12, 26, -8, -18), .63: (-48, -64, 8, 14, -8, -13),
+              1: (0, 0, 0, 0, 0, 0)},
+    "launch": {0: (0, 0, 0, 0, 0, 0), .60: (-32, -44, 23, 35, -17, -20),
+               1: (-36, -35, 22, 24, -12, -10)},
+    "land": {0: (-28, -22, 12, 20, -10, -11), .34: (-53, -19, 34, 19, -23, -13),
+             .72: (-11, -10, 14, 5, -14, -5), 1: (0, 0, 0, 0, 0, 0)},
+    "kick": {0: (-20, -24, 16, 28, -9, -9), .30: (-38, -42, 19, 69, -12, -13),
+             .43: (-39, -48, 19, 89, -11, -16), .52: (-32, -48, 14, 15, -12, 4),
+             .65: (-36, -41, 12, 29, -8, -12), .84: (-19, -31, 12, 36, -9, -14),
+             1: (0, 0, 0, 0, 0, 0)},
+    "save": {0: (-44, -44, 39, 39, -19, -19), .24: (-41, -52, 37, 25, -18, -20),
+             .49: (-20, -14, 25, 39, -10, -19), .72: (-40, -42, 39, 42, -20, -22),
+             1: (0, 0, 0, 0, 0, 0)},
+}
+
+
+def local_offset(name):
+    return blender(JOINTS[name]) - (blender(JOINTS[PARENTS[name]]) if name in PARENTS else blender((0, 0, 0)))
+
 RANGES = {
     "idle": (1, 25), "stride": (33, 57), "cheer": (65, 89),
     "launch": (97, 121), "land": (129, 153), "kick": (161, 185), "save": (193, 217),
@@ -25,11 +67,12 @@ NEUTRAL = [(0, 0, 0)] * 6
 def record(rig, clip, time, angles, torso_y=0):
     start, end = RANGES[clip]
     frame = start + (end - start) * time
-    for (name, joint), turn in zip(rig.items(), angles):
+    turns = [*angles, *[(value, 0, 0) for value in HINGES[clip][time]]]
+    for (name, joint), turn in zip(rig.items(), turns):
         rotation = Euler(tuple(radians(degree) for degree in turn), "ZYX").to_matrix()
         joint.rotation_euler = (BASIS @ rotation @ BASIS.transposed()).to_euler()
         position = (0, torso_y if name in ("Torso", "Head", "Left arm", "Right arm") else 0, 0)
-        joint.location = blender(JOINTS[name]) + blender(position)
+        joint.location = local_offset(name) + blender(position)
         joint.keyframe_insert(data_path="rotation_euler", frame=frame, group=name)
         joint.keyframe_insert(data_path="location", frame=frame, group=name)
 
@@ -42,7 +85,9 @@ def figure_rig():
     for name, at in JOINTS.items():
         joint = bpy.data.objects.new(name, None)
         scene.collection.objects.link(joint)
-        joint.location = blender(at)
+        if name in PARENTS:
+            joint.parent = rig[PARENTS[name]]
+        joint.location = local_offset(name)
         joint.empty_display_size = .22
         rig[name] = joint
     previews = {
@@ -52,19 +97,19 @@ def figure_rig():
                  ((0, 4.47, .76), (.26, .26, .35), "Skin")],
     }
     for label, side in (("Left", -1), ("Right", 1)):
-        previews[label + " arm"] = [((side * 1.10, 3.24, 0), (.76, .83, .80), "Kit"),
-                                     ((side * 1.34, 2.68, .17), (.52, .91, .60), "Skin")]
-        previews[label + " leg"] = [((side * .44, 1.93, 0), (.89, .93, .89), "Hair"),
-                                     ((side * .50, 1.17, .05), (.60, 1.13, .61), "Kit"),
-                                     ((side * .52, .63, .26), (.76, .52, 1.04), "Hair")]
+        previews[label + " arm"] = [((side * 1.10, 3.24, 0), (.76, .83, .80), "Kit")]
+        previews[label + " elbow"] = [((side * 1.34, 2.68, .17), (.52, .91, .60), "Skin")]
+        previews[label + " leg"] = [((side * .44, 1.93, 0), (.81, .87, .84), "Hair")]
+        previews[label + " knee"] = [((side * .47, 1.17, .05), (.49, .99, .55), "Kit")]
+        previews[label + " ankle"] = [((side * .49, .63, .26), (.76, .52, 1.04), "Hair")]
     colors = {"Kit": (.13, .72, .48, 1), "Skin": (.64, .38, .22, 1), "Hair": (.11, .12, .15, 1)}
     for name, pieces in previews.items():
         for pos, size, surface in pieces:
             bpy.ops.mesh.primitive_uv_sphere_add(segments=16, ring_count=8, radius=.5)
             model = bpy.context.object
             model.parent = rig[name]
-            model.location = blender(pos) - blender(JOINTS[name])
-            model.scale = size[0], size[2], size[1]
+            model.location = blender(point(*pos)) - blender(JOINTS[name])
+            model.scale = size[0] * .87, size[2] * .94, size[1] * (1.38 if pos[1] < 2.20 else 1.035)
             material = bpy.data.materials.get(surface)
             if not material:
                 material = bpy.data.materials.new(surface)
@@ -137,7 +182,7 @@ for clip, (start, end) in RANGES.items():
         scene.frame_set(frame)
         values = []
         for name, joint in joints.items():
-            offset = studio(joint.location - blender(JOINTS[name]))
+            offset = studio(joint.location - local_offset(name))
             rotation = (BASIS.transposed() @ joint.rotation_euler.to_matrix() @ BASIS).to_quaternion()
             values.extend(round(value, 5) for value in (*offset, rotation.x, rotation.y, rotation.z, rotation.w))
         lines.append("\t\t{" + ", ".join(map(str, values)) + "},\n")

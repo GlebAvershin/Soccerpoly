@@ -6,6 +6,7 @@ local HttpService = game:GetService("HttpService")
 
 local Shared = ReplicatedStorage:WaitForChild("League")
 local Board = require(Shared.TourBoard)
+local Art = require(Shared.Presentation)
 local Edition = require(Shared.EventCards)
 local Rules = require(Shared.Rules)
 local Game = Rules.withBoard(Board, Edition)
@@ -157,7 +158,7 @@ local function clockTurn(s: Rules.Match, moved: boolean, replay: boolean?)
 		deadline = 0
 		return
 	end
-	local intro = if replay then 1.90 elseif moved then .75 + s.motion.steps * .09 else MIN_ACTION_SECONDS
+	local intro = if replay then 1.90 elseif moved then Art.arrivalAfter(s.motion.steps) + Art.runBrake else MIN_ACTION_SECONDS
 	if s.phase == "auction" then
 		auctionToken = version + 1
 		setClock(AUCTION_SECONDS + intro, intro)

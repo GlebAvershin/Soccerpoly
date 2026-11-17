@@ -7,8 +7,17 @@ local Motion = require(script.Parent.PawnMotionData)
 local Pawn = {}
 local C = Color3.fromHex
 
-type Joint = {model: Model, rest: CFrame}
+type Joint = {model: Model, rest: CFrame, parent: number?}
 type Rig = {Joint}
+-- Map the sculpt proportions and all joint pivots through the same measurements.
+local function height(y: number): number
+	return if y <= .45 then y elseif y <= 2.20 then .45 + (y - .45) * 1.38 else 2.865 + (y - 2.20) * 1.035
+end
+
+local function point(x: number, y: number, z: number): Vector3
+	return Vector3.new(x * .87, height(y), z * .94)
+end
+
 local rigs: {[Model]: Rig} = setmetatable({}, {__mode = "k"}) :: any
 
 function Pawn.make(figure: number, parent: Instance, onPitch: boolean?, uniform: Color3?): Model
@@ -25,8 +34,12 @@ function Pawn.make(figure: number, parent: Instance, onPitch: boolean?, uniform:
 	local function piece(name: string, w: number, h: number, d: number, x: number, y: number, z: number, color: Color3,
 		shape: Enum.PartType?, tilt: number?): Part
 		local p = Instance.new("Part")
-		p.Name, p.Size, p.Color = name, Vector3.new(w, h, d), color
-		p.Shape, p.CFrame = shape or Enum.PartType.Block, CFrame.new(x, y, z) * CFrame.Angles(0, 0, tilt or 0)
+		local stand = container == model
+		local size = if stand then Vector3.new(w, h, d)
+			else Vector3.new(w * .87, height(y + h * .5) - height(y - h * .5), d * .94)
+		p.Name, p.Size, p.Color = name, size, color
+		p.Shape = shape or Enum.PartType.Block
+		p.CFrame = CFrame.new(if stand then Vector3.new(x, y, z) else point(x, y, z)) * CFrame.Angles(0, 0, tilt or 0)
 		p.Anchored, p.CanCollide, p.CanTouch, p.CanQuery = true, false, false, false
 		p.Parent = container
 		return p
@@ -34,11 +47,11 @@ function Pawn.make(figure: number, parent: Instance, onPitch: boolean?, uniform:
 	local function soft(name: string, w: number, h: number, d: number, x: number, y: number, z: number, color: Color3, tilt: number?): Part
 		return piece(name, w, h, d, x, y, z, color, Enum.PartType.Ball, tilt)
 	end
-	local function joint(name: string, x: number, y: number, z: number): Joint
+	local function joint(name: string, x: number, y: number, z: number, parentIndex: number?): Joint
 		local group = Instance.new("Model")
 		group.Name, group.Parent = name, model
 		container = group
-		return {model = group, rest = CFrame.new(x, y, z)}
+		return {model = group, rest = CFrame.new(point(x, y, z)), parent = parentIndex}
 	end
 
 	local root = piece("Root", .08, .08, .08, 0, 0, 0, rubber)
@@ -51,19 +64,26 @@ function Pawn.make(figure: number, parent: Instance, onPitch: boolean?, uniform:
 		end
 	end
 
-	local legs, arms = {}, {}
-	for _, side in {-1, 1} do
+	local thighs: {Joint}, arms: {Joint}, knees: {Joint}, elbows: {Joint}, boots: {Joint} = {}, {}, {}, {}, {}
+	for i, side in {-1, 1} do
 		local x = side * .43
-		local leg = joint(if side < 0 then "Left leg" else "Right leg", x, 2.09, 0)
-		Meshes.apply("shorts", soft("Tailored short", .88, .95, .91, x, 2.01, .005, trim, side * .055))
-		soft("Knee", .62, .62, .64, x * 1.10, 1.63, .03, if figure == 5 then trim else skin)
-		Meshes.apply("sock", soft("Ribbed sock", .59, 1.05, .64, x * 1.13, 1.18, .045, if figure == 5 then trim else kit))
-		for i = 0, 1 do
-			soft("Sock cuff stripe", .606, .055, .667, x * 1.13, 1.49 - i * .078, .045, accent)
-		end
+		local prefix = if side < 0 then "Left " else "Right "
+		local thigh = joint(prefix .. "leg", x, 2.14, 0)
+		Meshes.apply("shorts", soft("Tailored short", .81, .89, .84, x, 2.04, .005, trim, side * .044))
 		if figure ~= 5 then
-			piece("Short side braid", .072, .43, .20, x + side * .395, 2.02, .19, stripeColor, nil, side * .07)
+			piece("Short side braid", .065, .40, .18, x + side * .367, 2.04, .17, stripeColor, nil, side * .07)
 		end
+		thigh.model.WorldPivot = thigh.rest
+		thighs[i] = thigh
+		local knee = joint(prefix .. "knee", x, 1.419, .014, 4 + i)
+		soft("Knee", .50, .44, .52, x * 1.07, 1.53, .03, if figure == 5 then trim else skin)
+		Meshes.apply("sock", soft("Ribbed sock", .48, .91, .53, x * 1.08, 1.125, .045, if figure == 5 then trim else kit))
+		for i = 0, 1 do
+			soft("Sock cuff stripe", .492, .054, .55, x * 1.08, 1.405 - i * .077, .045, accent)
+		end
+		knee.model.WorldPivot = knee.rest
+		knees[i] = knee
+		local ankle = joint(prefix .. "ankle", x, .698, .014, 8 + i)
 		Meshes.apply("outsole", soft("Molded outsole", .78, .18, 1.11, x * 1.15, .50, .25, rubber))
 		for _, stud in {-.13, .37} do
 			soft("Cleat", .42, .12, .25, x * 1.15, .44, .28 + stud, kit)
@@ -75,12 +95,12 @@ function Pawn.make(figure: number, parent: Instance, onPitch: boolean?, uniform:
 		for seam = 1, 3 do
 			soft("Boot lace", .29, .04, .067, x * 1.15, .92 - seam * .032, .22 + seam * .13, ivory).CastShadow = false
 		end
-		leg.model.WorldPivot = leg.rest
-		table.insert(legs, leg)
+		ankle.model.WorldPivot = ankle.rest
+		boots[i] = ankle
 	end
 
 	local body = joint("Torso", 0, 2.18, 0)
-	soft("Waist", 1.67, .90, 1.04, 0, 2.34, .005, trim)
+	soft("Waist", 1.52, .74, .93, 0, 2.34, .005, trim)
 	Meshes.apply("jersey", soft("Jersey", 2.24, 1.74, 1.32, 0, 3.00, 0, kit))
 	soft("Neck", .61, .53, .67, 0, 3.90, -.015, skin)
 	Meshes.apply("collar", soft("Woven collar", 1.10, .51, .36, 0, 3.64, .517, if figure == 5 then trim else accent))
@@ -115,18 +135,23 @@ function Pawn.make(figure: number, parent: Instance, onPitch: boolean?, uniform:
 	end
 	body.model.WorldPivot = body.rest
 
-	for _, side in {-1, 1} do
-		local arm = joint(if side < 0 then "Left arm" else "Right arm", side * .96, 3.45, 0)
+	for i, side in {-1, 1} do
+		local prefix = if side < 0 then "Left " else "Right "
+		local arm = joint(prefix .. "arm", side * .96, 3.45, 0)
 		local glove, coach = figure == 4, figure == 5
-		Meshes.apply("sleeve", soft("Sleeve", .90, .87, .93, side * 1.10, 3.30, .005, sleeveColor, side * .27))
+		Meshes.apply("sleeve", soft("Sleeve", .83, .86, .82, side * 1.10, 3.30, .005, sleeveColor, side * .27))
 		soft("Contrast piping", .69, .067, .72, side * 1.24, 3.11, .02, accent, side * .27)
 		soft("Sleeve cuff", .69, .16, .72, side * 1.25, 3.035, .010, trim, side * .28)
-		Meshes.apply("forearm", soft("Bent forearm", .50, .83, .58, side * 1.30, 2.73, .13, if coach then kit else skin, side * .23))
+		if figure == 1 and side == -1 then
+			soft("Captain armband", .68, .14, .70, -1.15, 3.29, .008, accent, -.27)
+		end
+		arm.model.WorldPivot = arm.rest
+		arms[i] = arm
+		local elbow = joint(prefix .. "elbow", side * 1.239, 3.00, .08, 2 + i)
+		Meshes.apply("forearm", soft("Bent forearm", .46, .82, .53, side * 1.30, 2.73, .13, if coach then kit else skin, side * .23))
 		local hand = soft("Palm", if glove then .71 else .53, .55, .60, side * 1.37, 2.42, .23, if glove then ivory else skin)
 		Meshes.apply(if glove then "glove" else "hand", hand)
-		if figure == 1 and side == -1 then
-			soft("Captain armband", .70, .157, .76, -1.15, 3.29, .008, accent, -.27)
-		elseif figure == 3 then
+		if figure == 3 then
 			soft("Wrist tape", .43, .104, .50, side * 1.347, 2.58, .188, accent, side * .23)
 		end
 		if glove then
@@ -140,8 +165,8 @@ function Pawn.make(figure: number, parent: Instance, onPitch: boolean?, uniform:
 		elseif figure == 6 and side == 1 then
 			piece("Referee card", .43, .62, .07, 1.38, 2.65, .51, Art.gold, nil, -.20)
 		end
-		arm.model.WorldPivot = arm.rest
-		table.insert(arms, arm)
+		elbow.model.WorldPivot = elbow.rest
+		elbows[i] = elbow
 	end
 
 	local head = joint("Head", 0, 3.97, 0)
@@ -195,8 +220,9 @@ function Pawn.make(figure: number, parent: Instance, onPitch: boolean?, uniform:
 		Meshes.apply("quiff", crown, fringe)
 	end
 	head.model.WorldPivot = head.rest
-	head.model:ScaleTo(if figure == 4 then .94 elseif figure == 5 then .98 else 1.01)
-	rigs[model] = {body, head, arms[1], arms[2], legs[1], legs[2]}
+	head.model:ScaleTo(if figure == 4 then .93 elseif figure == 5 then .90 else .88)
+	rigs[model] = {body, head, arms[1], arms[2], thighs[1], thighs[2], elbows[1], elbows[2],
+		knees[1], knees[2], boots[1], boots[2]}
 	model.Parent = parent
 	return model
 end
@@ -227,9 +253,15 @@ function Pawn.animate(model: Model, name: string, progress: number, weight: numb
 	local before, after, alpha = frameAt(clips[name], progress)
 	local blend = weight or 1
 	local at, scale = model:GetPivot(), model:GetScale()
+	local transforms: {CFrame} = {}
 	for i, joint in rig do
 		local motion = CFrame.identity:Lerp(before[i]:Lerp(after[i], alpha), blend)
-		joint.model:PivotTo(at * CFrame.new((joint.rest.Position + motion.Position) * scale) * motion.Rotation)
+		local parentIndex = joint.parent
+		local base = if parentIndex then transforms[parentIndex] else at
+		local localRest = if parentIndex then joint.rest.Position - rig[parentIndex].rest.Position else joint.rest.Position
+		local pose = base * CFrame.new((localRest + motion.Position) * scale) * motion.Rotation
+		transforms[i] = pose
+		joint.model:PivotTo(pose)
 	end
 end
 
@@ -241,6 +273,41 @@ function Pawn.pose(model: Model, phase: number, running: number, celebration: nu
 		Pawn.animate(model, "stride", cycle, math.clamp(running, 0, 1))
 	else
 		Pawn.animate(model, "idle", cycle)
+	end
+end
+
+function Pawn.run(model: Model, cycle: number, strength: number)
+	local rig = rigs[model]
+	if not rig then return end
+	local phase = cycle % 1
+	Pawn.animate(model, "stride", phase, strength)
+	local at, scale = model:GetPivot(), model:GetScale()
+	for i = 1, 2 do
+		local thigh, knee, ankle = rig[4 + i], rig[8 + i], rig[10 + i]
+		local hip = thigh.rest.Position
+		local rest = ankle.rest.Position
+		local step = (phase + (i - 1) * .5) % 1
+		-- During contact the foot moves backward at a constant rate relative to the body.
+		local swing = math.clamp((step - .57) / .43, 0, 1)
+		local forward = if step <= .57 then 1 - 2 * step / .57 else -1 + 2 * swing * swing * (3 - 2 * swing)
+		local lift = math.sin(math.pi * swing) ^ 1.2
+		local target = rest + Vector3.new(0, (.11 + .55 * lift) * strength, forward * .82 * strength)
+		local offset = target - hip
+		local upper = (knee.rest.Position - hip).Magnitude
+		local lower = (rest - knee.rest.Position).Magnitude
+		local distance = math.clamp(offset.Magnitude, .01, upper + lower - .002)
+		local reach = offset.Unit
+		local pole = (Vector3.zAxis - reach * reach.Z).Unit
+		local hinge = (distance * distance + upper * upper - lower * lower) / (2 * distance)
+		local bent = hip + reach * hinge + pole * math.sqrt(math.max(0, upper * upper - hinge * hinge))
+		local foot = hip + reach * distance
+		local function orient(start: Vector3, finish: Vector3): CFrame
+			local up = (start - finish).Unit
+			return at * CFrame.fromMatrix(start * scale, Vector3.xAxis, up)
+		end
+		thigh.model:PivotTo(orient(hip, bent))
+		knee.model:PivotTo(orient(bent, foot))
+		ankle.model:PivotTo(at * CFrame.new(foot * scale) * CFrame.Angles(.21 * math.sin(swing * math.pi) * strength, 0, 0))
 	end
 end
 

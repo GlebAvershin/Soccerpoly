@@ -38,7 +38,7 @@ end
 
 local function position(index: number, slot: number?, count: number?): Vector3
 	local tile = Geometry.cells[index]
-	local base = Vector3.new(tile.X, Art.tileTop + .03, tile.Z) - Art.boardNear * 2.04
+	local base = Vector3.new(tile.X, Art.tileTop + .04 - Art.figureScale * .376, tile.Z) - Art.boardNear * 2.04
 	local total, ordinal = count or 1, slot or 1
 	local cols, rows = math.min(total, 3), math.ceil(total / 3)
 	local row = math.floor((ordinal - 1) / 3)
@@ -95,11 +95,27 @@ local function trophy(parent: Folder, at: Vector3, color: Color3)
 		at + Vector3.yAxis * .91, fallback)
 end
 
-type Flight = {model: Model, shadow: Part, start: number, from: number, steps: number, origin: Vector3, destination: Vector3, color: Color3, bounced: number}
-local PREP, STEP, SETTLE, ROLL_LEAD = .09, .09, .14, .45
+type Flight = {model: Model, shadow: Part, start: number, from: number, steps: number, route: {Vector3},
+	origin: Vector3, destination: Vector3, color: Color3, bounced: number}
+local PREP, STEP, SETTLE, ROLL_LEAD = Art.runAnticipation, Art.runPerCell, Art.runBrake, Art.diceLead
 
 function Arena.landingAfter(steps: number): number
-	return ROLL_LEAD + PREP + steps * STEP
+	return Art.arrivalAfter(steps)
+end
+
+local function routeAt(route: {Vector3}, progress: number): Vector3
+	if progress <= 0 then return route[1] end
+	if progress >= #route - 1 then return route[#route] end
+	local whole = math.floor(progress)
+	local t = progress - whole
+	local p0, p1, p2, p3 = route[math.max(1, whole)], route[whole + 1],
+		route[whole + 2], route[math.min(#route, whole + 3)]
+	-- Continuous tangent rounds corners without a rotational snap at a cell boundary.
+	local m1 = (p2 - p0) * .46
+	local m2 = (p3 - p1) * .46
+	local square, cube = t * t, t * t * t
+	return p1 * (2 * cube - 3 * square + 1) + m1 * (cube - 2 * square + t)
+		+ p2 * (-2 * cube + 3 * square) + m2 * (cube - square)
 end
 
 function Arena.new(myId: number, root: Frame, translate: (string) -> string, playSound: (string) -> ())
@@ -158,18 +174,18 @@ function Arena.new(myId: number, root: Frame, translate: (string) -> string, pla
 		local aspect = size.X / size.Y
 		local fov = Art.boardFov
 		local tangent = math.tan(math.rad(fov) * .5)
-		local angle = math.rad(50)
+		local angle = math.rad(33.2)
 		local orbit = Art.boardNear * math.cos(angle) + Vector3.yAxis * math.sin(angle)
 		local span = Geometry.width * (Art.boardNear.X + Art.boardNear.Z)
 		local width = if aspect < .85 then .83 else .85
-		local height = if size.Y < 550 then .57 else .655
+		local height = if size.Y < 550 then .60 else .718
 		local distance = math.max(span / (2 * tangent * aspect * width), span * math.sin(angle) / (2 * tangent * height))
 		local base = CFrame.lookAt(orbit * distance, Vector3.zero)
 		local half = Geometry.width * .5
 		local near = base:PointToObjectSpace(Vector3.new(half, Art.tileTop, half))
 		local far = base:PointToObjectSpace(Vector3.new(-half, Art.tileTop, -half))
 		local centerY = (near.Y / -near.Z + far.Y / -far.Z) * .5
-		local targetY = if aspect < .85 then .05 else -.068
+		local targetY = if aspect < .85 then .05 else -.071
 		cameraTarget = base * CFrame.new(0, (centerY - targetY * tangent) * distance, 0)
 		projected = nil
 		oldSize, oldRoot, camera.FieldOfView = size, root.AbsoluteSize, fov
@@ -177,7 +193,7 @@ function Arena.new(myId: number, root: Frame, translate: (string) -> string, pla
 
 	local function pulse(at: Vector3, color: Color3, impact: boolean)
 		if reduced then return end
-		local glow = medallion(effects, "Landing pulse", at + Vector3.new(0, .014, 0), 1.2, .032, color)
+		local glow = medallion(effects, "Landing pulse", Vector3.new(at.X, Art.tileTop + .038, at.Z), 1.2, .032, color)
 		glow.Material, glow.Transparency = Enum.Material.Neon, if impact then .34 else .62
 		local reach = if impact then 6.2 else 3.2
 		TweenService:Create(glow, TweenInfo.new(if impact then .31 else .17, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
@@ -305,7 +321,7 @@ function Arena.new(myId: number, root: Frame, translate: (string) -> string, pla
 				continue
 			end
 			if not model then
-				model = Pawn.make(seat.figure, matchPawns)
+				model = Pawn.make(seat.figure, matchPawns, true)
 				model:ScaleTo(Art.figureScale)
 				models[seat.id] = model
 			end
@@ -315,10 +331,15 @@ function Arena.new(myId: number, root: Frame, translate: (string) -> string, pla
 			if moved and s.motion.who == seat.id and s.motion.steps > 0 and not reduced then
 				local at = model:GetPivot().Position
 				local color = Art.hex(Board.figures[seat.figure].color)
-				local shadow = medallion(effects, "Travel shadow", at, 4.55, .022, Art.ink)
-				shadow.Transparency = .51
-				activeFlight = {model = model, shadow = shadow, from = s.motion.from, steps = s.motion.steps,
-					start = os.clock() + ROLL_LEAD, origin = at, destination = destination, color = color, bounced = -1}
+				local shadow = medallion(effects, "Travel shadow", Vector3.new(at.X, Art.tileTop + .025, at.Z), 3.88, .022, Art.ink)
+				shadow.Transparency = .62
+				local route = {at}
+				for i = 1, s.motion.steps - 1 do
+					table.insert(route, position(Game.target(s.motion.from, i)))
+				end
+				table.insert(route, destination)
+				activeFlight = {model = model, shadow = shadow, from = s.motion.from, steps = s.motion.steps, route = route,
+					start = os.clock() + ROLL_LEAD, origin = at, destination = destination, color = color, bounced = 0}
 			elseif not activeFlight or activeFlight.model ~= model then
 				model:PivotTo(settled(destination))
 			end
@@ -391,31 +412,29 @@ function Arena.new(myId: number, root: Frame, translate: (string) -> string, pla
 			finishFlight()
 			return
 		end
-		local beat = math.clamp(math.floor(movement / STEP), 0, entry.steps - 1)
-		local k = math.clamp(movement / STEP - beat, 0, 1)
-		local a = if beat == 0 then entry.origin else position(Game.target(entry.from, beat))
-		local b = if beat + 1 == entry.steps then entry.destination else position(Game.target(entry.from, beat + 1))
-		local travel = a:Lerp(b, k * k * (3 - 2 * k))
-		local direction = b - a
+		local progress = math.clamp(movement / STEP, 0, entry.steps)
+		local beat = math.floor(progress)
+		local travel = routeAt(entry.route, progress)
+		local direction = routeAt(entry.route, progress + .16) - routeAt(entry.route, progress - .16)
 		local yaw = math.atan2(direction.X, direction.Z)
 		if movement < 0 then
 			local prep = elapsed / PREP
-			entry.model:PivotTo(CFrame.new(a - direction.Unit * (.36 * math.sin(math.pi * prep))) * CFrame.Angles(.13 * prep, yaw, 0))
-			Pawn.animate(entry.model, "launch", prep)
+			local approach = settled(entry.origin):Lerp(CFrame.new(entry.origin) * CFrame.Angles(0, yaw, 0), prep)
+			entry.model:PivotTo(approach)
+			Pawn.animate(entry.model, "launch", prep, .46)
 			return
 		end
-		local hop = math.sin(math.pi * k)
-		local lean = -.26 * hop
 		entry.shadow.Position = Vector3.new(travel.X, Art.tileTop + .017, travel.Z)
-		entry.shadow.Transparency = .53 + .22 * hop
 		local ending = movement >= STEP * entry.steps
 		if ending then
 			local ease = math.clamp((movement - STEP * entry.steps) / SETTLE, 0, 1)
-			entry.model:PivotTo((CFrame.new(b) * CFrame.Angles(.12 * math.sin(math.pi * ease), yaw, 0)):Lerp(settled(b), ease))
-			Pawn.animate(entry.model, "land", ease)
+			local fade = ease * ease * (3 - 2 * ease)
+			entry.model:PivotTo((CFrame.new(travel - Vector3.yAxis * (.24 * (1 - fade))) * CFrame.Angles(0, yaw, 0)):Lerp(settled(travel), fade))
+			Pawn.run(entry.model, progress * 1.08 + ease * .21, .64 * (1 - fade))
 		else
-			entry.model:PivotTo(CFrame.new(travel + Vector3.yAxis * (hop ^ 1.30 * 1.51)) * CFrame.Angles(0, yaw, 0) * CFrame.Angles(lean, 0, 0))
-			Pawn.pose(entry.model, (beat + k + .3) * math.pi, 1)
+			local strength = .64 + .36 * math.min(1, progress * 2, (entry.steps - progress) * 2)
+			entry.model:PivotTo(CFrame.new(travel - Vector3.yAxis * .29) * CFrame.Angles(0, yaw, 0))
+			Pawn.run(entry.model, progress * 1.08, strength)
 		end
 		local landed = if ending then entry.steps else beat
 		if landed > 0 and landed > entry.bounced then

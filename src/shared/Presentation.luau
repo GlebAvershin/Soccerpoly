@@ -13,11 +13,19 @@ Style.slate = Color3.fromHex("827E81")
 Style.gold = Color3.fromHex("FFC558")
 Style.mint = Color3.fromHex("C4F568")
 Style.tile = Color3.fromHex("32324B")
-Style.boardFov = 11.5
+Style.boardFov = 7.6
 Style.seatColors = table.freeze({Color3.fromHex("F68AB8"), Color3.fromHex("C4F568"), Color3.fromHex("FFC66D"), Color3.fromHex("79D7FA")})
-Style.figureScale = 2.13
+Style.figureScale = 2.58
+Style.diceLead = .45
+Style.runAnticipation = .105
+Style.runPerCell = .138
+Style.runBrake = .215
+
+function Style.arrivalAfter(steps: number): number
+	return Style.diceLead + Style.runAnticipation + steps * Style.runPerCell
+end
 Style.pitchDepthScale = 1
-Style.boardYaw = math.rad(23)
+Style.boardYaw = math.rad(45)
 Style.boardNear = Vector3.new(math.sin(Style.boardYaw), 0, math.cos(Style.boardYaw))
 Style.boardRight = Vector3.new(Style.boardNear.Z, 0, -Style.boardNear.X)
 Style.tileTop = 0.69

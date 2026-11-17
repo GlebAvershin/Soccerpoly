@@ -92,11 +92,16 @@ def build(name, profile):
                 z -= .059 * math.exp(-((cheek / .14) ** 2) - (((height - .090) / .081) ** 2))
                 z += .047 * math.exp(-((cheek / .23) ** 2) - (((height - .21) / .06) ** 2))
                 z += .035 * math.exp(-((x / .21) ** 2) - (((height + .29) / .104) ** 2))
+                # Plane changes at the jaw and cheek are visible under the stadium rim light.
+                jaw = max(0, min(1, (-height - .19) * 3.0))
+                x *= 1.0 - .13 * jaw
+                z += .032 * math.exp(-(((abs(x) - .35) / .11) ** 2) - (((height + .08) / .14) ** 2))
             if name == "jersey" and math.cos(angle) > 0:
                 hem = math.exp(-((height + .32 + x * .54) / .18) ** 2)
                 z += .038 * math.cos((x + height * .57) * 26) * hem
                 z += .058 * math.exp(-((height - .18) / .27) ** 2) * math.cos(angle)
                 z -= .045 * math.exp(-((x / .12) ** 2) - (((height - .22) / .24) ** 2))
+                x *= .91 + .12 * math.exp(-((height - .30) / .24) ** 2)
             if name in ("hand", "glove") and math.cos(angle) > 0:
                 z += .07 * math.exp(-((height + .21) / .18) ** 2) * math.cos(x * 24) ** 2
                 z += .09 * math.exp(-((x + .39) / .14) ** 2 - ((height + .04) / .24) ** 2)
