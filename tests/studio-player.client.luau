@@ -74,15 +74,27 @@ local ok, err = pcall(function()
 			local paper=cell["Printed programme"]
 			local poster,title,cost=paper["Programme illustration"],paper["Club name"],paper["Club cost"]
 			assert(poster:FindFirstChild("Lithograph"), "Missing illustrated print "..tile.name)
-			assert(title:FindFirstChild("Ink") and title.Ink.ImageRectSize==Vector2.new(256,64) and title.Text~="" and title.TextFits, "Clipped title "..title.Text)
+			assert(title:IsA("TextLabel") and title.Text ~= "" and title.TextFits, "Clipped title "..title.Text)
+			assert(cell.CanvasSize.X >= cell.Adornee.Size.X*22-1)
+			assert(title.FontFace.Family:find("Montserrat") and cost.FontFace.Family:find("BuilderMono"))
 			assert(poster.Size.Y.Scale<=title.Position.Y.Scale and title.Position.Y.Scale+title.Size.Y.Scale<=1)
-			local ink=hud.Viewport["Programme typography"][cell.Name]["Club name"]
-			assert(ink.Text==title.Text)
+			local display=player.PlayerGui["Programme typography"]
+			assert(display.DisplayOrder<hud.DisplayOrder and display.ScreenInsets==Enum.ScreenInsets.DeviceSafeInsets)
+			local ink=display[cell.Name]["Club name"]
+			local artLayer=display[cell.Name]["Programme illustration"]
+			assert(artLayer.Lithograph.ImageContent==poster.Lithograph.ImageContent)
+			assert(artLayer.Visible~=poster.Visible,"Double or missing illustration on "..cell.Name)
+			assert(ink.Text==title.Text and ink.TextScaled)
+			if tile.league>0 then
+				local badge=artLayer["Embroidered kit"]
+				assert(badge.ImageContent.Object.Size==Vector2.new(256,256) and badge.SizeConstraint==Enum.SizeConstraint.RelativeYY)
+			end
 			if ink.Visible then
 				local v=title.Position.Y.Scale+title.Size.Y.Scale*.5
-				local at=camera:WorldToScreenPoint(cell.Adornee.Position+cell.Adornee.CFrame.UpVector*cell.Adornee.Size.Y*(.5-v))
-				assert(math.abs(ink.Position.X.Offset-at.X)<4 and math.abs(ink.Position.Y.Offset-at.Y)<4,
-					"Title moved away from its band on "..cell.Name)
+				local at=camera:WorldToViewportPoint(cell.Adornee.Position+cell.Adornee.CFrame.UpVector*cell.Adornee.Size.Y*(.5-v))
+				local middle=ink.AbsolutePosition-display[cell.Name].AbsolutePosition+ink.AbsoluteSize*.5
+				assert(math.abs(middle.X-at.X)<4 and math.abs(middle.Y-at.Y)<4 and ink.TextFits,
+					"Title registration "..cell.Name.." centre="..tostring(middle).." expected="..tostring(at).." fits="..tostring(ink.TextFits))
 				assert(not title.Visible,"Double print on "..cell.Name)
 			end
 
@@ -300,6 +312,8 @@ local ok, err = pcall(function()
 		local open = hud.Viewport.PropertyBackdrop.Visible
 		if open and (s.phase == "offer" or s.phase == "upgrade" or s.phase == "rebuy") then
 			cardSeen = true
+			local picture=hud.Viewport.PropertyBackdrop:FindFirstChild("Lithograph",true)
+			assert(picture and picture.ImageContent.Object.Size==Vector2.new(768,256),"Missing high-resolution dossier")
 			local index = s.seats[s.active].position
 			if board.tiles[index].league > 0 and not captured.club then
 				captured.club = true
@@ -356,6 +370,8 @@ local ok, err = pcall(function()
 					if not captured.card then
 						captured.card = true
 						cardSeen = true
+			local picture=hud.Viewport.PropertyBackdrop:FindFirstChild("Lithograph",true)
+			assert(picture and picture.ImageContent.Object.Size==Vector2.new(768,256),"Missing high-resolution dossier")
 						task.wait(.36)
 						capture("property")
 						task.wait(.20)

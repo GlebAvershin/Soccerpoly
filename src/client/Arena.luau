@@ -38,14 +38,19 @@ end
 
 local function position(index: number, slot: number?, count: number?): Vector3
 	local tile = Geometry.cells[index]
-	local base = Vector3.new(tile.X, Art.tileTop + .04 - Art.figureScale * .376, tile.Z) - Art.boardNear * 2.04
+	local size = Geometry.tileSize(index)
+	local sideways = math.floor((index - 1) / 8) % 2 == 0
+	local width = if sideways then size.Y else size.X
+	local depth = if sideways then size.X else size.Y
 	local total, ordinal = count or 1, slot or 1
-	local cols, rows = math.min(total, 3), math.ceil(total / 3)
 	local row = math.floor((ordinal - 1) / 3)
-	local onRow = math.min(cols, total - row * 3)
+	local onRow = math.min(3, total - row * 3)
 	local col = (ordinal - 1) % 3
-	return base + Art.boardRight * ((col - (onRow - 1) * .5) * 4.85)
-		- Art.boardNear * ((row - (rows - 1) * .5) * 4.15)
+	-- Put the front row on the artwork. Additional seats fan towards the far
+	-- edge, keeping the title and price clear on the player's current square.
+	local x = tile.X + (col - (onRow - 1) * .5) * math.min(4.85,width * .32)
+	local z = tile.Z - depth * (.20 + row * .22)
+	return Vector3.new(x, Art.tileTop + .04 - Art.figureScale * .376, z)
 end
 
 local function settled(point: Vector3): CFrame
@@ -182,11 +187,9 @@ function Arena.new(myId: number, root: Frame, translate: (string) -> string, pla
 		local tangent = math.tan(math.rad(fov) * .5)
 		portraitCamera = aspect < .86
 		local angle = math.rad(if portraitCamera then 53 else 40)
-		local azimuth = if portraitCamera then math.rad(9) else math.rad(22)
-		local heading = Vector3.new(math.sin(azimuth), 0, math.cos(azimuth))
-		local orbit = heading * math.cos(angle) + Vector3.yAxis * math.sin(angle)
-		local span = Geometry.width * (heading.X + heading.Z)
-		local width = if portraitCamera then .920 else .85
+		local orbit = Vector3.zAxis * math.cos(angle) + Vector3.yAxis * math.sin(angle)
+		local span = Geometry.width
+		local width = if portraitCamera then .86 else .85
 		local height = if size.Y < 550 then .60 else .718
 		local distance = math.max(span / (2 * tangent * aspect * width), span * math.sin(angle) / (2 * tangent * height))
 		local base = CFrame.lookAt(orbit * distance, Vector3.zero)
@@ -399,9 +402,9 @@ function Arena.new(myId: number, root: Frame, translate: (string) -> string, pla
 					local at=model:GetPivot().Position
 					local face=model:FindFirstChild("Head") and model.Head:FindFirstChild("Face")
 					if not face or not face:IsA("BasePart") then continue end
-					local top=camera:WorldToScreenPoint(face.Position+Vector3.yAxis*face.Size.Y*.55)
-					local foot=camera:WorldToScreenPoint(at)
-					local side=camera:WorldToScreenPoint(at+camera.CFrame.RightVector*3.4)
+					local top=camera:WorldToViewportPoint(face.Position+Vector3.yAxis*face.Size.Y*.55)
+					local foot=camera:WorldToViewportPoint(at)
+					local side=camera:WorldToViewportPoint(at+camera.CFrame.RightVector*3.4)
 					local extent=math.abs(side.X-foot.X)
 					table.insert(silhouettes,Rect.new(math.min(top.X,foot.X)-extent,math.min(top.Y,foot.Y),
 						math.max(top.X,foot.X)+extent,math.max(top.Y,foot.Y)))

@@ -9,7 +9,12 @@ local C = Color3.fromHex
 local colors = UI.color
 local INK = Art.ink
 local CENTER = Enum.TextXAlignment.Center
-local BOLD = Enum.Font.BuilderSansExtraBold
+local BOLD = Enum.Font.BuilderSansBold
+local paperColor = C("FBF6EA")
+local paperInk = C("152D3C")
+local ruled = C("ECE7DA")
+local headingFace = Font.new("rbxasset://fonts/families/Montserrat.json", Enum.FontWeight.Bold)
+local figuresFace = Font.new("rbxasset://fonts/families/BuilderMono.json", Enum.FontWeight.Medium)
 
 local function text(parent: Instance, content: string, height: number, y: number, size: number, color: Color3): TextLabel
 	local label = UI.label(parent, content, size, {font = Enum.Font.BuilderSans, color = color, align = CENTER, ellipsis = true})
@@ -29,11 +34,11 @@ function Card.button(parent: Instance, name: string, label: string, press: () ->
 	return button
 end
 
-local function illustration(parent: Instance, index: number)
+local function illustration(parent: Instance, index: number, height: number)
 	local tile = Board.tiles[index]
 	local backing = UI.box(parent, "Illustration", Color3.new(1, 1, 1))
-	backing.Position, backing.Size = UDim2.fromOffset(12, 39), UDim2.new(1, -24, 0, 127)
-	illustrate(backing,tile)
+	backing.Position, backing.Size = UDim2.fromOffset(12, 39), UDim2.new(1, -24, 0, height)
+	illustrate(backing, tile, true)
 end
 
 export type Details = {
@@ -54,7 +59,7 @@ function Card.new(root: Frame)
 	wrapper.Position, wrapper.AnchorPoint = UDim2.fromScale(.5, .51), Vector2.new(.5, .5)
 	wrapper.Size = UDim2.new(.90, 0, 0, 284)
 	local limit = Instance.new("UISizeConstraint")
-	limit.MaxSize, limit.Parent = Vector2.new(405, 284), wrapper
+	limit.MaxSize, limit.Parent = Vector2.new(452, 284), wrapper
 	local scale = Instance.new("UIScale")
 	scale.Parent = wrapper
 	local function fit()
@@ -68,58 +73,60 @@ function Card.new(root: Frame)
 			wrapper:ClearAllChildren()
 			local options = info.levels
 			local optionsHeight = if options then 26 + #options * 28 else 0
-			local height = 284 + optionsHeight
+			local extraArt = if shade.AbsoluteSize.Y >= 550 then 28 else 0
+			local height = 284 + optionsHeight + extraArt
 			wrapper.Size = UDim2.new(.90, 0, 0, height)
-			limit.MaxSize = Vector2.new(405, height)
-			local paper = UI.box(wrapper, "Club dossier", colors.panel, 7)
+			limit.MaxSize = Vector2.new(452, height)
+			local paper = UI.box(wrapper, "Club dossier", paperColor, 7)
 			paper.Size = UDim2.fromScale(1, 1)
-			UI.stroke(paper, colors.outline)
+			UI.stroke(paper, C("AA9D84"))
 			local tile = Board.tiles[info.index]
 			local league = Art.accent(tile.kind, tile.league)
 			local header = UI.box(paper, "Club header", colors.ink, 6)
 			header.Position, header.Size = UDim2.fromOffset(0, 0), UDim2.new(1, 0, 0, 37)
 			local tab = UI.box(header, "League accent", league)
 			tab.Position, tab.Size = UDim2.fromOffset(11, 10), UDim2.fromOffset(4, 17)
-			local title = text(header, info.title, 36, 0, 20, colors.text)
-			title.Font, title.TextXAlignment = BOLD, Enum.TextXAlignment.Left
+			local title = text(header, info.title, 36, 0, 21, colors.text)
+			title.FontFace = headingFace
+			title.TextXAlignment = Enum.TextXAlignment.Left
 			title.Position, title.Size = UDim2.fromOffset(23, 0), UDim2.new(1, -67, 1, 0)
 			local exit = UI.button(header, "CloseCard", "×", 33, info.close, colors.ink, colors.text)
 			exit.BackgroundTransparency, exit.TextSize = 1, 25
 			exit.Position, exit.Size = UDim2.new(1, -39, 0, 0), UDim2.fromOffset(39, 33)
 			for _, child in exit:GetChildren() do if child:IsA("UIStroke") then child:Destroy() end end
-			illustration(paper, info.index)
-			local summary = text(paper, info.summary, 30, 169, 14, colors.text)
+			illustration(paper, info.index, 127 + extraArt)
+			local summary = text(paper, info.summary, 30, 169 + extraArt, 16, paperInk)
 			summary.Font = Enum.Font.BuilderSansBold
 			if options then
 				local function row(y: number, cells: {string}, fill: Color3, heading: boolean, selected: boolean?)
 					local columns = UI.box(paper, "Prices", fill)
 					columns.Position, columns.Size = UDim2.fromOffset(13, y), UDim2.new(1, -26, 0, 26)
 					for i, cell in cells do
-						local label = text(columns, cell, 25, 0, 12, if selected then colors.ink else colors.text)
+						local label = text(columns, cell, 25, 0, 14, if heading then colors.text else paperInk)
 						label.Position, label.Size = UDim2.fromScale((i - 1) / #cells, 0), UDim2.fromScale(1 / #cells, 1)
-						if heading or selected then label.Font = BOLD end
+						if i > 1 and not heading then label.FontFace = figuresFace else label.Font = BOLD end
 					end
 					return columns
 				end
-				row(200, info.columns or {}, colors.ink, true)
+				row(200 + extraArt, info.columns or {}, colors.ink, true)
 				for i, item in options do
-					local fill = if item.highlighted then colors.mint elseif i % 2 == 0 then colors.surface else colors.ink
-					local columns = row(226 + (i - 1) * 28, item.cells, fill, false, item.highlighted)
+					local fill = if item.highlighted then C("DBEBB7") elseif i % 2 == 0 then ruled else paperColor
+					local columns = row(226 + extraArt + (i - 1) * 28, item.cells, fill, false, item.highlighted)
 					if item.press then
 						local button = UI.button(columns, "ChooseLevel" .. i, "", 26, item.press, fill)
 						button.BackgroundTransparency, button.Size = 1, UDim2.fromScale(1, 1)
-						for _, child in button:GetChildren() do if child:IsA("UIStroke") then child.Color = colors.outline end end
+						for _, child in button:GetChildren() do if child:IsA("UIStroke") then child.Color = if item.highlighted then C("7F9553") else ruled end end
 					end
 				end
 			end
 			local close = Card.button(paper, "Skip", info.closeLabel, info.close)
-			close.Position, close.Size = UDim2.new(if info.action then 0 else .23, 15, 0, 207 + optionsHeight),
+			close.Position, close.Size = UDim2.new(if info.action then 0 else .23, 15, 0, 207 + extraArt + optionsHeight),
 				UDim2.new(if info.action then .40 else .48, -23, 0, 39)
 			if info.action and info.actionName and info.actionLabel then
 				local accept = Card.button(paper, info.actionName, info.actionLabel, info.action, true)
-				accept.Position, accept.Size = UDim2.new(.40, 8, 0, 207 + optionsHeight), UDim2.new(.60, -23, 0, 39)
+				accept.Position, accept.Size = UDim2.new(.40, 8, 0, 207 + extraArt + optionsHeight), UDim2.new(.60, -23, 0, 39)
 			end
-			text(paper, info.footer, 26, 251 + optionsHeight, 13, colors.muted)
+			text(paper, info.footer, 26, 251 + extraArt + optionsHeight, 14, C("435662"))
 			limit.Parent, scale.Parent = wrapper, wrapper
 			shade.Visible = true
 			fit()

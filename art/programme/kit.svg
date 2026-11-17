@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <defs>
+    <linearGradient id="enamel" x2=".8" y2="1" gradientUnits="objectBoundingBox">
+      <stop stop-color="#fff5d4"/><stop offset=".55" stop-color="#edd59b"/><stop offset="1" stop-color="#af8d52"/>
+    </linearGradient>
+    <linearGradient id="fold" x1="0" x2="1" y1=".5" y2=".76">
+      <stop stop-color="#121c2a" stop-opacity=".27"/><stop offset=".22" stop-color="#ffffff" stop-opacity=".12"/>
+      <stop offset=".48" stop-color="#ffffff" stop-opacity="0"/><stop offset=".84" stop-color="#1a2332" stop-opacity=".2"/>
+      <stop offset=".94" stop-color="#fff7e5" stop-opacity=".18"/><stop offset="1" stop-color="#111c2c" stop-opacity=".23"/>
+    </linearGradient>
+    <path id="kit" d="M99 44 Q109 57 128 58 Q147 58 157 44 L186 54 Q193 56 200 67 L226 104 L201 124 L181 106 Q177 136 180 165 L184 201 Q160 214 128 214 Q96 214 72 201 L76 165 Q79 137 75 106 L55 124 L30 104 L56 67 Q63 56 70 54Z"/>
+    <clipPath id="cut"><use href="#kit"/></clipPath>
+  </defs>
+  <ellipse cx="128" cy="139" rx="111" ry="110" fill="#142435" opacity=".28"/>
+  <circle cx="128" cy="128" r="111" fill="url(#enamel)" stroke="#463e32" stroke-width="2"/>
+  <circle cx="128" cy="128" r="105" fill="#263747"/>
+  <circle cx="128" cy="128" r="98" fill="none" stroke="#a48e6c" stroke-width="1.5"/>
+  <g transform="rotate(-6 128 128)">
+    <use href="#kit" transform="translate(1 4)" fill="#121e2a" opacity=".65"/>
+    <use href="#kit" fill="PRIMARY"/>
+    <g clip-path="url(#cut)" fill="SECONDARY">PATTERN</g>
+    <use href="#kit" fill="url(#fold)" stroke="#263340" stroke-width="2.5" stroke-linejoin="round"/>
+    <path d="M99 44 Q128 60 157 44 Q149 70 128 78 Q107 70 99 44Z" fill="SECONDARY"/>
+    <path d="M104 47 Q128 61 152 47 Q142 62 128 69 Q114 62 104 47Z" fill="#263442"/>
+    <path d="M77 111 Q90 100 96 83 M179 111 Q167 99 161 83 M82 191 Q97 178 99 150 M170 190 Q160 178 159 162" fill="none" stroke="#253342" opacity=".15" stroke-width="3" stroke-linecap="round"/>
+    <path d="M35 101 L56 117 M200 118 L222 101 M77 198 Q127 215 179 198" fill="none" stroke="#fff5de" stroke-width="2" opacity=".54"/>
+    <path d="M145 91 Q151 93 157 91 L156 98 Q154 103 151 105 Q146 102 145 98Z" fill="#f7df9e" stroke="#49422f" stroke-width="1"/>
+  </g>
+</svg>

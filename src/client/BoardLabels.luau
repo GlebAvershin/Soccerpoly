@@ -4,20 +4,8 @@ local Board = require(shared.TourBoard)
 local Art = require(shared.Presentation)
 local illustrate = require(script.Parent.Programme)
 local UI = require(script.Parent.Components)
-local typePlate = require(script.Parent.ProgrammeType)
-local decode = require(script.Parent.IndexedImage)
-local function inkPlate(paint)
-	local ok, image=pcall(decode,paint)
-	return if ok and image then Content.fromObject(image) else nil
-end
-local plates={inkPlate(typePlate.page1),inkPlate(typePlate.page2)}
-local digits=inkPlate(typePlate.digits)
-local function impression(parent, texture, position, size)
-	local label=Instance.new("ImageLabel")
-	label.Name,label.BackgroundTransparency,label.ImageContent="Ink",1,texture
-	label.Position,label.Size,label.Parent=position,size,parent
-	return label
-end
+local headline = Font.new("rbxasset://fonts/families/Montserrat.json", Enum.FontWeight.Bold)
+local numberFace = Font.new("rbxasset://fonts/families/BuilderMono.json", Enum.FontWeight.Medium)
 local names = {
 	SEV={"Sevilla","Севилья"}, ATM={"Atlético","Атлетико"}, FCB={"Barça","Барса"}, RMA={"Real Madrid","Реал"},
 	ARS={"Arsenal","Арсенал"}, LIV={"Liverpool","Ливерпуль"}, MCI={"Man City","Ман Сити"}, MUN={"Man Utd","МЮ"},
@@ -28,156 +16,151 @@ local names = {
 	KO={"Kickoff","Старт"}, TAX={"Tax","Сбор"}, CH={"Chance","Шанс"}, TOUR={"Away","Выезд"},
 	CUP={"Cup","Кубок"}, BENCH={"Bench","Скамья"},
 }
-local function line(card: Frame, name: string, y: number, height: number, font: Enum.Font, color: Color3): TextLabel
+local function band(parent: Frame, name: string, y: number, height: number, font: Font, color: Color3): TextLabel
 	local text = Instance.new("TextLabel")
 	text.Name, text.AutoLocalize, text.BackgroundTransparency = name, false, 1
-	text.Font, text.TextColor3, text.TextScaled, text.TextWrapped = font, color, true, false
-	text.Size, text.Position = UDim2.fromScale(.94,height), UDim2.fromScale(.03,y)
-	text.Text, text.Parent = "", card
+	text.FontFace, text.TextColor3 = font, color
+	text.TextWrapped = false
+	text.TextScaled = true
+	text.Position, text.Size = UDim2.fromScale(.035, y), UDim2.fromScale(.93, height)
+	text.Text, text.Parent = "", parent
 	return text
 end
 
--- This line always has the same centre on the paper. The physical ink stays
--- visible under pieces. Exposed lines can be typeset at native display density.
-local function nativeLine(parent,original)
-	local label=original:Clone()
-	label:ClearAllChildren()
-	label.TextTransparency,label.AnchorPoint,label.Visible=0,Vector2.new(.5,.5),false
-	label.TextScaled,label.Parent=true,parent
-	return label
+local function intersects(a: Rect, b: Rect): boolean
+	return a.Min.X < b.Max.X and a.Max.X > b.Min.X and a.Min.Y < b.Max.Y and a.Max.Y > b.Min.Y
+end
+
+-- The board camera's right axis stays parallel to the touchlines. Intersect the
+-- top and bottom edges of each projected strip to inscribe a pixel-aligned rect.
+local function projectBand(camera: Camera, part: BasePart, original: GuiObject): Rect
+	local offset, size = original.Position, original.Size
+	local x0 = part.Size.X * (offset.X.Scale - .5)
+	local x1 = x0 + part.Size.X * size.X.Scale
+	local y0 = part.Size.Y * (.5 - offset.Y.Scale)
+	local y1 = y0 - part.Size.Y * size.Y.Scale
+	local basis = part.CFrame
+	local function point(x: number, y: number): Vector3
+		return camera:WorldToViewportPoint(basis:PointToWorldSpace(Vector3.new(x, y, part.Size.Z * .5)))
+	end
+	local tl, tr = point(x0,y0), point(x1,y0)
+	local bl, br = point(x0,y1), point(x1,y1)
+	local left, right = math.ceil(math.max(tl.X,bl.X)), math.floor(math.min(tr.X,br.X))
+	local top, bottom = math.ceil(tl.Y), math.floor(bl.Y)
+	return Rect.new(left,top,math.max(left+1,right),math.max(top+1,bottom))
 end
 
 return function(root: Frame, translate: (string)->string)
+	local hud = assert(root:FindFirstAncestorOfClass("ScreenGui"))
+	local playerGui = hud.Parent
 	local group = Instance.new("Folder")
-	group.Name, group.Parent = "BoardPrint",root:FindFirstAncestorOfClass("ScreenGui").Parent
-	local overlay=UI.box(root,"Programme typography")
-	overlay.Size,overlay.Interactable=UDim2.fromScale(1,1),false
+	group.Name, group.Parent = "BoardPrint", playerGui
+
+	-- WorldToViewportPoint uses device-safe coordinates, including the portion
+	-- behind the top bar. Keep the board print separate from controls' safe insets.
+	local overlay = Instance.new("ScreenGui")
+	overlay.Name, overlay.ResetOnSpawn, overlay.AutoLocalize = "Programme typography", false, false
+	overlay.ScreenInsets, overlay.DisplayOrder = Enum.ScreenInsets.DeviceSafeInsets, hud.DisplayOrder - 1
+	overlay.ClipToDeviceSafeArea = false
+	overlay.Parent = playerGui
+	hud.Destroying:Connect(function()
+		overlay:Destroy()
+		group:Destroy()
+	end)
 	local sheets = {}
-	local match: any = nil
-	local gates: any = nil
+	local match, gates = nil, nil
 	local visible = true
-	local function refresh()
-		local language = if translate("Kickoff")=="Kickoff" then 1 else 2
-		for index, entry in sheets do
-			local tile = Board.tiles[index]
-			entry.title.Text = names[tile.code][language]
-			entry.nameText.Text=entry.title.Text
-			if entry.ink then
-				entry.ink.ImageRectOffset = Vector2.new((language-1)*256, (typePlate.rows[tile.code]%16)*64)
-			end
-			local owner = if match then match.clubs[index].owner else 0
-			entry.cost.Text = if tile.price>0 then tostring(if owner~=0 then gates[index] else tile.price) else ""
-			entry.costText.Text=entry.cost.Text
-			if entry.numerals then
-				local value=entry.cost.Text
-				local width=entry.glyphWidth
-				for k,glyph in entry.numerals do
-					glyph.Visible=k<=#value
-					if k<=#value then
-						glyph.ImageRectOffset=Vector2.new(32*tonumber(value:sub(k,k)),0)
-						glyph.Position=UDim2.fromScale(.5+(k-1-#value*.5)*width,0)
-					end
-				end
-			end
-			entry.mark.Visible = owner~=0
-			if owner~=0 then
-				for j,seat in match.seats do
-					if seat.id==owner then entry.mark.BackgroundColor3=Art.seatColors[j] break end
-				end
+
+	local function setCopy(i, entry)
+		local tile = Board.tiles[i]
+		local language = if translate("Kickoff") == "Kickoff" then 1 else 2
+		local owner = if match then match.clubs[i].owner else 0
+		local name = names[tile.code][language]
+		local price = if tile.price == 0 then "" else tostring(if owner ~= 0 then gates[i] else tile.price)
+		entry.title.Text, entry.nativeTitle.Text = name, name
+		entry.cost.Text, entry.nativeCost.Text = price, price
+		entry.owner.Visible = owner ~= 0
+		if owner ~= 0 then
+			for seatIndex, seat in match.seats do
+				if seat.id == owner then entry.owner.BackgroundColor3 = Art.seatColors[seatIndex] break end
 			end
 		end
+	end
+	local function refresh()
+		for i, entry in sheets do setCopy(i, entry) end
 	end
 	local function attach(part: Instance)
 		if not part:IsA("BasePart") then return end
 		local i = part:GetAttribute("BoardIndex")
-		if typeof(i)~="number" or sheets[i] then return end
+		if typeof(i) ~= "number" or sheets[i] then return end
 		local tile = Board.tiles[i]
+		local buyable = tile.price > 0
 		local sheet = Instance.new("SurfaceGui")
-		sheet.Face, sheet.Adornee, sheet.Name = Enum.NormalId.Back,part,"Cell"..i
-		sheet.AutoLocalize, sheet.Active, sheet.AlwaysOnTop, sheet.LightInfluence = false,false,false,0
+		sheet.Face, sheet.Adornee, sheet.Name = Enum.NormalId.Back, part, "Cell"..i
+		sheet.AutoLocalize, sheet.Active, sheet.AlwaysOnTop, sheet.LightInfluence = false, false, false, 0
 		sheet.SizingMode = Enum.SurfaceGuiSizingMode.FixedSize
-		sheet.CanvasSize = Vector2.new(math.round(part.Size.X*9),math.round(part.Size.Y*9))
-		sheet.MaxDistance, sheet.Enabled, sheet.Parent = 12000,visible,group
-		local card = UI.box(sheet,"Printed programme", Color3.fromHex(if tile.price>0 then "FAF1DD" else "213542"))
-		card.Size, card.ClipsDescendants = UDim2.fromScale(1,1),true
+		sheet.CanvasSize = Vector2.new(math.round(part.Size.X*22), math.round(part.Size.Y*22))
+		sheet.MaxDistance, sheet.Enabled, sheet.Parent = 12000, visible, group
+		local card = UI.box(sheet, "Printed programme", Color3.fromHex(if buyable then "FCF6E8" else "213542"))
+		card.Size, card.ClipsDescendants = UDim2.fromScale(1,1), true
 		local poster = illustrate(card,tile)
-		local ink = Color3.fromHex(if tile.price>0 then "172D39" else "FFF0CA")
-		local buyable=tile.price>0
-		poster.Size = UDim2.fromScale(1, if buyable then .40 else .55)
-		local title = line(card,"Club name",if buyable then .405 else .56,if buyable then .37 else .41,Enum.Font.BuilderSansExtraBold,ink)
-		local cost = line(card,"Club cost",.79,.20,Enum.Font.BuilderSansBold,ink)
-		cost.Visible=buyable
-		local mark=UI.box(card,"Owner",Art.gold)
-		mark.Position,mark.Size=UDim2.fromScale(0,.49),UDim2.fromScale(.027,.51)
-		local row = typePlate.rows[tile.code]
-		local plate=plates[math.floor(row/16)+1]
-		local inkPrint
-		if plate then
-			inkPrint=impression(title,plate,UDim2.fromScale(0,0),UDim2.fromScale(1,1))
-			inkPrint.ImageRectSize=Vector2.new(256,64)
-			title.TextTransparency=1
+		poster.Size = UDim2.fromScale(1, if buyable then .43 else .55)
+		local color = Color3.fromHex(if buyable then "172B3B" else "FFF0CE")
+		local title = band(card, "Club name", if buyable then .44 else .56, if buyable then .33 else .40, headline, color)
+		local cost = band(card, "Club cost", .775, .215, numberFace, color)
+		cost.Visible = buyable
+		local mark = UI.box(card, "Owner", Art.gold)
+		mark.Position, mark.Size = UDim2.fromScale(0,.44), UDim2.fromScale(.026,.56)
+		local frame = UI.box(overlay, sheet.Name)
+		frame.Size, frame.Interactable = UDim2.fromScale(1,1), false
+		local function display(source: GuiObject): GuiObject
+			local copy = source:Clone()
+			copy.Visible, copy.Parent = false, frame
+			return copy
 		end
-		local numerals
-		local glyphWidth = .5 * cost.Size.Y.Scale*sheet.CanvasSize.Y / (cost.Size.X.Scale*sheet.CanvasSize.X)
-		if buyable and digits then
-			numerals={}
-			for k=1,6 do
-				local unit=impression(cost,digits,UDim2.fromScale(0,0),UDim2.fromScale(glyphWidth,1))
-				unit.ImageRectSize=Vector2.new(32,64)
-				numerals[k]=unit
-			end
-			cost.TextTransparency=1
-		end
-		local native=UI.box(overlay,"Cell"..i)
-		native.Size=UDim2.fromScale(1,1)
-		local nameText,costText=nativeLine(native,title),nativeLine(native,cost)
-		sheets[i]={part=part,nameText=nameText,costText=costText,surface=sheet,title=title,cost=cost,mark=mark,ink=inkPrint,numerals=numerals,glyphWidth=glyphWidth}
-		refresh()
+		local nativeTitle, nativeCost = display(title), display(cost)
+		local layers = {{print=poster, native=display(poster)}, {print=title, native=nativeTitle}}
+		if buyable then table.insert(layers, {print=cost, native=nativeCost}) end
+		local entry = {part=part, surface=sheet, title=title, cost=cost, nativeTitle=nativeTitle,
+			nativeCost=nativeCost, owner=mark, layers=layers}
+		sheets[i] = entry
+		setCopy(i, entry)
 	end
 	task.spawn(function()
-		local board=workspace:WaitForChild("WorldDraftArena"):WaitForChild("Board")
+		local board = workspace:WaitForChild("WorldDraftArena"):WaitForChild("Board")
 		board.DescendantAdded:Connect(attach)
-		for _,part in board:GetDescendants() do attach(part) end
+		for _, part in board:GetDescendants() do attach(part) end
 	end)
 	return {
-		update=function(data: any) match,gates=data.match,data.gates refresh() end,
+		update=function(data)
+			match, gates = data.match, data.gates
+			refresh()
+		end,
 		translate=refresh,
 		layout=function(camera: Camera, masks: {Rect})
-			for i,entry in sheets do
-				local part=entry.part
-				local center=camera:WorldToScreenPoint(part.Position)
-				local across=camera:WorldToScreenPoint(part.Position+part.CFrame.RightVector*part.Size.X)
-				local down=camera:WorldToScreenPoint(part.Position-part.CFrame.UpVector*part.Size.Y)
-				local dx,dy=across.X-center.X,across.Y-center.Y
-				local length=math.sqrt(dx*dx+dy*dy)
-				local height=math.abs(dx*(down.Y-center.Y)-dy*(down.X-center.X))/math.max(1,length)
-				local angle=math.deg(math.atan2(dy,dx))
-				for _,pair in {{entry.nameText,entry.title},{entry.costText,entry.cost}} do
-					local glyph,original=pair[1],pair[2]
-					if glyph==entry.costText and Board.tiles[i].price==0 then continue end
-					local y=original.Position.Y.Scale + original.Size.Y.Scale*.5
-					local at=camera:WorldToScreenPoint(part.Position+part.CFrame.UpVector*part.Size.Y*(.5-y))
-					local w,h=length*.87,height*original.Size.Y.Scale
-					local x0,y0,x1,y1=at.X-w*.5,at.Y-h*.5,at.X+w*.5,at.Y+h*.5
-					local exposed=x0>=0 and y0>=0 and x1<=root.AbsoluteSize.X and y1<=root.AbsoluteSize.Y
-					if exposed then
-						for _,rect in masks do
-							if x0<rect.Max.X and x1>rect.Min.X and y0<rect.Max.Y and y1>rect.Min.Y then
-								exposed=false
-								break
-							end
-						end
+			for _, entry in sheets do
+				for _, layer in entry.layers do
+					local target = projectBand(camera, entry.part, layer.print)
+					local glyph = layer.native
+					glyph.Position = UDim2.fromOffset(target.Min.X,target.Min.Y)
+					glyph.Size = UDim2.fromOffset(target.Width,target.Height)
+					local painted = target
+					if glyph:IsA("TextLabel") and glyph.TextBounds.X > 0 then
+						local centre = (target.Min + target.Max) * .5
+						local extent = glyph.TextBounds * .5 + Vector2.one
+						painted = Rect.new(centre - extent, centre + extent)
 					end
-					glyph.Position,glyph.Size=UDim2.fromOffset(at.X,at.Y),UDim2.fromOffset(w,h)
-					glyph.Rotation,glyph.Visible=angle,exposed
-					original.Visible=not exposed
+					local exposed = true
+					for _, mask in masks do
+						if intersects(painted,mask) then exposed = false break end
+					end
+					glyph.Visible, layer.print.Visible = exposed, not exposed
 				end
 			end
 		end,
 		show=function(on: boolean)
-			visible=on
-			overlay.Visible=on
-			for _,entry in sheets do entry.surface.Enabled=on end
+			visible, overlay.Enabled = on, on
+			for _,entry in sheets do entry.surface.Enabled = on end
 		end,
 	}
 end

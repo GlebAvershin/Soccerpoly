@@ -1,61 +1,77 @@
 --!strict
+local AssetService = game:GetService("AssetService")
+local Encoding = game:GetService("EncodingService")
 local paint = require(script.Parent.ProgrammePaint)
-local decode = require(script.Parent.IndexedImage)
-local images: {[string]: EditableImage} = {}
-local unavailable: {[string]: boolean} = {}
-local Ink = Color3.fromHex
+local leagues = {"spain", "england", "germany", "italy", "france"}
+local thumbnails: {[string]: EditableImage} = {}
+local badges: {[string]: EditableImage} = {}
+local lastDetail: {key: string, background: EditableImage?}? = nil
 
--- Shirt colours used for the woven trim at the foot of each club illustration.
-local fabrics = {
-	SEV={"F1E8D5","C43D43"}, ATM={"BD3448","F1E9D7"}, FCB={"263B78","A73051"}, RMA={"EDE4CC","AA8742"},
-	ARS={"C63B39","F6EBDB"}, LIV={"9C202F","EACF91"}, MCI={"91BFD8","F6EDDD"}, MUN={"BA3033","252B39"},
-	ACM={"942C33","242A32"}, INT={"294E9D","202B36"}, JUV={"292D32","EFE6D6"}, NAP={"4D9EC4","F2E9DC"},
-	B04={"D44341","242D33"}, RBL={"F1E8DC","C63745"}, BVB={"F2C939","212B32"}, BAY={"BD3544","ECE3D2"},
-	OL={"EDE5D5","AD3440"}, OM={"EDE7D8","5DA7C6"}, ASM={"AC313C","F5EADB"}, PSG={"263C62","C54145"},
-}
+local function decode(source): EditableImage?
+	local image = AssetService:CreateEditableImage({Size = Vector2.new(source.width, source.height)})
+	if not image then return nil end
+	local compressed = Encoding:Base64Decode(buffer.fromstring(source.pixels))
+	local rgba = Encoding:DecompressBuffer(compressed, Enum.CompressionAlgorithm.Zstd)
+	image:WritePixelsBuffer(Vector2.zero, image.Size, rgba)
+	return image
+end
 
-return function(parent: Instance, tile: any): Frame
-	local key = if tile.league>0 then tile.code else tile.kind
-	local fabric = fabrics[tile.code] or {"233847","D4AC68"}
+local function loadImage(source): EditableImage?
+	local ok, image = pcall(decode, source)
+	return if ok then image else nil
+end
+
+local function ink(parent: Frame, name: string, image: EditableImage): ImageLabel
+	local picture = Instance.new("ImageLabel")
+	picture.Name, picture.BackgroundTransparency = name, 1
+	picture.Size, picture.ResampleMode = UDim2.fromScale(1, 1), Enum.ResamplerMode.Default
+	picture.ImageContent, picture.Parent = Content.fromObject(image), parent
+	return picture
+end
+
+return function(parent: Instance, tile, detail: boolean?): Frame
+	local key = if tile.league > 0 then tile.code else tile.kind
 	local rail = Instance.new("Frame")
-	rail.Name, rail.Size, rail.BorderSizePixel = "Programme illustration", UDim2.fromScale(1,1), 0
-	rail.BackgroundColor3, rail.ClipsDescendants, rail.Parent = Ink(fabric[1]), true, parent
-	if not images[key] and not unavailable[key] then
-		local ok, image = pcall(decode, paint[key])
-		if ok and image then images[key]=image else unavailable[key]=true end
+	rail.Name, rail.Size = "Programme illustration", UDim2.fromScale(1, 1)
+	rail.BackgroundColor3 = Color3.fromHex("334958")
+	rail.ClipsDescendants, rail.BorderSizePixel, rail.Parent = true, 0, parent
+
+	local region = leagues[tile.league] or key
+	local image: EditableImage?
+	if detail then
+		-- Reuse one HD panorama for clubs in the same league.
+		if not lastDetail or lastDetail.key ~= region then
+			lastDetail = {key = region, background = loadImage(paint.stadium[region])}
+		end
+		image = lastDetail and lastDetail.background
 	end
-	local image = images[key]
+	if not image then
+		if not thumbnails[region] then thumbnails[region] = loadImage(paint.board[region]) end
+		image = thumbnails[region]
+	end
 	if image then
-		local poster = Instance.new("ImageLabel")
-		poster.Name, poster.BackgroundTransparency = "Lithograph", 1
-		poster.Size, poster.ScaleType = UDim2.fromScale(1,1), Enum.ScaleType.Crop
-		poster.ImageContent, poster.Parent = Content.fromObject(image), rail
-	else
-		local shade = Instance.new("UIGradient")
-		shade.Rotation, shade.Color, shade.Parent = 33, ColorSequence.new(Ink(fabric[1]),Ink(fabric[2])), rail
-		-- A printed pitch diagram still identifies the programme if editable
-		-- images are unavailable on this device.
-		local function chalk(name, x, y, width, height, circle)
-			local field=Instance.new("Frame")
-			field.Name,field.BackgroundTransparency=name,1
-			field.Position,field.Size=UDim2.fromScale(x,y),UDim2.fromScale(width,height)
-			field.Parent=rail
-			local outline=Instance.new("UIStroke")
-			outline.Thickness,outline.Color,outline.Parent=2,Ink("FEF1D8"),field
-			if circle then
-				local curve=Instance.new("UICorner")
-				curve.CornerRadius,curve.Parent=UDim.new(.5,0),field
+		ink(rail, "Lithograph", image).ScaleType = Enum.ScaleType.Crop
+		if tile.league > 0 then
+			if not badges[key] then badges[key] = loadImage(paint.kit[key]) end
+			local badgeArt = badges[key]
+			if badgeArt then
+				local badge = ink(rail, "Embroidered kit", badgeArt)
+				badge.AnchorPoint, badge.Position = Vector2.new(.5,.5), UDim2.fromScale(.32,.5)
+				badge.SizeConstraint, badge.Size = Enum.SizeConstraint.RelativeYY, UDim2.fromScale(1,1)
 			end
 		end
-		chalk("Touchlines",.13,.16,.74,.58,false)
-		chalk("Centre circle",.43,.27,.14,.35,true)
-		chalk("Penalty area",.13,.27,.12,.36,false)
-		chalk("Penalty area",.75,.27,.12,.36,false)
-	end
-	for i=0,5 do
-		local tab = Instance.new("Frame")
-		tab.BorderSizePixel, tab.BackgroundColor3 = 0, Ink(fabric[i%2+1])
-		tab.Position, tab.Size, tab.Parent = UDim2.fromScale(i/6,.91), UDim2.fromScale(1/6+.001,.09), rail
+	else
+		-- Keep the pitch motif readable even if the device refuses an editable image.
+		local field = Instance.new("Frame")
+		field.BackgroundTransparency = 1
+		field.Size, field.Position, field.Parent = UDim2.fromScale(.75, .68), UDim2.fromScale(.125, .16), rail
+		local outline = Instance.new("UIStroke")
+		outline.Color, outline.Thickness, outline.Parent = Color3.fromHex("E7DCC2"), 2, field
+		local circle = field:Clone()
+		circle.SizeConstraint, circle.Size, circle.Position = Enum.SizeConstraint.RelativeYY, UDim2.fromScale(.56, .56), UDim2.fromScale(.5, .5)
+		circle.AnchorPoint, circle.Parent = Vector2.new(.5, .5), field
+		local corner = Instance.new("UICorner")
+		corner.CornerRadius, corner.Parent = UDim.new(.5, 0), circle
 	end
 	return rail
 end
