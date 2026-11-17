@@ -56,7 +56,12 @@ local ok, err = pcall(function()
 	local target = script:GetAttribute("Edition") or "en"
 	local picker = hud.Viewport:WaitForChild("LanguagePicker")
 	local sample = printLayer.Cell1["Printed programme"]["Club name"]
-	assert(picker.Visible and not hud.AutoLocalize)
+	assert(not picker.Visible and not hud.AutoLocalize and hud.Viewport.ChangeLanguage.Visible)
+	assert(sample.Text=="Kickoff" and hud.Viewport.MatchPanel.Phase.Text=="SELECT A FIGURE","English first launch")
+	local ground = stage["Arena surroundings"]["Stadium district"]
+	local district = ground:WaitForChild("Matchday district",8)
+	assert(district and district.Concourse.ImageContent.Object.Size==Vector2.new(1024,1024))
+	assert(not ground.CanQuery and ground.Position.Y < printLayer.Cell1.Adornee.Position.Y)
 	for _,lang in {if target=="ru" then "en" else "ru",target} do
 		if not picker.Visible then press(Enum.KeyCode.L) end
 		waitFor(function() return picker.Visible end,"language choice")
@@ -82,6 +87,7 @@ local ok, err = pcall(function()
 			assert(display.DisplayOrder<hud.DisplayOrder and display.ScreenInsets==Enum.ScreenInsets.DeviceSafeInsets)
 			local ink=display[cell.Name]["Club name"]
 			local artLayer=display[cell.Name]["Programme illustration"]
+			assert(artLayer["Ink wash"].BackgroundColor3==paper.BackgroundColor3)
 			assert(artLayer.Lithograph.ImageContent==poster.Lithograph.ImageContent)
 			assert(artLayer.Visible~=poster.Visible,"Double or missing illustration on "..cell.Name)
 			assert(ink.Text==title.Text and ink.TextScaled)

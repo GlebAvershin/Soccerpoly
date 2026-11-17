@@ -53,15 +53,16 @@ GuiService:GetPropertyChangedSignal("ReducedMotionEnabled"):Connect(function()
 	tableView.reduceMotion(reduced())
 end)
 
-local brand = UI.box(root, "Footbolapolia wordmark")
-brand.Position, brand.Size = UDim2.fromOffset(13, 8), UDim2.fromOffset(185, 28)
+local brand = UI.box(root, "Footbolapolia wordmark", colors.ink, 5)
+brand.BackgroundTransparency = .14
+brand.Position, brand.Size = UDim2.fromOffset(13, 8), UDim2.fromOffset(151, 28)
 for i = 1, 2 do
 	local slash = UI.box(brand, "Stencil stroke", colors.mint)
-	slash.Position, slash.Size = UDim2.fromOffset(3 + (i - 1) * 7, 5), UDim2.fromOffset(4, 16)
+	slash.Position, slash.Size = UDim2.fromOffset(9 + (i - 1) * 7, 5), UDim2.fromOffset(4, 16)
 	slash.Rotation = 21
 end
 local brandText = UI.label(brand, "FOOTBOLAPOLIA", 16, {font = BLACK, color = colors.text, ellipsis = true})
-brandText.Position, brandText.Size = UDim2.fromOffset(20, 0), UDim2.new(1, -20, 1, 0)
+brandText.Position, brandText.Size = UDim2.fromOffset(25, 0), UDim2.new(1, -27, 1, 0)
 local scores = UI.box(root, "Scoreboard", colors.ink, 6)
 scores.AnchorPoint, scores.Position = Vector2.new(.5, 0), UDim2.new(.5, 0, 0, 10)
 UI.stroke(scores, colors.outline)
@@ -168,11 +169,6 @@ local function chooseLanguage(lang: string, manual: boolean)
 	render()
 end
 picker = require(script.Parent.LanguagePicker)(root,function(lang) chooseLanguage(lang,true) end)
-picker.Visible = Player:GetAttribute("TableLanguage") == nil
-Player:GetAttributeChangedSignal("TableLanguage"):Connect(function()
-	local saved = Player:GetAttribute("TableLanguage")
-	if languageRevision == 0 and (saved == "ru" or saved == "en") then chooseLanguage(saved,false) end
-end)
 local languageButton = UI.button(root,"ChangeLanguage","",40,function() picker.Visible=true end,colors.panel)
 languageButton.AnchorPoint,languageButton.Position,languageButton.Size = Vector2.new(1,0),UDim2.new(1,-12,0,6),UDim2.fromOffset(106,40)
 
@@ -1030,6 +1026,15 @@ snapshots.OnClientEvent:Connect(function(data)
 		reveal()
 	end)
 end)
+
+local function restoreLanguage()
+	local saved = Player:GetAttribute("TableLanguage")
+	if languageRevision == 0 and (saved == "ru" or saved == "en") and russian ~= (saved == "ru") then
+		chooseLanguage(saved,false)
+	end
+end
+Player:GetAttributeChangedSignal("TableLanguage"):Connect(restoreLanguage)
+restoreLanguage()
 
 repeat
 	intent:FireServer("sync")

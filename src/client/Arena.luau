@@ -131,6 +131,7 @@ function Arena.new(myId: number, root: Frame, translate: (string) -> string, pla
 		local stage = workspace:WaitForChild("WorldDraftArena", 12)
 		if not stage then return end
 		Meshes.decorate(stage)
+		require(script.Parent.StadiumDistrict)(stage:WaitForChild("Arena surroundings"):WaitForChild("Stadium district"))
 		local ribbon = stage:FindFirstChild("Live stadium ribbon", true)
 		local message = ribbon and ribbon:FindFirstChild("Message", true)
 		if message and message:IsA("TextLabel") then ribbonText = message end

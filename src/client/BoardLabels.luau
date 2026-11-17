@@ -4,8 +4,9 @@ local Board = require(shared.TourBoard)
 local Art = require(shared.Presentation)
 local illustrate = require(script.Parent.Programme)
 local UI = require(script.Parent.Components)
+local style = require(script.Parent.ProgrammeStyle)
 local headline = Font.new("rbxasset://fonts/families/Montserrat.json", Enum.FontWeight.Bold)
-local numberFace = Font.new("rbxasset://fonts/families/BuilderMono.json", Enum.FontWeight.Medium)
+local numberFace = Font.new("rbxasset://fonts/families/BuilderMono.json", Enum.FontWeight.SemiBold)
 local names = {
 	SEV={"Sevilla","Севилья"}, ATM={"Atlético","Атлетико"}, FCB={"Barça","Барса"}, RMA={"Real Madrid","Реал"},
 	ARS={"Arsenal","Арсенал"}, LIV={"Liverpool","Ливерпуль"}, MCI={"Man City","Ман Сити"}, MUN={"Man Utd","МЮ"},
@@ -101,14 +102,21 @@ return function(root: Frame, translate: (string)->string)
 		sheet.SizingMode = Enum.SurfaceGuiSizingMode.FixedSize
 		sheet.CanvasSize = Vector2.new(math.round(part.Size.X*22), math.round(part.Size.Y*22))
 		sheet.MaxDistance, sheet.Enabled, sheet.Parent = 12000, visible, group
-		local card = UI.box(sheet, "Printed programme", Color3.fromHex(if buyable then "FCF6E8" else "213542"))
+		local card = UI.box(sheet, "Printed programme", style.ink(tile))
 		card.Size, card.ClipsDescendants = UDim2.fromScale(1,1), true
 		local poster = illustrate(card,tile)
-		poster.Size = UDim2.fromScale(1, if buyable then .43 else .55)
-		local color = Color3.fromHex(if buyable then "172B3B" else "FFF0CE")
-		local title = band(card, "Club name", if buyable then .44 else .56, if buyable then .33 else .40, headline, color)
-		local cost = band(card, "Club cost", .775, .215, numberFace, color)
+		poster.Size = UDim2.fromScale(1, if buyable then .45 else .55)
+		local color = style.title
+		local title = band(card, "Club name", if buyable then .45 else .55, if buyable then .32 else .40, headline, color)
+		local cost = band(card, "Club cost", .775, .21, numberFace, style.price)
 		cost.Visible = buyable
+		if buyable then
+			for _, x in {.105,.685} do
+				local rule = UI.box(card, "Price rule", style.price)
+				rule.Position, rule.Size = UDim2.fromScale(x,.88), UDim2.fromScale(.21,.015)
+				rule.BackgroundTransparency = .62
+			end
+		end
 		local mark = UI.box(card, "Owner", Art.gold)
 		mark.Position, mark.Size = UDim2.fromScale(0,.44), UDim2.fromScale(.026,.56)
 		local frame = UI.box(overlay, sheet.Name)

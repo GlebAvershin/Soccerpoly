@@ -1,25 +1,11 @@
 --!strict
-local AssetService = game:GetService("AssetService")
-local Encoding = game:GetService("EncodingService")
+local loadImage = require(script.Parent.PrintTexture)
+local style = require(script.Parent.ProgrammeStyle)
 local paint = require(script.Parent.ProgrammePaint)
 local leagues = {"spain", "england", "germany", "italy", "france"}
 local thumbnails: {[string]: EditableImage} = {}
 local badges: {[string]: EditableImage} = {}
 local lastDetail: {key: string, background: EditableImage?}? = nil
-
-local function decode(source): EditableImage?
-	local image = AssetService:CreateEditableImage({Size = Vector2.new(source.width, source.height)})
-	if not image then return nil end
-	local compressed = Encoding:Base64Decode(buffer.fromstring(source.pixels))
-	local rgba = Encoding:DecompressBuffer(compressed, Enum.CompressionAlgorithm.Zstd)
-	image:WritePixelsBuffer(Vector2.zero, image.Size, rgba)
-	return image
-end
-
-local function loadImage(source): EditableImage?
-	local ok, image = pcall(decode, source)
-	return if ok then image else nil
-end
 
 local function ink(parent: Frame, name: string, image: EditableImage): ImageLabel
 	local picture = Instance.new("ImageLabel")
@@ -73,5 +59,11 @@ return function(parent: Instance, tile, detail: boolean?): Frame
 		local corner = Instance.new("UICorner")
 		corner.CornerRadius, corner.Parent = UDim.new(.5, 0), circle
 	end
+	local fade = Instance.new("Frame")
+	fade.Name, fade.BorderSizePixel, fade.BackgroundColor3 = "Ink wash", 0, style.ink(tile)
+	fade.Position, fade.Size = UDim2.fromScale(0,.66), UDim2.fromScale(1,.34)
+	fade.ZIndex, fade.Parent = 2, rail
+	local wash = Instance.new("UIGradient")
+	wash.Rotation, wash.Transparency, wash.Parent = 90, NumberSequence.new(1,0), fade
 	return rail
 end

@@ -116,13 +116,15 @@ local function surroundings(stage: Folder)
 	gradient.Rotation = 25
 	gradient.Color = ColorSequence.new({
 		ColorSequenceKeypoint.new(0, C("121421")),
-		ColorSequenceKeypoint.new(.39, C("1D1C30")),
-		ColorSequenceKeypoint.new(.53, C("302D47")),
-		ColorSequenceKeypoint.new(.68, C("242339")),
+		ColorSequenceKeypoint.new(.39, C("182B32")),
+		ColorSequenceKeypoint.new(.53, C("1A2C34")),
+		ColorSequenceKeypoint.new(.68, C("1C3035")),
 		ColorSequenceKeypoint.new(1, C("141726")),
 	})
 	gradient.Parent = fill
-	local pad = plate(scene, "Arena ground shadow", 0, -7.65, 0, 159, .18, 159, C("171926"))
+	local district = plate(scene, "Stadium district", 0, -8.02, 0, 270, .08, 270, C("192C34"))
+	district.CastShadow = false
+	local pad = plate(scene, "Arena ground shadow", 0, -7.65, 0, 146, .18, 146, C("171926"))
 	pad.CastShadow = false
 	pad.Transparency = .25
 
@@ -130,9 +132,11 @@ local function surroundings(stage: Folder)
 		mesh(scene, "North terrace", "night_stand", Vector3.new(26, 7.2, 10.8),
 			CFrame.new(x, 1.25, -69.3) * CFrame.Angles(0, math.pi, 0)).CastShadow = false
 	end
-	for _, z in {-41, -13, 15} do
-		mesh(scene, "West terrace", "night_stand", Vector3.new(26, 6.2, 10.6),
-			CFrame.new(-69.8, .65, z) * CFrame.Angles(0, -math.pi * .5, 0)).CastShadow = false
+	for _, side in {-1,1} do
+		for _, z in {-42,-14,14,42} do
+			mesh(scene, if side < 0 then "West terrace" else "East terrace", "night_stand", Vector3.new(26,6.2,10.6),
+				CFrame.new(side*69.8,.65,z) * CFrame.Angles(0,side*math.pi*.5,0)).CastShadow = false
+		end
 	end
 	for _, x in {-66.0, 66.0} do
 		mesh(scene, "Floodlight tower", "lights", Vector3.new(7.8, 14.7, 5.0), CFrame.new(x, 4.35, -68.5)).CastShadow = false

@@ -1,5 +1,4 @@
 --!strict
-local GuiService = game:GetService("GuiService")
 local shared = game:GetService("ReplicatedStorage"):WaitForChild("League")
 local Board = require(shared.TourBoard)
 local Art = require(shared.Presentation)
@@ -10,9 +9,7 @@ local colors = UI.color
 local INK = Art.ink
 local CENTER = Enum.TextXAlignment.Center
 local BOLD = Enum.Font.BuilderSansBold
-local paperColor = C("FBF6EA")
-local paperInk = C("152D3C")
-local ruled = C("ECE7DA")
+local style = require(script.Parent.ProgrammeStyle)
 local headingFace = Font.new("rbxasset://fonts/families/Montserrat.json", Enum.FontWeight.Bold)
 local figuresFace = Font.new("rbxasset://fonts/families/BuilderMono.json", Enum.FontWeight.Medium)
 
@@ -36,8 +33,8 @@ end
 
 local function illustration(parent: Instance, index: number, height: number)
 	local tile = Board.tiles[index]
-	local backing = UI.box(parent, "Illustration", Color3.new(1, 1, 1))
-	backing.Position, backing.Size = UDim2.fromOffset(12, 39), UDim2.new(1, -24, 0, height)
+	local backing = UI.box(parent, "Illustration", style.ink(tile))
+	backing.Position, backing.Size = UDim2.fromOffset(0, 37), UDim2.new(1, 0, 0, height + 2)
 	illustrate(backing, tile, true)
 end
 
@@ -52,8 +49,12 @@ function Card.new(root: Frame)
 	local shade = UI.button(root, "PropertyBackdrop", "", 1, nil, colors.background)
 	shade.BorderSizePixel, shade.BackgroundTransparency, shade.AutoButtonColor = 0, .28, false
 	shade.Active, shade.Modal, shade.Visible, shade.ZIndex = true, true, false, 12
-	local top = GuiService:GetGuiInset().Y
-	shade.Position, shade.Size = UDim2.fromOffset(0, -top), UDim2.new(1, 0, 1, top)
+	shade.Size = UDim2.fromScale(1,1)
+	-- Keep controls within the safe area while dimming the district behind the top bar.
+	shade.BackgroundTransparency = 1
+	local scrim = UI.box(shade, "District scrim", colors.background)
+	scrim.BackgroundTransparency, scrim.ZIndex = .28, 0
+	scrim.Position, scrim.Size = UDim2.fromScale(-1,-1), UDim2.fromScale(3,3)
 	for _, child in shade:GetChildren() do if child:IsA("UICorner") then child:Destroy() end end
 	local wrapper = UI.box(shade, "PropertyCard")
 	wrapper.Position, wrapper.AnchorPoint = UDim2.fromScale(.5, .51), Vector2.new(.5, .5)
@@ -77,10 +78,12 @@ function Card.new(root: Frame)
 			local height = 284 + optionsHeight + extraArt
 			wrapper.Size = UDim2.new(.90, 0, 0, height)
 			limit.MaxSize = Vector2.new(452, height)
-			local paper = UI.box(wrapper, "Club dossier", paperColor, 7)
-			paper.Size = UDim2.fromScale(1, 1)
-			UI.stroke(paper, C("AA9D84"))
 			local tile = Board.tiles[info.index]
+			local bodyInk = style.ink(tile)
+			local ruled = bodyInk:Lerp(style.title, .09)
+			local paper = UI.box(wrapper, "Club dossier", bodyInk, 7)
+			paper.Size = UDim2.fromScale(1, 1)
+			UI.stroke(paper, bodyInk:Lerp(style.price,.47))
 			local league = Art.accent(tile.kind, tile.league)
 			local header = UI.box(paper, "Club header", colors.ink, 6)
 			header.Position, header.Size = UDim2.fromOffset(0, 0), UDim2.new(1, 0, 0, 37)
@@ -95,14 +98,14 @@ function Card.new(root: Frame)
 			exit.Position, exit.Size = UDim2.new(1, -39, 0, 0), UDim2.fromOffset(39, 33)
 			for _, child in exit:GetChildren() do if child:IsA("UIStroke") then child:Destroy() end end
 			illustration(paper, info.index, 127 + extraArt)
-			local summary = text(paper, info.summary, 30, 169 + extraArt, 16, paperInk)
-			summary.Font = Enum.Font.BuilderSansBold
+			local summary = text(paper, info.summary, 30, 169 + extraArt, 16, style.title)
+			summary.FontFace = headingFace
 			if options then
 				local function row(y: number, cells: {string}, fill: Color3, heading: boolean, selected: boolean?)
 					local columns = UI.box(paper, "Prices", fill)
 					columns.Position, columns.Size = UDim2.fromOffset(13, y), UDim2.new(1, -26, 0, 26)
 					for i, cell in cells do
-						local label = text(columns, cell, 25, 0, 14, if heading then colors.text else paperInk)
+						local label = text(columns, cell, 25, 0, 14, if selected then colors.ink elseif heading then style.price else style.title)
 						label.Position, label.Size = UDim2.fromScale((i - 1) / #cells, 0), UDim2.fromScale(1 / #cells, 1)
 						if i > 1 and not heading then label.FontFace = figuresFace else label.Font = BOLD end
 					end
@@ -110,7 +113,7 @@ function Card.new(root: Frame)
 				end
 				row(200 + extraArt, info.columns or {}, colors.ink, true)
 				for i, item in options do
-					local fill = if item.highlighted then C("DBEBB7") elseif i % 2 == 0 then ruled else paperColor
+					local fill = if item.highlighted then C("DBEBB7") elseif i % 2 == 0 then ruled else bodyInk
 					local columns = row(226 + extraArt + (i - 1) * 28, item.cells, fill, false, item.highlighted)
 					if item.press then
 						local button = UI.button(columns, "ChooseLevel" .. i, "", 26, item.press, fill)
@@ -126,7 +129,7 @@ function Card.new(root: Frame)
 				local accept = Card.button(paper, info.actionName, info.actionLabel, info.action, true)
 				accept.Position, accept.Size = UDim2.new(.40, 8, 0, 207 + extraArt + optionsHeight), UDim2.new(.60, -23, 0, 39)
 			end
-			text(paper, info.footer, 26, 251 + extraArt + optionsHeight, 14, C("435662"))
+			text(paper, info.footer, 26, 251 + extraArt + optionsHeight, 14, C("D4DEDA"))
 			limit.Parent, scale.Parent = wrapper, wrapper
 			shade.Visible = true
 			fit()
