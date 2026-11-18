@@ -9,7 +9,7 @@ from mathutils import Vector
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from blender_export import ROOT
 
-PROPS = ("stand", "goal", "tunnel", "arena", "cup", "ball")
+PROPS = ("club_flag", "academy", "arena", "megastadium", "night_stand", "lights")
 
 
 def linear(channel):
@@ -72,7 +72,7 @@ for index, name in enumerate(PROPS):
     edge = max(high - low)
     scale = (2.45 if name in ("cup", "ball") else 3.22) / edge
     obj.scale = (scale,) * 3
-    obj.rotation_euler.z = pi if name in ("stand", "tunnel") else 0
+    obj.rotation_euler.z = pi if name in ("stand", "tunnel", "night_stand") else 0
     mid = (high + low) / 2
     obj.location = at + Vector((0, 0, .32 - low.z * scale)) - obj.rotation_euler.to_matrix() @ Vector((mid.x, mid.y, 0)) * scale
 

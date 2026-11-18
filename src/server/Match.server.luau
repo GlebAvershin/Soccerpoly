@@ -12,6 +12,7 @@ local Rules = require(Shared.Rules)
 local Game = Rules.withBoard(Board, Edition)
 local Telemetry = require(script.Parent.Telemetry)
 local buildWorld = require(script.Parent.World)
+local CareerStore = require(script.Parent.CareerStore)
 Players.CharacterAutoLoads = false
 local rng = Random.new()
 local function nextInteger(a: number, b: number): number return rng:NextInteger(a, b) end
@@ -272,6 +273,10 @@ local function action(s: Rules.Match, verb: string, player: Player?, index: numb
 		if previousPhase == "offer" and verb == "buy" then
 			local tile = Board.tiles[seat.position]
 			Telemetry.event(player, if tile.league > 0 then "ClubSigned_v1" else "AssetSigned_v1", -s.last.amount, mode, variant)
+			CareerStore.addQuestProgress(player.UserId, "sign", 1)
+		end
+		if previousPhase == "upgrade" and verb == "upgrade" then
+			CareerStore.addQuestProgress(player.UserId, "upgrade", 1)
 		end
 		if previousPhase == "matchday" then
 			Telemetry.event(player, "MatchdayResolved_v1", 1, mode, variant, s.last.kind)
@@ -287,10 +292,12 @@ local function action(s: Rules.Match, verb: string, player: Player?, index: numb
 			local tile = Board.tiles[s.last.tile]
 			Telemetry.event(winner, if tile.league > 0 then "ClubSigned_v1" else "AssetSigned_v1", -s.last.amount, mode, variant)
 			Telemetry.event(winner, "AuctionWon_v1", -s.last.amount, mode, variant)
+			CareerStore.addQuestProgress(winner.UserId, "sign", 1)
 			if s.last.kind == "auctionLeague" then Telemetry.event(winner, "LeagueCompleted_v1", 1, mode, variant) end
 		end
 	end
 	if s.phase == "final" then
+		local winnerId = s.winner or (s.standings and s.standings[1] and s.standings[1].id)
 		for _, attendee in s.seats do
 			local p = if attendee.bot then nil else Players:GetPlayerByUserId(attendee.id)
 			if p then
@@ -298,6 +305,10 @@ local function action(s: Rules.Match, verb: string, player: Player?, index: numb
 				if funnel then funnel.completed += 1 end
 				step(p, 4, "Season finished")
 				Telemetry.event(p, "SeasonFinished_v1", math.floor(os.clock() - startedAt), mode, variant, Board.id)
+				local isWinner = attendee.id == winnerId
+				local userCash = attendee.cash or 0
+				CareerStore.recordMatchResult(p.UserId, isWinner, userCash)
+				CareerStore.addQuestProgress(p.UserId, "match", 1)
 			end
 		end
 	end
@@ -391,6 +402,7 @@ end)
 
 buildWorld()
 require(script.Parent.LanguagePreference)(network)
+CareerStore.init(network)
 network.Parent = ReplicatedStorage
 Players.PlayerAdded:Connect(joined)
 Players.PlayerRemoving:Connect(function(player)

@@ -79,10 +79,12 @@ def export_shapes(models, target, include_bounds=False):
             palette = {}
             vertex_colors = [1] * len(positions)
             for loop in mesh.loops:
-                u,v = painted.data[loop.index].uv
-                sample = np.clip(np.rint(rgb[int((v % 1)*(height-1)), int((u % 1)*(width-1))]*63)*4,0,255)
-                r,g,b = map(int,sample)
-                vertex_colors[loop.vertex_index] = palette.setdefault((r<<16)+(g<<8)+b,len(palette)+1)
+                u, v = painted.data[loop.index].uv
+                u_clamped = max(0.0, min(1.0, u))
+                v_clamped = max(0.0, min(1.0, v))
+                sample = np.clip(np.rint(rgb[int(v_clamped * (height - 1)), int(u_clamped * (width - 1))] * 63) * 4, 0, 255)
+                r, g, b = map(int, sample)
+                vertex_colors[loop.vertex_index] = palette.setdefault((r << 16) + (g << 8) + b, len(palette) + 1)
             colors = list(palette)
         for mat in (() if pigment or painted else mesh.materials):
             rgba = [round(255 * channel) for channel in mat.diffuse_color]
@@ -92,8 +94,10 @@ def export_shapes(models, target, include_bounds=False):
             for loop in tri.loops:
                 if painted:
                     u, v = painted.data[loop].uv
-                    key = (round(u * 10000), round((1 - v) * 10000))
-                    uv_corners.append(uv_ids.setdefault(key, len(uv_ids)+1))
+                    u_clamped = max(0.0, min(1.0, u))
+                    v_clamped = max(0.0, min(1.0, v))
+                    key = (round(u_clamped * 10000), round((1 - v_clamped) * 10000))
+                    uv_corners.append(uv_ids.setdefault(key, len(uv_ids) + 1))
                 normal = studio(mesh.corner_normals[loop].vector)
                 normal = tuple(round(v * 10000) for v in normal)
                 normal_ids.append(normals.setdefault(normal, len(normals) + 1))

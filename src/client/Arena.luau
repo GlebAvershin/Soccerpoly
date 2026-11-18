@@ -4,6 +4,7 @@ local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local Debris = game:GetService("Debris")
 local GuiService = game:GetService("GuiService")
+local UserInputService = game:GetService("UserInputService")
 
 local shared = ReplicatedStorage:WaitForChild("League")
 local Board = require(shared.TourBoard)
@@ -15,6 +16,7 @@ local Meshes = require(script.Parent.MeshLibrary)
 local rollDice = require(script.Parent.TableDice)
 local BoardLabels = require(script.Parent.BoardLabels)
 local MatchdayReplay = require(script.Parent.MatchdayReplay)
+local UI = require(script.Parent.Components)
 local Arena = {}
 local TAU = math.pi * 2
 local C = Color3.fromHex
@@ -57,14 +59,15 @@ local function settled(point: Vector3): CFrame
 	return CFrame.new(point) * CFrame.Angles(0, math.rad(19), 0)
 end
 
-local function decorated(parent: Instance, name: string, shape: string, size: Vector3, at: Vector3, fallback: Instance)
+local function decorated(parent: Instance, name: string, shape: string, size: Vector3, at: Vector3, fallback: Instance, pop: boolean?)
 	local marker = part(parent, name, size, at, Color3.new(1, 1, 1))
 	marker.Transparency = 1
 	marker:SetAttribute("MeshPlaceholder", true)
+	if pop then marker:SetAttribute("PopIn", true) end
 	Meshes.apply(shape, marker, {fallback})
 end
 
-local function clubStadium(parent: Folder, p: Vector3, level: number, color: Color3, index: number)
+local function clubStadium(parent: Folder, p: Vector3, level: number, color: Color3, index: number, pop: boolean?)
 	local inside = CFrame.Angles(0, Geometry.tileYaw(index), 0):VectorToWorldSpace(Vector3.new(0, 0, -4))
 	local x, z = p.X + inside.X, p.Z + inside.Z
 	local fallback = Instance.new("Folder")
@@ -72,17 +75,50 @@ local function clubStadium(parent: Folder, p: Vector3, level: number, color: Col
 	local function stadiumPart(name: string, width: number, height: number, depth: number, px: number, y: number, pz: number, tint: Color3)
 		return part(fallback, name, Vector3.new(width, height, depth), Vector3.new(px, y, pz), tint)
 	end
-	stadiumPart("Stadium foundations", 2.83, .31, 2.58, x, .86, z, Art.ink)
-	stadiumPart("Stadium pitch", 2.62, .12, 2.38, x, 1.06, z, Art.field)
-	stadiumPart("Halfway line", .05, .04, 1.98, x, 1.14, z, Art.paper)
-	for _, side in {-1, 1} do
-		local px = x + side * 1.18
-		stadiumPart("Terrace", .45, .22 + level * .26, 2.40, px, 1.22, z, color)
-		if level >= 2 then stadiumPart("Stadium canopy", .65, .13, 2.60, px, 1.79, z, Art.paper) end
+	-- Team-colored glowing ownership plinth beneath every club build for instant visual ownership read
+	local teamBase = part(parent, "Club team plinth", Vector3.new(3.9 + .22 * level, .10, 3.3 + .18 * level),
+		Vector3.new(x, Art.tileTop + .05, z), color)
+	teamBase.Material = Enum.Material.SmoothPlastic
+	local shape, dims, height: number
+	if level == 0 then
+		shape = "club_flag"
+		height = 2.15
+		dims = Vector3.new(2.55, height, 2.12)
+		stadiumPart("Flag plinth", 2.35, .26, 1.95, x, Art.tileTop + .18, z, Art.ink)
+		stadiumPart("Flag pole", .14, 1.85, .14, x - .4, Art.tileTop + 1.05, z, Art.paper)
+		stadiumPart("Flag pennant", 1.15, .56, .10, x + .18, Art.tileTop + 1.65, z, color)
+	elseif level == 1 then
+		shape = "academy"
+		height = 1.48
+		dims = Vector3.new(3.65, height, 3.00)
+		stadiumPart("Stadium foundations", 3.1, .31, 2.6, x, .86, z, Art.ink)
+		stadiumPart("Stadium pitch", 2.6, .12, 2.2, x, 1.06, z, Art.field)
+		for _, side in {-1, 1} do
+			stadiumPart("Terrace", .48, .50, 2.40, x + side * 1.22, 1.24, z, color)
+		end
+	elseif level == 2 then
+		shape = "arena"
+		height = 1.82
+		dims = Vector3.new(4.15, height, 3.45)
+		stadiumPart("Stadium foundations", 3.4, .31, 2.9, x, .86, z, Art.ink)
+		stadiumPart("Stadium pitch", 2.6, .12, 2.4, x, 1.06, z, Art.field)
+		for _, side in {-1, 1} do
+			local px = x + side * 1.32
+			stadiumPart("Terrace", .55, .78, 2.60, px, 1.35, z, color)
+			stadiumPart("Stadium canopy", .75, .16, 2.75, px, 1.86, z, Art.paper)
+		end
+	else
+		shape = "megastadium"
+		height = 2.62
+		dims = Vector3.new(4.65, height, 3.92)
+		stadiumPart("Stadium foundations", 3.9, .36, 3.3, x, .88, z, Art.ink)
+		stadiumPart("Stadium pitch", 2.6, .12, 2.2, x, 1.08, z, Art.field)
+		for _, side in {-1, 1} do
+			stadiumPart("Bowl wall", .62, 1.25, 3.10, x + side * 1.48, 1.56, z, color)
+			stadiumPart("Bowl roof", .92, .18, 3.25, x + side * 1.32, 2.28, z, Art.paper)
+		end
 	end
-	local height = if level >= 2 then 1.31 else .79
-	decorated(parent, "Club stadium", if level >= 2 then "arena" else "academy",
-		Vector3.new(3.7 + .45 * level, height + .33 * level, 3.56), Vector3.new(x, Art.tileTop + height * .5, z), fallback)
+	decorated(parent, "Club stadium", shape, dims, Vector3.new(x, Art.tileTop + height * .5 + .06, z), fallback, pop)
 end
 
 local function trophy(parent: Folder, at: Vector3, color: Color3)
@@ -124,6 +160,7 @@ local function routeAt(route: {Vector3}, progress: number): Vector3
 end
 
 function Arena.new(myId: number, root: Frame, translate: (string) -> string, playSound: (string) -> ())
+	local localPlayer = game:GetService("Players").LocalPlayer
 	local labels = BoardLabels(root, translate)
 	local ribbonText: TextLabel? = nil
 	local ribbonVersion = 0
@@ -145,26 +182,31 @@ function Arena.new(myId: number, root: Frame, translate: (string) -> string, pla
 	markers.Name, markers.Parent = "Markers", localParts
 	local effects = Instance.new("Folder")
 	effects.Name, effects.Parent = "Motion effects", localParts
-	local outline = Instance.new("Highlight")
-	outline.Name, outline.DepthMode = "Active kit outline", Enum.HighlightDepthMode.Occluded
-	outline.FillTransparency, outline.OutlineTransparency, outline.OutlineColor = 1,.25,Art.paper
-	outline.Enabled, outline.Parent = false, localParts
+	-- Sleek glowing team-colored turn aura pedestal instead of jagged pixel Highlight outlines
+	local turnAura = medallion(localParts, "Active turn aura", Vector3.new(0, -50, 0), 4.0, .045, Art.mint)
+	turnAura.Material, turnAura.Transparency = Enum.Material.Neon, 1
+	local turnAuraRing = medallion(localParts, "Active turn ring", Vector3.new(0, -50, 0), 4.8, .03, Art.ink)
+	turnAuraRing.Transparency = 1
 	local replay = MatchdayReplay(effects, playSound)
 	local replaying = false
 
 	local models: {[number]: Model} = {}
 	local activeId = 0
+	local activeTeamColor = Art.mint
 	local cheerId, cheerUntil = 0, 0
-	local idleTick = -1
+	local lastMatchState: any = nil
+	local lastFinalConfetti = 0
+	local celebrate: (number, boolean) -> ()
 	local previews: {Model} = {}
 	local heroModel: Model? = nil
 	local portraitModel: Model? = nil
-	local lastPortraitPose = -1
 	local heroFigure = 0
-	local lastIdlePose = -1
 	local serial, lastMotion, lastRoll = -1, 0, 0
 	local signature = ""
+	local prevLevels: {[number]: number} = {}
 	local activeFlight: Flight? = nil
+	type Warp = {model: Model, start: number, origin: Vector3, destination: Vector3, color: Color3}
+	local activeWarp: Warp? = nil
 	local reduced = GuiService.ReducedMotionEnabled
 	local oldSize: Vector2? = nil
 	local oldRoot: Vector2? = nil
@@ -179,6 +221,119 @@ function Arena.new(myId: number, root: Frame, translate: (string) -> string, pla
 	local boardPose: CFrame? = nil
 	local lastInkPose: CFrame? = nil
 	local lastInkTime = 0
+
+	local userYaw, userPitch, userZoom = 0, 0, 1.0
+	local targetYaw, targetPitch, targetZoom = 0, 0, 1.0
+	local isDragging = false
+	local dragStartPos = Vector2.zero
+
+	UserInputService.InputBegan:Connect(function(input, gameProcessed)
+		if gameProcessed then return end
+		if input.UserInputType == Enum.UserInputType.MouseButton2 or input.UserInputType == Enum.UserInputType.Touch then
+			isDragging = true
+			dragStartPos = Vector2.new(input.Position.X, input.Position.Y)
+		end
+	end)
+
+	UserInputService.InputEnded:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton2 or input.UserInputType == Enum.UserInputType.Touch then
+			isDragging = false
+		end
+	end)
+
+	UserInputService.InputChanged:Connect(function(input, gameProcessed)
+		if isDragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+			local currentPos = Vector2.new(input.Position.X, input.Position.Y)
+			local delta = currentPos - dragStartPos
+			dragStartPos = currentPos
+			targetYaw += delta.X * 0.0055
+			targetPitch = math.clamp(targetPitch + delta.Y * 0.0045, -0.28, 0.40)
+		elseif not gameProcessed and input.UserInputType == Enum.UserInputType.MouseWheel then
+			targetZoom = math.clamp(targetZoom - input.Position.Z * 0.08, 0.65, 1.45)
+		end
+	end)
+
+	local EMOTE_MAP: {[string]: {icon: string, label: string}} = {
+		goal = {icon = "⚽", label = "GOAL!"},
+		fire = {icon = "🔥", label = "ON FIRE!"},
+		trophy = {icon = "🏆", label = "CHAMPION!"},
+		gg = {icon = "👏", label = "RESPECT!"},
+		shock = {icon = "😱", label = "UNBELIEVABLE!"},
+		laugh = {icon = "😂", label = "LOL!"},
+	}
+
+	local function showPawnEmote(userId: number, emoteId: string)
+		local model = models[userId]
+		if not model then return end
+		local info = EMOTE_MAP[emoteId] or {icon = "⚽", label = "LET'S GO!"}
+		local head = model:FindFirstChild("Head") or model.PrimaryPart
+		local headPos = if head and head:IsA("BasePart") then head.Position else model:GetPivot().Position
+
+		local bubbleAtt = Instance.new("Attachment")
+		bubbleAtt.Position = headPos + Vector3.new(0, 3.2, 0)
+		bubbleAtt.Parent = workspace.Terrain
+
+		local bb = Instance.new("BillboardGui")
+		bb.Name = "PawnEmoteBubble"
+		bb.Size = UDim2.fromOffset(140, 44)
+		bb.StudsOffset = Vector3.new(0, 0.4, 0)
+		bb.AlwaysOnTop = true
+		bb.MaxDistance = 160
+		bb.Adornee = bubbleAtt
+		bb.Parent = bubbleAtt
+
+		local pill = Instance.new("Frame")
+		pill.Size = UDim2.fromScale(1, 1)
+		pill.BackgroundColor3 = Color3.fromHex("121820")
+		pill.BorderSizePixel = 0
+		pill.Parent = bb
+		local corner = Instance.new("UICorner")
+		corner.CornerRadius = UDim.new(0, 10)
+		corner.Parent = pill
+		local stroke = Instance.new("UIStroke")
+		stroke.Color = Art.gold
+		stroke.Thickness = 2
+		stroke.Parent = pill
+
+		local label = Instance.new("TextLabel")
+		label.Size = UDim2.fromScale(1, 1)
+		label.BackgroundTransparency = 1
+		label.Text = info.icon .. " " .. info.label
+		label.TextColor3 = Color3.new(1, 1, 1)
+		label.Font = Enum.Font.BuilderSansExtraBold
+		label.TextSize = 18
+		label.Parent = pill
+
+		playSound("select")
+
+		task.spawn(function()
+			local start = os.clock()
+			while os.clock() - start < 2.2 do
+				local elapsed = os.clock() - start
+				local t = elapsed / 2.2
+				local curPos = if head and head:IsA("BasePart") and head.Parent then head.Position else headPos
+				bubbleAtt.Position = curPos + Vector3.new(0, 3.2 + math.sin(t * math.pi) * 0.35 + t * 0.7, 0)
+				if t > 0.75 then
+					local alpha = (t - 0.75) / 0.25
+					pill.BackgroundTransparency = alpha
+					stroke.Transparency = alpha
+					label.TextTransparency = alpha
+				end
+				RunService.RenderStepped:Wait()
+			end
+			bubbleAtt:Destroy()
+		end)
+	end
+
+	task.spawn(function()
+		local wd = ReplicatedStorage:WaitForChild("WorldDraft", 8)
+		local emoteNet = if wd then wd:WaitForChild("EmoteAction", 8) :: RemoteEvent? else nil
+		if emoteNet and emoteNet:IsA("RemoteEvent") then
+			emoteNet.OnClientEvent:Connect(function(userId, emoteId)
+				showPawnEmote(userId, emoteId)
+			end)
+		end
+	end)
 
 	local function finishFlight()
 		local flight = activeFlight
@@ -239,9 +394,13 @@ function Arena.new(myId: number, root: Frame, translate: (string) -> string, pla
 	end
 
 	local function focusedBoard(): CFrame?
+		if lastMatchState and lastMatchState.phase == "final" then
+			local target = Vector3.new(0, Art.tileTop + 3.0, 0)
+			return CFrame.lookAt(target + focusOrbit * (focusDistance * 1.12), target)
+		end
 		local flight = activeFlight
 		local pawn = if flight then flight.model else models[activeId]
-		if not (portraitCamera and followTurn and pawn) then return nil end
+		if not (followTurn and pawn) then return nil end
 		local at = pawn:GetPivot().Position
 		if flight then
 			local progress = (os.clock()-flight.start-PREP)/STEP
@@ -283,6 +442,41 @@ function Arena.new(myId: number, root: Frame, translate: (string) -> string, pla
 		end
 	end
 
+	local function spawnUpgradeEffect(parent: Folder, p: Vector3, color: Color3)
+		local emitterAtt = Instance.new("Attachment")
+		emitterAtt.Position = Vector3.new(p.X, Art.tileTop + 1.2, p.Z)
+		emitterAtt.Parent = parent
+
+		local sparks = Instance.new("ParticleEmitter")
+		sparks.Name = "BuildSparks"
+		sparks.Color = ColorSequence.new({
+			ColorSequenceKeypoint.new(0, Art.gold),
+			ColorSequenceKeypoint.new(0.5, color),
+			ColorSequenceKeypoint.new(1, Color3.new(1, 1, 1)),
+		})
+		sparks.Size = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 0.4),
+			NumberSequenceKeypoint.new(0.6, 0.7),
+			NumberSequenceKeypoint.new(1, 0),
+		})
+		sparks.Transparency = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 0),
+			NumberSequenceKeypoint.new(0.7, 0.2),
+			NumberSequenceKeypoint.new(1, 1),
+		})
+		sparks.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+		sparks.Speed = NumberRange.new(8, 16)
+		sparks.SpreadAngle = Vector2.new(60, 60)
+		sparks.Lifetime = NumberRange.new(0.5, 0.9)
+		sparks.Rate = 0
+		sparks.Parent = emitterAtt
+
+		sparks:Emit(24)
+		task.delay(1.0, function()
+			emitterAtt:Destroy()
+		end)
+	end
+
 	local function savedDecor(s: any)
 		local bits = {}
 		for i, club in s.clubs do
@@ -296,16 +490,25 @@ function Arena.new(myId: number, root: Frame, translate: (string) -> string, pla
 		markers:ClearAllChildren()
 		local colors: {[number]: Color3} = {}
 		for slot, seat in s.seats do
-			local color = Art.hex(Board.figures[seat.figure].color)
+			local color = Art.seatColors[slot] or Art.hex(Board.figures[seat.figure].color)
 			colors[seat.id] = color
 			if seat.trophies > 0 then trophy(markers, Vector3.new((slot - (#s.seats + 1) * .5) * 4.1, .43, 38.15), color) end
 		end
 		for i, club in s.clubs do
+			local tag = if club.owner ~= 0 then club.owner * 10 + club.level else -1
+			local changed = prevLevels[i] ~= nil and prevLevels[i] ~= tag and club.owner ~= 0
+			if changed and prevLevels[i] ~= -1 and (prevLevels[i] % 10) < club.level then
+				playSound("upgrade")
+				if not reduced then
+					spawnUpgradeEffect(effects, Geometry.cells[i], colors[club.owner] or Art.gold)
+				end
+			end
+			prevLevels[i] = tag
 			if club.owner ~= 0 then
 				local p, color = Geometry.cells[i], colors[club.owner]
 				part(markers, "Club ownership", Vector3.new(11.6, .12, .42),
 					Vector3.new(p.X, Art.tileTop + .020, p.Z + 4.67), color)
-				if Board.tiles[i].league > 0 then clubStadium(markers, p, club.level, color, i) end
+				if Board.tiles[i].league > 0 then clubStadium(markers, p, club.level, color, i, changed and not reduced) end
 				if s.festival == i then trophy(markers, Vector3.new(p.X, Art.tileTop, p.Z) + Art.boardRight * 2.8, color) end
 				if club.shield then
 					local badge = part(markers, "Club protection", Vector3.new(2.42, .23, 2.64), p + Vector3.new(2.6, 1.7, 0), C("F4C65E"))
@@ -314,10 +517,68 @@ function Arena.new(myId: number, root: Frame, translate: (string) -> string, pla
 				end
 			end
 		end
+		if s.phase == "final" then
+			trophy(markers, Vector3.new(2.2, Art.tileTop, 1.4), Art.gold)
+		end
+
+		-- Live Stadium Jumbotron Synchronization
+		local arenaStage = workspace:FindFirstChild("WorldDraftArena")
+		local jumbotronGui = if arenaStage then arenaStage:FindFirstChild("JumbotronDisplay", true) :: SurfaceGui? else nil
+		if jumbotronGui then
+			local displayRoot = jumbotronGui:FindFirstChild("DisplayRoot")
+			if displayRoot then
+				local centre = displayRoot:FindFirstChild("Centre")
+				if centre then
+					local phaseLabel = centre:FindFirstChild("PhaseLabel") :: TextLabel?
+					local subLabel = centre:FindFirstChild("SubLabel") :: TextLabel?
+					local leaderStat = centre:FindFirstChild("LeaderStat") :: TextLabel?
+					if phaseLabel and subLabel and leaderStat then
+						if s.phase == "final" then
+							local winnerIdx = s.winner or 1
+							local winnerSeat = s.seats[winnerIdx] or s.seats[1]
+							local winnerFigure = Board.figures[winnerSeat.figure]
+							phaseLabel.Text = "★ CONTINENTAL CHAMPION ★"
+							phaseLabel.TextColor3 = Art.gold
+							subLabel.Text = string.format("CONGRATULATIONS %s!", winnerFigure.name:upper())
+							subLabel.TextColor3 = Art.seatColors[winnerIdx] or Art.gold
+							leaderStat.Text = string.format("CHAMPION'S REVENUE: %d CR · TROPHIES: %d", winnerSeat.cash, winnerSeat.trophies or 1)
+						else
+							local activeSeat = s.seats[s.active]
+							local activeFigure = if activeSeat then Board.figures[activeSeat.figure] else nil
+							local phaseTitle = if s.phase == "roll" then "ROLL THE DICE"
+								elseif s.phase == "buy" then "CLUB SIGNING"
+								elseif s.phase == "offer" then "CLUB OFFER"
+								elseif s.phase == "upgrade" then "STADIUM UPGRADE"
+								elseif s.phase == "auction" then "TRANSFER AUCTION"
+								elseif s.phase == "shot" then "PENALTY SHOOTOUT"
+								elseif s.phase == "bench" then "ON THE BENCH"
+								elseif s.phase == "tour" then "AWAY TOUR"
+								else s.phase:upper()
+							phaseLabel.Text = phaseTitle
+							phaseLabel.TextColor3 = Art.mint
+							if activeFigure then
+								subLabel.Text = string.format("MANAGER ON PITCH: %s", activeFigure.name:upper())
+								subLabel.TextColor3 = Art.seatColors[s.active] or Art.mint
+							end
+
+							local leaderSeat = s.seats[1]
+							for _, seat in s.seats do
+								if seat.cash > leaderSeat.cash then leaderSeat = seat end
+							end
+							local leaderFigure = Board.figures[leaderSeat.figure]
+							local ownedCount = 0
+							for _, c in s.clubs do if c.owner == leaderSeat.id then ownedCount += 1 end end
+							leaderStat.Text = string.format("TABLE LEADER: %s · %d CR · %d CLUBS", leaderFigure.name:upper(), leaderSeat.cash, ownedCount)
+						end
+					end
+				end
+			end
+		end
 	end
 
 	local function sync(snapshot: any)
 		local s = snapshot.match
+		lastMatchState = s
 		labels.update(snapshot)
 		if s == nil then
 			replay.clear()
@@ -363,7 +624,11 @@ function Arena.new(myId: number, root: Frame, translate: (string) -> string, pla
 		local rolled = (s.rollSerial or 0) > lastRoll
 		if sameMatch and rolled and s.diceA and s.diceB then
 			rollDice(effects, s.diceA, s.diceB, reduced)
-			playSound("dice")
+			if s.diceA == s.diceB then
+				playSound("double")
+			else
+				playSound("dice")
+			end
 		end
 		lastRoll = s.rollSerial or 0
 		local moved = sameMatch and s.motion.serial > lastMotion
@@ -387,10 +652,28 @@ function Arena.new(myId: number, root: Frame, translate: (string) -> string, pla
 			end
 			local slot = (tileSlots[seat.position] or 0) + 1
 			tileSlots[seat.position] = slot
-			local destination = position(seat.position, slot, tileCounts[seat.position])
-			if moved and s.motion.who == seat.id and s.motion.steps > 0 and not reduced then
+			local destination: Vector3
+			if s.phase == "final" then
+				local winnerId = s.winner or (s.standings and s.standings[1] and s.standings[1].id)
+				if seat.id == winnerId then
+					destination = Vector3.new(0, Art.tileTop, 0)
+				else
+					local rank = 2
+					if s.standings then
+						for r, rec in s.standings do
+							if rec.id == seat.id then rank = r break end
+						end
+					end
+					local angle = (rank - 2.5) * 0.55
+					destination = Vector3.new(math.sin(angle) * 8.5, Art.tileTop, math.cos(angle) * 7.5 + 3.2)
+				end
+			else
+				destination = position(seat.position, slot, tileCounts[seat.position])
+			end
+			local seatIdx = table.find(s.seats, seat) or 1
+			local color = Art.seatColors[seatIdx] or Art.hex(Board.figures[seat.figure].color)
+			if moved and s.motion.who == seat.id and s.motion.steps > 0 and not reduced and s.phase ~= "final" then
 				local at = model:GetPivot().Position
-				local color = Art.hex(Board.figures[seat.figure].color)
 				local shadow = medallion(effects, "Travel shadow", Vector3.new(at.X, Art.tileTop + .025, at.Z), 3.88, .022, Art.ink)
 				shadow.Transparency = .62
 				local route = {at}
@@ -400,6 +683,10 @@ function Arena.new(myId: number, root: Frame, translate: (string) -> string, pla
 				table.insert(route, destination)
 				activeFlight = {model = model, shadow = shadow, from = s.motion.from, steps = s.motion.steps, route = route,
 					start = os.clock() + ROLL_LEAD, origin = at, destination = destination, color = color, bounced = 0}
+			elseif moved and s.motion.who == seat.id and s.motion.warp and not reduced then
+				local at = model:GetPivot().Position
+				activeWarp = {model = model, start = os.clock(), origin = at, destination = destination, color = color}
+				playSound("land")
 			elseif not activeFlight or activeFlight.model ~= model then
 				model:PivotTo(settled(destination))
 			end
@@ -408,6 +695,7 @@ function Arena.new(myId: number, root: Frame, translate: (string) -> string, pla
 		savedDecor(s)
 		local active = s.seats[s.active]
 		activeId = if s.phase == "final" then 0 else active.id
+		activeTeamColor = if s.phase ~= "final" then (Art.seatColors[s.active] or Art.mint) else Art.mint
 	end
 
 	RunService:BindToRenderStep("WorldDraftCamera", Enum.RenderPriority.Camera.Value + 1, function(dt)
@@ -418,12 +706,46 @@ function Arena.new(myId: number, root: Frame, translate: (string) -> string, pla
 		local entry = activeFlight
 		local clock = os.clock()
 		replay.step(clock, reduced)
-		local runner = if entry then entry.model else models[activeId]
+		local runner = if entry then entry.model else (if activeWarp then activeWarp.model else models[activeId])
 		local head = runner and runner:FindFirstChild("Head")
 		local face = head and head:FindFirstChild("Face")
-		outline.Adornee = runner
 		local frame = replay.framing(camera)
-		outline.Enabled = frame == nil and runner ~= nil
+		if runner and not frame then
+			local rootAt = runner:GetPivot().Position
+			local pulseAlpha = 0.5 + 0.5 * math.sin(clock * 5)
+			local auraDiam = 3.8 + 0.45 * pulseAlpha
+			local auraSkin = if activeId == myId and localPlayer then (localPlayer:GetAttribute("CareerEquippedAura") :: string?) else nil
+			local auraColor = activeTeamColor
+			local ringColor = activeTeamColor:Lerp(Art.ink, 0.45)
+			if auraSkin == "flame_trail" then
+				auraColor = Color3.fromHex("FF4500")
+				ringColor = Color3.fromHex("FFA500")
+			elseif auraSkin == "golden_radiance" then
+				auraColor = Color3.fromHex("FFD700")
+				ringColor = Color3.fromHex("FFF8DC")
+			elseif auraSkin == "champions_halo" then
+				auraColor = Color3.fromHex("FFDF00")
+				ringColor = Color3.fromHex("FFE87C")
+				auraDiam += 0.4 * math.cos(clock * 6)
+			end
+			turnAura.Position = Vector3.new(rootAt.X, Art.tileTop + 0.04, rootAt.Z)
+			turnAura.Size = Vector3.new(0.04, auraDiam, auraDiam)
+			turnAura.Color = auraColor
+			turnAura.Transparency = if reduced then 0.5 else (0.24 + 0.22 * pulseAlpha)
+			turnAuraRing.Position = Vector3.new(rootAt.X, Art.tileTop + 0.035, rootAt.Z)
+			turnAuraRing.Size = Vector3.new(0.03, auraDiam + 0.8, auraDiam + 0.8)
+			turnAuraRing.Color = ringColor
+			turnAuraRing.Transparency = if reduced then 0.7 else (0.45 + 0.25 * pulseAlpha)
+		else
+			turnAura.Position = Vector3.new(0, -50, 0)
+			turnAuraRing.Position = Vector3.new(0, -50, 0)
+		end
+
+		local arenaStage = workspace:FindFirstChild("WorldDraftArena")
+		local jLiveDot = if arenaStage then arenaStage:FindFirstChild("LiveDot", true) :: Frame? else nil
+		if jLiveDot then
+			jLiveDot.BackgroundTransparency = 0.15 + 0.35 * (0.5 + 0.5 * math.sin(clock * 5))
+		end
 		if replaying ~= (frame ~= nil) then
 			replaying = frame ~= nil
 			root:SetAttribute("ShotPlaying",replaying)
@@ -449,7 +771,14 @@ function Arena.new(myId: number, root: Frame, translate: (string) -> string, pla
 				local axis = last.LookVector:Lerp(target.LookVector,blend).Unit
 				boardPose = CFrame.lookAt(viewPoint-axis*viewDistance,viewPoint)
 			end
-			camera.CFrame, camera.Focus, camera.FieldOfView = boardPose :: CFrame, CFrame.identity, Art.boardFov
+			userYaw += (targetYaw - userYaw) * math.min(1, dt * 14)
+			userPitch += (targetPitch - userPitch) * math.min(1, dt * 14)
+			userZoom += (targetZoom - userZoom) * math.min(1, dt * 14)
+			local freeDist = viewDistance * userZoom
+			local freeRot = CFrame.Angles(0, userYaw, 0) * CFrame.Angles(userPitch, 0, 0)
+			local axis = if boardPose then (boardPose.Position - viewPoint).Unit else (overview.Position - viewPoint).Unit
+			local finalPose = CFrame.lookAt(viewPoint + freeRot * (axis * freeDist), viewPoint)
+			camera.CFrame, camera.Focus, camera.FieldOfView = finalPose, CFrame.identity, Art.boardFov
 			if camera.CFrame~=lastInkPose or clock-lastInkTime >= (if entry then 1/30 else .09) then
 				lastInkPose,lastInkTime=camera.CFrame,clock
 				local silhouettes={}
@@ -480,23 +809,50 @@ function Arena.new(myId: number, root: Frame, translate: (string) -> string, pla
 			portrait:PivotTo(CFrame.Angles(0, math.sin(clock * 1.55) * .19, 0))
 			Pawn.pose(portrait, clock * 2.5, 0)
 		end
-		-- Independent breathing and weight shifts for every seated player.
+		-- Independent breathing and weight shifts for every seated player (liquid smooth 60 FPS)
 		if not reduced and not frame then
-			local tick = math.floor(clock*18)
-			if tick ~= idleTick then
-				idleTick = tick
+			if lastMatchState and lastMatchState.phase == "final" then
+				local winnerId = lastMatchState.winner or (lastMatchState.standings and lastMatchState.standings[1] and lastMatchState.standings[1].id)
+				for id, model in models do
+					if id == winnerId then
+						model:PivotTo(CFrame.new(0, Art.tileTop, 0) * CFrame.Angles(0, math.sin(clock * 1.2) * 0.15, 0))
+						Pawn.pose(model, clock * 2.5, 0, (clock * 1.5) % 1)
+					else
+						Pawn.pose(model, clock * 1.8, 0)
+					end
+				end
+				if clock - lastFinalConfetti > 1.6 then
+					lastFinalConfetti = clock
+					celebrate(1, true)
+				end
+			else
 				for id, model in models do
 					if entry and model == entry.model then continue end
+					if activeWarp and model == activeWarp.model then continue end
 					local phase = clock*(2.15 + (math.abs(id)%5)*.10) + id%17
 					local cheer = if id == cheerId and cheerUntil > clock then 1-(cheerUntil-clock)/.92 else nil
 					Pawn.pose(model, phase, 0, cheer)
 				end
 			end
-			if heroModel and math.floor(clock*30) ~= lastIdlePose then
-				lastIdlePose = math.floor(clock*30)
+			if heroModel then
 				local turn = Art.boardYaw + math.sin(clock*1.30)*.20
 				heroModel:PivotTo(CFrame.new(0,.36,-.90)*CFrame.Angles(-.13,turn,0))
 				Pawn.pose(heroModel,clock*2.2,0)
+			end
+		end
+
+		if activeWarp then
+			local elapsed = clock - activeWarp.start
+			local t = math.clamp(elapsed / .38, 0, 1)
+			local ease = t * t * (3 - 2 * t)
+			local arc = math.sin(t * math.pi) * 7.5
+			local pos = activeWarp.origin:Lerp(activeWarp.destination, ease) + Vector3.yAxis * arc
+			activeWarp.model:PivotTo(settled(pos))
+			Pawn.animate(activeWarp.model, "launch", t, .75)
+			if t >= 1 then
+				pulse(activeWarp.destination, activeWarp.color, true)
+				Pawn.pose(activeWarp.model, 0, 0)
+				activeWarp = nil
 			end
 		end
 
@@ -546,17 +902,18 @@ function Arena.new(myId: number, root: Frame, translate: (string) -> string, pla
 		end
 	end)
 
-	local function celebrate(index: number, big: boolean)
+	celebrate = function(index: number, big: boolean)
 		if reduced then return end
 		if big then cheerId, cheerUntil = activeId, os.clock()+.92 end
 		local center = Geometry.cells[index]
 		local origin = Vector3.new(center.X, Art.tileTop + 1.3, center.Z)
-		for i = 1, if big then 14 else 6 do
-			local angle = i * TAU / 14
+		local count = if big then 16 else 8
+		for i = 1, count do
+			local angle = i * TAU / count
 			local color = if i % 3 == 0 then Art.paper elseif i % 3 == 1 then Art.gold else Art.mint
 			local spark = part(effects, "Result confetti", Vector3.new(.37, .13, .50), origin, color)
 			local vector = Vector3.new(math.cos(angle), 0, math.sin(angle))
-			local target = origin + vector * (2.3 + i % 4) + Vector3.new(0, 1.4 + i % 3, 0)
+			local target = origin + vector * (2.4 + i % 4 * .5) + Vector3.new(0, 1.4 + i % 3 * .4, 0)
 			TweenService:Create(spark, TweenInfo.new(.29, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
 				{CFrame = CFrame.new(target) * CFrame.Angles(i * .5, angle, i * .29)}):Play()
 			task.delay(.31, function()
@@ -566,6 +923,56 @@ function Arena.new(myId: number, root: Frame, translate: (string) -> string, pla
 			end)
 			Debris:AddItem(spark, .70)
 		end
+	end
+
+	local function popup(at: Vector3, message: string, tint: Color3)
+		if reduced then return end
+		if string.sub(message, 1, 1) == "+" then
+			playSound("coins")
+		end
+		local anchor = Instance.new("Part")
+		anchor.Name = "PopupAnchor"
+		anchor.Size = Vector3.new(0.1, 0.1, 0.1)
+		anchor.Position = at + Vector3.new(0, Art.tileTop + 0.5, 0)
+		anchor.Transparency = 1
+		anchor.CanCollide = false
+		anchor.CanQuery = false
+		anchor.CanTouch = false
+		anchor.Anchored = true
+		anchor.Parent = effects
+
+		local billboard = Instance.new("BillboardGui")
+		billboard.Name = "CurrencyPopup"
+		billboard.Size = UDim2.fromOffset(136, 36)
+		billboard.StudsOffset = Vector3.new(0, 1.5, 0)
+		billboard.AlwaysOnTop = true
+		billboard.MaxDistance = 450
+		billboard.Adornee = anchor
+		billboard.Parent = effects
+		local badge = UI.box(billboard, "Badge", Art.ink, 6)
+		badge.Size = UDim2.fromScale(1, 1)
+		badge.BackgroundTransparency = .24
+		UI.stroke(badge, tint, 1.5)
+		local label = UI.label(badge, message, 19, {
+			font = Enum.Font.BuilderSansExtraBold, color = tint, align = Enum.TextXAlignment.Center, ellipsis = true
+		})
+		label.Size = UDim2.fromScale(1, 1)
+		local startClock = os.clock()
+		task.spawn(function()
+			while billboard.Parent do
+				local elapsed = os.clock() - startClock
+				if elapsed >= 1.25 then break end
+				local t = elapsed / 1.25
+				local lift = 1.5 + 4.2 * math.sin(t * math.pi * .5)
+				local fade = if t > .65 then (t - .65) / .35 else 0
+				billboard.StudsOffset = Vector3.new(0, lift, 0)
+				badge.BackgroundTransparency = .24 + .76 * fade
+				label.TextTransparency = fade
+				RunService.RenderStepped:Wait()
+			end
+			billboard:Destroy()
+			anchor:Destroy()
+		end)
 	end
 
 	return {
@@ -610,6 +1017,10 @@ function Arena.new(myId: number, root: Frame, translate: (string) -> string, pla
 			return nil
 		end,
 		celebrate = celebrate,
+		popup = popup,
+		resetCamera = function()
+			targetYaw, targetPitch, targetZoom = 0, 0, 1.0
+		end,
 		preview = function(model: Model)
 			portraitModel, lastPortraitPose = model, -1
 		end,

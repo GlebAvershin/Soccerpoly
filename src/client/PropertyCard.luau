@@ -1,4 +1,6 @@
 --!strict
+local GuiService = game:GetService("GuiService")
+local TweenService = game:GetService("TweenService")
 local shared = game:GetService("ReplicatedStorage"):WaitForChild("League")
 local Board = require(shared.TourBoard)
 local Art = require(shared.Presentation)
@@ -56,6 +58,7 @@ function Card.new(root: Frame)
 	local wrapper = UI.box(shade, "PropertyCard")
 	wrapper.Position, wrapper.AnchorPoint = UDim2.fromScale(.5, .51), Vector2.new(.5, .5)
 	wrapper.Size = UDim2.new(.90, 0, 0, 284)
+	wrapper.Active = true
 	local limit = Instance.new("UISizeConstraint")
 	limit.MaxSize, limit.Parent = Vector2.new(452, 284), wrapper
 	local scale = Instance.new("UIScale")
@@ -64,9 +67,14 @@ function Card.new(root: Frame)
 		scale.Scale = math.min(1, math.max(0, shade.AbsoluteSize.Y - 22) / limit.MaxSize.Y)
 	end
 	shade:GetPropertyChangedSignal("AbsoluteSize"):Connect(fit)
+	local closeCallback: (() -> ())? = nil
+	shade.Activated:Connect(function()
+		if closeCallback and shade.Visible then closeCallback() end
+	end)
 	return {
 		hide = function() shade.Visible = false end,
 		show = function(info: Details)
+			closeCallback = info.close
 			limit.Parent, scale.Parent = nil, nil
 			wrapper:ClearAllChildren()
 			local options = info.levels
@@ -79,7 +87,7 @@ function Card.new(root: Frame)
 			local bodyInk = style.ink(tile)
 			local ruled = bodyInk:Lerp(style.title, .09)
 			local paper = UI.box(wrapper, "Club dossier", bodyInk, 7)
-			paper.Size = UDim2.fromScale(1, 1)
+			paper.Size, paper.Active = UDim2.fromScale(1, 1), true
 			UI.stroke(paper, bodyInk:Lerp(style.price,.47))
 			local league = Art.accent(tile.kind, tile.league)
 			local header = UI.box(paper, "Club header", colors.ink, 6)
@@ -129,8 +137,14 @@ function Card.new(root: Frame)
 			end
 			text(paper, info.footer, 26, 251 + extraArt + optionsHeight, 14, C("D4DEDA"))
 			limit.Parent, scale.Parent = wrapper, wrapper
+			local wasVisible = shade.Visible
 			shade.Visible = true
 			fit()
+			if not wasVisible and not GuiService.ReducedMotionEnabled then
+				local targetScale = scale.Scale
+				scale.Scale = targetScale * .91
+				TweenService:Create(scale, TweenInfo.new(.19, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Scale = targetScale}):Play()
+			end
 		end,
 	}
 end

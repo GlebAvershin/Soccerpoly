@@ -245,20 +245,184 @@ local function surroundings(stage: Folder)
 		end
 	end
 	for _, x in {-66.0, 66.0} do
-		mesh(scene, "Floodlight tower", "lights", Vector3.new(7.8, 14.7, 5.0), CFrame.new(x, 4.35, -68.5)).CastShadow = false
-		local rig = plate(scene, "Floodlight accent", x, 11.01, -65.95, 5.5, .26, .18, C("C5C7FF"))
+		mesh(scene, "Floodlight tower", "lights", Vector3.new(8.2, 16.0, 5.4), CFrame.new(x, 4.9, -68.5)).CastShadow = false
+		local rig = plate(scene, "Floodlight accent", x, 11.75, -65.7, 5.8, .36, .22, C("E4EAFF"))
 		rig.Material, rig.CastShadow = Enum.Material.Neon, false
+		-- Real stadium spotlight + subtle volumetric cone illuminating the pitch
+		local lamp = Instance.new("SpotLight")
+		lamp.Face, lamp.Color, lamp.Brightness = Enum.NormalId.Front, C("F8F2E4"), 1.65
+		lamp.Range, lamp.Angle, lamp.Shadows = 160, 72, false
+		lamp.Parent = rig
+		local beamOrigin = Instance.new("Attachment")
+		beamOrigin.Position, beamOrigin.Parent = Vector3.zero, rig
+		local beamTarget = plate(scene, "Floodlight focus", x * .22, .6, -12, .1, .1, .1, C("FFFFFF"))
+		beamTarget.Transparency, beamTarget.CastShadow = 1, false
+		local targetAtt = Instance.new("Attachment")
+		targetAtt.Parent = beamTarget
+		local cone = Instance.new("Beam")
+		cone.Name, cone.Attachment0, cone.Attachment1 = "Stadium light beam", beamOrigin, targetAtt
+		cone.Width0, cone.Width1 = 5.4, 34
+		cone.FaceCamera, cone.LightEmission, cone.LightInfluence = true, 1, 0
+		cone.Color = ColorSequence.new(C("DDE8FF"), C("B8F76C"))
+		cone.Transparency = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, .86),
+			NumberSequenceKeypoint.new(.45, .94),
+			NumberSequenceKeypoint.new(1, 1),
+		})
+		cone.Parent = rig
 	end
+
+	-- Architectural Jumbotron LED Screen over North Terrace
+	local jumbotronRig = folder(scene, "Stadium Jumbotron")
+	plate(jumbotronRig, "Jumbotron Truss L", -14, 11.2, -66.8, 1.1, 14.5, 1.1, C("242C38"))
+	plate(jumbotronRig, "Jumbotron Truss R", 14, 11.2, -66.8, 1.1, 14.5, 1.1, C("242C38"))
+	plate(jumbotronRig, "Jumbotron Beam Top", 0, 18.2, -66.8, 31, .9, 1.1, C("242C38"))
+	plate(jumbotronRig, "Jumbotron Beam Bottom", 0, 8.5, -66.8, 31, .9, 1.1, C("242C38"))
+	plate(jumbotronRig, "Jumbotron Housing", 0, 13.4, -66.5, 29.6, 9.2, .75, C("0F1318"))
+	plate(jumbotronRig, "Jumbotron Bezel", 0, 13.4, -66.15, 29.1, 8.7, .18, C("C8A25D"))
+
+	local jumbotronBoard = plate(jumbotronRig, "Jumbotron Screen", 0, 13.4, -66.0, 28.6, 8.2, .1, C("090D12"))
+	local jumbotronGui = Instance.new("SurfaceGui")
+	jumbotronGui.Name = "JumbotronDisplay"
+	jumbotronGui.AutoLocalize = false
+	jumbotronGui.Face = Enum.NormalId.Back
+	jumbotronGui.LightInfluence = 0
+	jumbotronGui.CanvasSize = Vector2.new(1280, 360)
+	jumbotronGui.SizingMode = Enum.SurfaceGuiSizingMode.FixedSize
+	jumbotronGui.Parent = jumbotronBoard
+
+	local jumbotronRoot = Instance.new("Frame")
+	jumbotronRoot.Name = "DisplayRoot"
+	jumbotronRoot.Size = UDim2.fromScale(1, 1)
+	jumbotronRoot.BackgroundColor3 = C("0A0F14")
+	jumbotronRoot.BorderSizePixel = 0
+	jumbotronRoot.Parent = jumbotronGui
+
+	local jHeader = Instance.new("Frame")
+	jHeader.Name = "Header"
+	jHeader.Size = UDim2.new(1, 0, 0, 44)
+	jHeader.BackgroundColor3 = C("121A22")
+	jHeader.BorderSizePixel = 0
+	jHeader.Parent = jumbotronRoot
+
+	local liveDot = Instance.new("Frame")
+	liveDot.Name = "LiveDot"
+	liveDot.Size = UDim2.fromOffset(12, 12)
+	liveDot.Position = UDim2.new(0, 18, 0.5, -6)
+	liveDot.BackgroundColor3 = C("FF3344")
+	liveDot.BorderSizePixel = 0
+	liveDot.Parent = jHeader
+	local dotCorner = Instance.new("UICorner")
+	dotCorner.CornerRadius = UDim.new(1, 0)
+	dotCorner.Parent = liveDot
+
+	local liveLabel = Instance.new("TextLabel")
+	liveLabel.Size = UDim2.new(0, 150, 1, 0)
+	liveLabel.Position = UDim2.new(0, 38, 0, 0)
+	liveLabel.BackgroundTransparency = 1
+	liveLabel.Text = "MATCHDAY LIVE"
+	liveLabel.TextColor3 = C("FF4455")
+	liveLabel.Font = Enum.Font.BuilderSansExtraBold
+	liveLabel.TextSize = 20
+	liveLabel.TextXAlignment = Enum.TextXAlignment.Left
+	liveLabel.Parent = jHeader
+
+	local cupTitle = Instance.new("TextLabel")
+	cupTitle.Size = UDim2.new(1, -340, 1, 0)
+	cupTitle.Position = UDim2.new(0, 190, 0, 0)
+	cupTitle.BackgroundTransparency = 1
+	cupTitle.Text = "SOCCERPOLY CONTINENTAL CUP • OFFICIAL MATCH ARENA"
+	cupTitle.TextColor3 = C("EAD9AF")
+	cupTitle.Font = Enum.Font.BuilderSansExtraBold
+	cupTitle.TextSize = 22
+	cupTitle.TextXAlignment = Enum.TextXAlignment.Center
+	cupTitle.Parent = jHeader
+
+	local jCentre = Instance.new("Frame")
+	jCentre.Name = "Centre"
+	jCentre.Size = UDim2.new(1, -24, 0, 252)
+	jCentre.Position = UDim2.new(0, 12, 0, 52)
+	jCentre.BackgroundColor3 = C("10161E")
+	jCentre.BorderSizePixel = 0
+	jCentre.Parent = jumbotronRoot
+	local centreCorner = Instance.new("UICorner")
+	centreCorner.CornerRadius = UDim.new(0, 8)
+	centreCorner.Parent = jCentre
+
+	local phaseLabel = Instance.new("TextLabel")
+	phaseLabel.Name = "PhaseLabel"
+	phaseLabel.Size = UDim2.new(1, -20, 0, 102)
+	phaseLabel.Position = UDim2.new(0, 10, 0, 10)
+	phaseLabel.BackgroundTransparency = 1
+	phaseLabel.Text = "READY FOR KICKOFF"
+	phaseLabel.TextColor3 = Art.mint
+	phaseLabel.FontFace = Font.new("rbxasset://fonts/families/Oswald.json", Enum.FontWeight.Bold)
+	phaseLabel.TextSize = 82
+	phaseLabel.TextScaled = true
+	phaseLabel.Parent = jCentre
+
+	local subLabel = Instance.new("TextLabel")
+	subLabel.Name = "SubLabel"
+	subLabel.Size = UDim2.new(1, -20, 0, 48)
+	subLabel.Position = UDim2.new(0, 10, 0, 122)
+	subLabel.BackgroundTransparency = 1
+	subLabel.Text = "CHOOSE YOUR FIGURE & ENTER THE ARENA"
+	subLabel.TextColor3 = C("DFE5EC")
+	subLabel.Font = Enum.Font.BuilderSansMedium
+	subLabel.TextSize = 34
+	subLabel.Parent = jCentre
+
+	local leaderStat = Instance.new("TextLabel")
+	leaderStat.Name = "LeaderStat"
+	leaderStat.Size = UDim2.new(1, -20, 0, 46)
+	leaderStat.Position = UDim2.new(0, 10, 0, 186)
+	leaderStat.BackgroundTransparency = 1
+	leaderStat.Text = "TABLE STAKES: 1,500 CR · 8 LEAGUE STADIUMS"
+	leaderStat.TextColor3 = Art.gold
+	leaderStat.Font = Enum.Font.BuilderSansBold
+	leaderStat.TextSize = 28
+	leaderStat.Parent = jCentre
+
+	local jFooter = Instance.new("Frame")
+	jFooter.Name = "Footer"
+	jFooter.Size = UDim2.new(1, 0, 0, 46)
+	jFooter.Position = UDim2.new(0, 0, 1, -46)
+	jFooter.BackgroundColor3 = C("0C141C")
+	jFooter.BorderSizePixel = 0
+	jFooter.Parent = jumbotronRoot
+
+	local ticker = Instance.new("TextLabel")
+	ticker.Name = "Ticker"
+	ticker.Size = UDim2.fromScale(1, 1)
+	ticker.BackgroundTransparency = 1
+	ticker.Text = "★ SOCCERPOLY MATCHDAY ★ UPGRADE TO MEGASTADIUM FOR MAXIMUM RENT ★ DOUBLE ROLL GIVES EXTRA TURN ★"
+	ticker.TextColor3 = C("8CA3B8")
+	ticker.Font = Enum.Font.BuilderSansMedium
+	ticker.TextSize = 22
+	ticker.Parent = jFooter
 	ribbon(scene, "Live stadium ribbon", CFrame.new(22.2, 5.12, -64.6), 34)
 	ribbon(scene, "Front stadium ribbon", CFrame.new(0, -1.70, 72.25), 36)
 end
 
 return function()
-	Lighting.ClockTime, Lighting.GeographicLatitude, Lighting.Brightness = 9.7, 39, 2.6
-	Lighting.Ambient, Lighting.OutdoorAmbient = C("9690AA"), C("BFC7E0")
-	Lighting.EnvironmentDiffuseScale, Lighting.EnvironmentSpecularScale = .34, .46
-	Lighting.GlobalShadows, Lighting.ShadowSoftness = true, .62
-	Lighting.ExposureCompensation = -.04
+	Lighting.ClockTime, Lighting.GeographicLatitude, Lighting.Brightness = 9.7, 39, 2.75
+	Lighting.Ambient, Lighting.OutdoorAmbient = C("9492AE"), C("C4CCE6")
+	Lighting.EnvironmentDiffuseScale, Lighting.EnvironmentSpecularScale = .42, .58
+	Lighting.GlobalShadows, Lighting.ShadowSoftness = true, .54
+	Lighting.ExposureCompensation = -.02
+	for _, effect in Lighting:GetChildren() do
+		if effect:IsA("PostEffect") or effect:IsA("Atmosphere") then effect:Destroy() end
+	end
+	local bloom = Instance.new("BloomEffect")
+	bloom.Name, bloom.Intensity, bloom.Size, bloom.Threshold = "StadiumBloom", .28, 20, 1.15
+	bloom.Parent = Lighting
+	local grading = Instance.new("ColorCorrectionEffect")
+	grading.Name, grading.Brightness, grading.Contrast, grading.Saturation = "BroadcastGrade", .02, .07, .14
+	grading.Parent = Lighting
+	local haze = Instance.new("Atmosphere")
+	haze.Name, haze.Density, haze.Offset, haze.Haze, haze.Glare = "NightHaze", .12, .12, .35, .10
+	haze.Color, haze.Decay = C("252D4A"), C("141728")
+	haze.Parent = Lighting
 	local stage = Instance.new("Folder")
 	stage.Name = "WorldDraftArena"
 	surroundings(stage)

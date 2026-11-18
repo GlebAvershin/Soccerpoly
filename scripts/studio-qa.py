@@ -17,6 +17,7 @@ parser.add_argument("--matchday", action="store_true", help="verify formats, sho
 parser.add_argument("--launchservices", action="store_true", help="use native macOS app launch instead of direct CLI")
 parser.add_argument("--studio", default="/Applications/RobloxStudio.app/Contents/MacOS/RobloxStudio")
 args = parser.parse_args()
+args.rojo = str((root / args.rojo).resolve()) if (root / args.rojo).exists() else (shutil.which(args.rojo) or str(Path(args.rojo).resolve()))
 if args.shot:
     args.matchday = True
 if (args.art or args.matchday) and args.players != 1:

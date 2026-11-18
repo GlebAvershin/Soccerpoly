@@ -79,10 +79,12 @@ def head(name, topology):
             dep=-.08-.66*sin(t) + .12*max(0,v-.57)*sin(2*t)
             if name in ("yamal","vinicius"):
                 dep += (.017*sin(k*3.1+r)+.012*cos(k-r*.7))*max(0,(.45-sy)*2)*sin(2*t)
-            new.append(vertex(point(sx,sy,dep),(.5+.5*sx,1-sy)))
+            clamped_sx = max(0.01, min(0.99, sx))
+            clamped_sy = max(0.01, min(0.99, sy))
+            new.append(vertex(point(sx,sy,dep),(.5+.5*clamped_sx,1-clamped_sy)))
         join(rim,new)
         rim=new
-    pole=vertex(point(origin,.45,-.744),(.5+.5*origin,.55))
+    pole=vertex(point(origin,.45,-.744),(.5+.5*max(0.01, min(0.99, origin)),.55))
     faces.extend((rim[k-1],rim[k],pole) for k in range(len(rim)))
 
     # Comb tapered locks over the actual fitted scalp. Each profile has its own
@@ -128,7 +130,9 @@ def head(name, topology):
                 # Register pigment to the scalp. Dark ends sampled from an
                 # unrelated swatch read as hard lines across a player's fringe.
                 panel=0 if hit.y<.082 else .5
-                ring.append(vertex(co,(panel+.5*u,1-v)))
+                clamped_u = max(0.01, min(0.98, u))
+                clamped_v = max(0.01, min(0.98, v))
+                ring.append(vertex(co,(panel+.49*clamped_u,1-clamped_v)))
             if previous:
                 for edge in (0,1):
                     faces.append((previous[edge],previous[edge+1],ring[edge+1],ring[edge]))
@@ -161,7 +165,10 @@ def head(name, topology):
                 a=k*tau/24
                 x=ecx+side*radius*(.040*cos(a)+.014*sin(a))
                 y=ecy+.109*radius*sin(a)
-                row.append(vertex(point(x,y,dep-.08),(x*.5,1-y)))
+                # Sample skin tone safely from within temple area to prevent border sampling
+                sample_u = max(0.08, min(0.92, u + side * radius * 0.012))
+                sample_v = max(0.08, min(0.92, v + radius * 0.015 * sin(a)))
+                row.append(vertex(point(x,y,dep-.08),(sample_u*.5,1-sample_v)))
             if rings: join(rings[-1],row)
             rings.append(row)
         faces.extend([tuple(rings[0]),tuple(rings[-1])])

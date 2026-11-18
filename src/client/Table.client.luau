@@ -4,10 +4,12 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local StarterGui = game:GetService("StarterGui")
 local GuiService = game:GetService("GuiService")
 local Input = game:GetService("UserInputService")
+local HttpService = game:GetService("HttpService")
 
 local Player = Players.LocalPlayer
 local shared = ReplicatedStorage:WaitForChild("League")
 local Board = require(shared.TourBoard)
+local Geometry = require(shared.Geometry)
 local Edition = require(shared.EventCards)
 local Rules = require(shared.Rules)
 local Game = Rules.withBoard(Board, Edition)
@@ -198,8 +200,8 @@ local function drawDialog()
 	dialogShade.Visible = opened ~= ""
 	if opened == "" then return end
 	dialogTitle.Text = t(if opened == "rules" then "HOW TO PLAY" elseif opened == "cell" then "BOARD CELL"
-		elseif inTrade or opened == "tradeReply" then "CLUB DEAL" else "PROPERTY LEDGER")
-	constraint.MaxSize = if opened == "cell"  then Vector2.new(390, 320) else Vector2.new(530, 590)
+		elseif inTrade or opened == "tradeReply" then "CLUB DEAL" elseif opened == "career" then "CAREER & LOCKER" else "PROPERTY LEDGER")
+	constraint.MaxSize = if opened == "cell" then Vector2.new(390, 320) elseif opened == "career" then Vector2.new(480, 560) else Vector2.new(530, 590)
 	local offset = dialogBody.CanvasPosition
 	dialogBody.Size = UDim2.new(1, -26, 1, if replyActions.Visible then -114 else -62)
 	dialogBody:ClearAllChildren()
@@ -226,8 +228,8 @@ local function drawDialog()
 			UI.label(card, if club.owner == 0 then t("Free") else t("Owner: %s", sessionName(club.owner)), 14, {font = BOLD, color = colors.panel})
 			if tile.league == 0 then
 				UI.label(card, t("Each additional venue doubles the visiting fee."), 13, {color = colors.ink})
-			elseif s and club.owner == Player.UserId and club.level == 1 and not Game.setComplete(s, club.owner, tile.league) then
-				UI.label(card, t("Complete the league to upgrade to level 2."), 13, {color = colors.ink})
+			elseif s and club.owner == Player.UserId and club.level < Board.maxLevel then
+				UI.label(card, t("Land on your club to upgrade up to level %d.", Board.maxLevel), 13, {color = colors.ink})
 			end
 			if myMove and club.owner == Player.UserId and not snapshot.trade then
 				local index = inspected
@@ -252,10 +254,13 @@ local function drawDialog()
 				end
 			end
 		else
-			local text = if tile.kind == "goalDeck" then t("Draw a reward from the Goal deck.")
-				elseif tile.kind == "offsideDeck" then t("Draw a penalty or bench card.")
+			local text = if tile.kind == "tax" then t("Pay league tax (%d CR).", math.abs(tile.award))
+				elseif tile.kind == "tour" then t("On your next turn, travel to any destination on the board.")
+				elseif tile.kind == "bench" then t("Rest on the bench. Roll doubles to return, or pay %d CR.", Board.benchFee)
 				elseif tile.kind == "championship" then t("A goal wins a cup and a cash bonus. A safe play keeps your budget steady.")
 				elseif tile.kind == "chance" then t("Draw a card, earn a sponsor bonus, protect a club or shoot on goal.")
+				elseif tile.kind == "goalDeck" then t("Draw a reward from the Goal deck.")
+				elseif tile.kind == "offsideDeck" then t("Draw a penalty or bench card.")
 				else t("Crossing Kickoff pays %d CR.", Board.kickoffCash)
 			UI.label(card, text, 14, {color = colors.ink})
 		end
@@ -376,6 +381,190 @@ local function drawDialog()
 			resultBanner.hide()
 			drawDialog()
 		end)
+	elseif opened == "career" then
+		local level = Player:GetAttribute("CareerLevel") or 1
+		local curXp = Player:GetAttribute("CareerLevelCurXp") or 0
+		local neededXp = math.max(1, Player:GetAttribute("CareerLevelNeededXp") or 120)
+		local matches = Player:GetAttribute("CareerMatches") or 0
+		local wins = Player:GetAttribute("CareerWins") or 0
+		local trophies = Player:GetAttribute("CareerTrophies") or 0
+		local streak = Player:GetAttribute("CareerLoginStreak") or 1
+		local equippedDice = (Player:GetAttribute("CareerEquippedDice") :: string?) or "ivory_classic"
+		local equippedAura = (Player:GetAttribute("CareerEquippedAura") :: string?) or "mint_classic"
+		local unlockedJson = Player:GetAttribute("CareerUnlocked")
+		local unlocked = {}
+		if type(unlockedJson) == "string" then
+			pcall(function() unlocked = HttpService:JSONDecode(unlockedJson) end)
+		end
+		unlocked["ivory_classic"] = true
+		unlocked["mint_classic"] = true
+
+		local header = UI.box(dialogBody, "ProfileHeader", colors.surface, 10)
+		header.Size, header.AutomaticSize = UDim2.new(1, 0, 0, 0), Enum.AutomaticSize.Y
+		UI.pad(header, 14, 12)
+		UI.stack(header, 4)
+		UI.label(header, t("Manager Level %d", level), 20, {font = BLACK, color = GOLD})
+		UI.label(header, t("Matches: %d  ·  Wins: %d  ·  Cups: %d", matches, wins, trophies), 14, {font = BOLD, color = colors.text})
+		UI.label(header, t("Login Streak: %d days", streak), 13, {color = colors.mint})
+
+		local barBg = UI.box(header, "XpBarBg", colors.panel, 4)
+		barBg.Size = UDim2.new(1, 0, 0, 8)
+		local barFill = UI.box(barBg, "XpFill", colors.mint, 4)
+		barFill.Size = UDim2.fromScale(math.clamp(curXp / neededXp, 0.05, 1), 1)
+
+		local isVip = Player:GetAttribute("CareerIsVip") == true
+		local vipCard = UI.box(dialogBody, "VipCard", if isVip then Color3.fromHex("182820") else Color3.fromHex("221A2E"), 10)
+		vipCard.Size, vipCard.AutomaticSize = UDim2.new(1, 0, 0, 0), Enum.AutomaticSize.Y
+		UI.pad(vipCard, 12, 10)
+		UI.stroke(vipCard, if isVip then colors.mint else GOLD)
+		UI.stack(vipCard, 4)
+		UI.label(vipCard, if isVip then t("VIP Active · +25% XP Bonus") else t("VIP SPONSOR PASS"), 15,
+			{font = BLACK, color = if isVip then colors.mint else GOLD})
+		UI.label(vipCard, t("Unlock Obsidian Gold dice, Champion's Halo aura and +25% XP bonus!"), 12,
+			{color = colors.text})
+		if not isVip then
+			local buyBtn = UI.button(vipCard, "BuyVipBtn", t("Get VIP Pass"), 32, function()
+				local channel = ReplicatedStorage:WaitForChild("WorldDraft"):FindFirstChild("CareerAction")
+				if channel and channel:IsA("RemoteEvent") then
+					channel:FireServer("buy_vip")
+					audio.play("upgrade")
+				end
+				drawDialog()
+			end, GOLD, colors.ink)
+			buyBtn.Size = UDim2.new(1, 0, 0, 32)
+		end
+
+		UI.label(dialogBody, t("DICE SKINS"), 15, {font = BOLD, color = colors.mint})
+		local diceItems = {
+			{"ivory_classic", "Classic Ivory", 1},
+			{"carbon_stealth", "Carbon Stealth", 2},
+			{"neon_cyber", "Neon Cyber", 4},
+			{"gold_championship", "Championship Gold", 6},
+			{"obsidian_gold", "Obsidian Gold", 99},
+		}
+		for _, item in diceItems do
+			local id, name, reqLevel = item[1], item[2], item[3]
+			local isUnlocked = (reqLevel < 99 and level >= reqLevel) or unlocked[id] == true
+			local isEquipped = equippedDice == id
+			local row = UI.box(dialogBody, "Dice_" .. id, colors.surface, 8)
+			row.Size = UDim2.new(1, 0, 0, 44)
+			UI.pad(row, 10, 0)
+			local nameLabel = UI.label(row, t(name), 14, {font = BOLD, color = if isEquipped then GOLD else (if isUnlocked then colors.text else colors.muted)})
+			nameLabel.Position = UDim2.fromScale(0, 0.15)
+			nameLabel.Size = UDim2.new(0.60, 0, 0.70, 0)
+			local btnText = if isEquipped then t("Equipped") elseif isUnlocked then t("Equip") elseif reqLevel == 99 then t("VIP Exclusive") else t("Unlocks at Level %d", reqLevel)
+			local btn = UI.button(row, "EquipBtn", btnText, 32, if isUnlocked and not isEquipped then function()
+				local channel = ReplicatedStorage:WaitForChild("WorldDraft"):FindFirstChild("CareerAction")
+				if channel and channel:IsA("RemoteEvent") then
+					channel:FireServer("equip", "dice", id)
+					audio.play("select")
+				end
+				drawDialog()
+			end else nil, if isEquipped then colors.panel else (if isUnlocked then colors.mint else colors.panel),
+				if isEquipped then colors.muted else (if isUnlocked then colors.ink else colors.outline))
+			btn.AnchorPoint = Vector2.new(1, 0.5)
+			btn.Position = UDim2.new(1, 0, 0.5, 0)
+			btn.Size = UDim2.new(0.38, 0, 0, 32)
+		end
+
+		UI.label(dialogBody, t("AURA SKINS"), 15, {font = BOLD, color = colors.mint})
+		local auraItems = {
+			{"mint_classic", "Team Mint", 1},
+			{"flame_trail", "Flame Trail", 3},
+			{"golden_radiance", "Golden Radiance", 5},
+			{"champions_halo", "Champion's Halo", 99},
+		}
+		for _, item in auraItems do
+			local id, name, reqLevel = item[1], item[2], item[3]
+			local isUnlocked = (reqLevel < 99 and level >= reqLevel) or unlocked[id] == true
+			local isEquipped = equippedAura == id
+			local row = UI.box(dialogBody, "Aura_" .. id, colors.surface, 8)
+			row.Size = UDim2.new(1, 0, 0, 44)
+			UI.pad(row, 10, 0)
+			local nameLabel = UI.label(row, t(name), 14, {font = BOLD, color = if isEquipped then GOLD else (if isUnlocked then colors.text else colors.muted)})
+			nameLabel.Position = UDim2.fromScale(0, 0.15)
+			nameLabel.Size = UDim2.new(0.60, 0, 0.70, 0)
+			local btnText = if isEquipped then t("Equipped") elseif isUnlocked then t("Equip") elseif reqLevel == 99 then t("VIP Exclusive") else t("Unlocks at Level %d", reqLevel)
+			local btn = UI.button(row, "EquipAuraBtn", btnText, 32, if isUnlocked and not isEquipped then function()
+				local channel = ReplicatedStorage:WaitForChild("WorldDraft"):FindFirstChild("CareerAction")
+				if channel and channel:IsA("RemoteEvent") then
+					channel:FireServer("equip", "aura", id)
+					audio.play("select")
+				end
+				drawDialog()
+			end else nil, if isEquipped then colors.panel else (if isUnlocked then colors.mint else colors.panel),
+				if isEquipped then colors.muted else (if isUnlocked then colors.ink else colors.outline))
+			btn.AnchorPoint = Vector2.new(1, 0.5)
+			btn.Position = UDim2.new(1, 0, 0.5, 0)
+			btn.Size = UDim2.new(0.38, 0, 0, 32)
+		end
+
+		UI.label(dialogBody, t("ACHIEVEMENTS"), 15, {font = BOLD, color = GOLD})
+		local achievements = {
+			{name = "First Victory", done = wins >= 1, desc = "1 win"},
+			{name = "Continental Champion", done = trophies >= 1, desc = "1 trophy"},
+			{name = "Grand Stadium", done = level >= 3, desc = "Level 3"},
+			{name = "Club Tycoon", done = level >= 5, desc = "Level 5"},
+		}
+		local achGrid = UI.box(dialogBody, "AchGrid", colors.panel, 8)
+		achGrid.Size, achGrid.AutomaticSize = UDim2.new(1, 0, 0, 0), Enum.AutomaticSize.Y
+		UI.pad(achGrid, 10, 8)
+		UI.stack(achGrid, 4)
+		for _, ach in achievements do
+			local achRow = UI.box(achGrid, ach.name, colors.surface, 6)
+			achRow.Size = UDim2.new(1, 0, 0, 36)
+			UI.pad(achRow, 8, 0)
+			local status = if ach.done then "✓ " else "○ "
+			local achTitle = UI.label(achRow, status .. t(ach.name), 13,
+				{font = BOLD, color = if ach.done then colors.mint else colors.muted})
+			achTitle.Position = UDim2.fromScale(0, 0.15)
+			achTitle.Size = UDim2.new(0.65, 0, 0.70, 0)
+			local achDesc = UI.label(achRow, ach.desc, 11,
+				{font = BOLD, color = if ach.done then colors.text else colors.outline, align = RIGHT})
+			achDesc.Position = UDim2.new(0.65, 0, 0.15, 0)
+			achDesc.Size = UDim2.new(0.35, -4, 0.70, 0)
+		end
+
+		UI.label(dialogBody, t("DAILY CONTRACTS"), 15, {font = BOLD, color = colors.mint})
+		local questsJson = Player:GetAttribute("CareerQuests")
+		local quests = {}
+		if type(questsJson) == "string" then
+			pcall(function() quests = HttpService:JSONDecode(questsJson) end)
+		end
+		local questDisplay = {
+			{id = "match", title = "Play 1 Match", reward = 150},
+			{id = "sign", title = "Sign 2 Clubs", reward = 200},
+			{id = "upgrade", title = "Upgrade 1 Stadium", reward = 250},
+		}
+		local questGrid = UI.box(dialogBody, "QuestGrid", colors.panel, 8)
+		questGrid.Size, questGrid.AutomaticSize = UDim2.new(1, 0, 0, 0), Enum.AutomaticSize.Y
+		UI.pad(questGrid, 10, 8)
+		UI.stack(questGrid, 4)
+		for _, qd in questDisplay do
+			local q = quests[qd.id] or {progress = 0, goal = 1, claimed = false}
+			local qRow = UI.box(questGrid, "Quest_" .. qd.id, colors.surface, 6)
+			qRow.Size = UDim2.new(1, 0, 0, 42)
+			UI.pad(qRow, 8, 0)
+			local canClaim = q.progress >= q.goal and not q.claimed
+			local qTitle = UI.label(qRow, t(qd.title) .. string.format(" (%d/%d)", q.progress, q.goal), 13,
+				{font = BOLD, color = if q.claimed then colors.muted elseif q.progress >= q.goal then colors.mint else colors.text})
+			qTitle.Position = UDim2.fromScale(0, 0.15)
+			qTitle.Size = UDim2.new(0.60, 0, 0.70, 0)
+
+			local btnText = if q.claimed then t("Claimed") elseif canClaim then t("Claim +%d XP", qd.reward) else string.format("+%d XP", qd.reward)
+			local qBtn = UI.button(qRow, "ClaimQuestBtn", btnText, 30, if canClaim then function()
+				local channel = ReplicatedStorage:WaitForChild("WorldDraft"):FindFirstChild("CareerAction")
+				if channel and channel:IsA("RemoteEvent") then
+					channel:FireServer("claim_quest", qd.id)
+					audio.play("upgrade")
+				end
+				drawDialog()
+			end else nil, if canClaim then colors.mint else colors.panel,
+				if canClaim then colors.ink else (if q.claimed then colors.outline else colors.muted))
+			qBtn.AnchorPoint = Vector2.new(1, 0.5)
+			qBtn.Position = UDim2.new(1, 0, 0.5, 0)
+			qBtn.Size = UDim2.new(0.38, 0, 0, 30)
+		end
 	else
 		UI.label(dialogBody, t("Complete leagues or collect all four venues."), 13, {color = colors.muted})
 		local match = snapshot and snapshot.match
@@ -420,6 +609,43 @@ end
 dialogShade.Activated:Connect(function() show(opened) end)
 local rulesButton = PropertyCard.button(root, "Rules", "?", function() show("rules") end)
 local clubsButton = PropertyCard.button(root, "Clubs", "≡", function() show("clubs") end)
+local careerButton = PropertyCard.button(root, "CareerButton", "★", function() show("career") end)
+local emoteButton: TextButton
+local resetCamButton = PropertyCard.button(root, "ResetCamButton", "⟲", function() tableView.resetCamera() end)
+
+local emoteBar = UI.box(root, "EmoteBar", colors.ink, 8)
+emoteBar.Visible = false
+emoteBar.Size = UDim2.fromOffset(256, 46)
+UI.pad(emoteBar, 4, 3)
+UI.stroke(emoteBar, Art.gold)
+
+local emoteList = {
+	{"goal", "⚽"},
+	{"fire", "🔥"},
+	{"trophy", "🏆"},
+	{"gg", "👏"},
+	{"shock", "😱"},
+	{"laugh", "😂"},
+}
+
+local function toggleEmotes()
+	emoteBar.Visible = not emoteBar.Visible
+	if emoteBar.Visible then audio.play("select") end
+end
+
+emoteButton = PropertyCard.button(root, "EmoteButton", "☺", toggleEmotes)
+
+for i, em in emoteList do
+	local b = UI.button(emoteBar, "Emote_" .. em[1], em[2], 38, function()
+		emoteBar.Visible = false
+		local channel = ReplicatedStorage:WaitForChild("WorldDraft"):FindFirstChild("EmoteAction")
+		if channel and channel:IsA("RemoteEvent") then
+			channel:FireServer(em[1])
+		end
+	end, colors.surface, colors.text)
+	b.Position = UDim2.new((i - 1) / #emoteList, 2, 0, 1)
+	b.Size = UDim2.new(1 / #emoteList, -4, 1, -2)
+end
 dealButton = PropertyCard.button(root, "ClubDeals", "⇄", function() show("tradeClubs") end)
 dealButton.AnchorPoint, dealButton.Position, dealButton.Size = Vector2.new(1, .5), UDim2.new(1, -11, .62, 0), UDim2.fromOffset(41, 41)
 local followTurn = false
@@ -452,12 +678,14 @@ local function arrange()
 	brand.Visible = not shortLandscape
 	matchClock.AnchorPoint = if shortLandscape then Vector2.new(0, 1) else Vector2.new(1, 0)
 	matchClock.Position = if shortLandscape then UDim2.new(0, 13, 1, -12) else UDim2.new(1, -13, 0, 6)
-	for i, control in {rulesButton, clubsButton} do
+	for i, control in {rulesButton, clubsButton, careerButton, emoteButton, resetCamButton} do
 		control.AnchorPoint = Vector2.new(1, .5)
-		control.Position = if size.X < size.Y * .86 then UDim2.new(1,-11-(i-1)*50,1,-104)
-			elseif shortLandscape then UDim2.new(1,-7,.19,49*i) else UDim2.new(1, -11, .70 + (i - 1) * .08, 0)
+		control.Position = if size.X < size.Y * .86 then UDim2.new(1,-11-(i-1)*46,1,-104)
+			elseif shortLandscape then UDim2.new(1,-7,.19,45*i) else UDim2.new(1, -11, .54 + (i - 1) * .065, 0)
 		control.Size = UDim2.fromOffset(41, 41)
 	end
+	emoteBar.AnchorPoint = Vector2.new(1, 0.5)
+	emoteBar.Position = emoteButton.Position + UDim2.fromOffset(-48, 0)
 	panel.AnchorPoint, panel.Position = Vector2.new(.5, .5), UDim2.fromScale(.5, .53)
 	panel.Size = UDim2.fromOffset(math.max(230, math.min(560, size.X - 58)), math.max(172, math.min(302, size.Y - 106)))
 end
@@ -538,6 +766,10 @@ local function scorecards(s: any)
 	end
 end
 
+local lobbyPreview: ViewportFrame? = nil
+local lobbyPreviewFigure = 0
+local lobbyPreviewModel: Model? = nil
+
 local function lobbyPanel(data: any)
 	local selected = nil
 	local taken = {}
@@ -562,18 +794,23 @@ local function lobbyPanel(data: any)
 	UI.label(textArea, if russian then figure.localName else figure.name, if #figure.name > 15 then 17 else 20, {font = BLACK})
 	UI.label(textArea, if russian then figure.ru else figure.role, 13, {font = BOLD, color = figureColor})
 
-	local viewport = Instance.new("ViewportFrame")
-	viewport.Name = "FootballerPreview"
-	viewport.BackgroundTransparency = 1
-	viewport.Position, viewport.Size = UDim2.new(0.56, 0, 0, 2), UDim2.new(0.44, -4, 1, -4)
-	viewport.LightColor, viewport.Ambient, viewport.LightDirection = hex(0xFFFFFF), hex(0xC5DCFA), Vector3.new(-2, -5, -6)
-	viewport.Parent = feature
-	local camera = Instance.new("Camera")
-	camera.FieldOfView = 30
-	local bust = Vector3.new(0, .45 + figure.height * 4.95, 0)
-	camera.CFrame = CFrame.lookAt(bust + Vector3.new(.98, .34, 6.65), bust)
-	camera.Parent, viewport.CurrentCamera = viewport, camera
-	tableView.preview(Pawn.make(selected, viewport))
+	if not lobbyPreview or lobbyPreviewFigure ~= selected then
+		if lobbyPreview then lobbyPreview:Destroy() end
+		local viewport = Instance.new("ViewportFrame")
+		viewport.Name = "FootballerPreview"
+		viewport.BackgroundTransparency = 1
+		viewport.Position, viewport.Size = UDim2.new(0.56, 0, 0, 2), UDim2.new(0.44, -4, 1, -4)
+		viewport.LightColor, viewport.Ambient, viewport.LightDirection = hex(0xFFF6E8), hex(0xB8CFEA), Vector3.new(-2, -5, -6)
+		local camera = Instance.new("Camera")
+		camera.FieldOfView = 30
+		local bust = Vector3.new(0, .45 + figure.height * 4.95, 0)
+		camera.CFrame = CFrame.lookAt(bust + Vector3.new(.98, .34, 6.65), bust)
+		camera.Parent, viewport.CurrentCamera = viewport, camera
+		lobbyPreviewModel = Pawn.make(selected, viewport)
+		lobbyPreview, lobbyPreviewFigure = viewport, selected
+	end
+	if lobbyPreview then lobbyPreview.Parent = feature end
+	if lobbyPreviewModel then tableView.preview(lobbyPreviewModel) end
 
 	local row = UI.box(actions, "FigurePicker")
 	row.Size = UDim2.new(1, 0, 0, 43)
@@ -650,6 +887,12 @@ local function showInspection(data: any, index: number)
 	propertyCard.show({
 		index = index, level = if holding then holding.level else 0, title = t(tile.name),
 		summary = if tile.price > 0 then t("Price %d CR · Rent %d CR", tile.price, if owned then data.gates[index] else tile.gate)
+			elseif tile.kind == "kickoff" then t("Crossing Kickoff pays %d CR.", Board.kickoffCash)
+			elseif tile.kind == "tax" then t("Pay league tax (%d CR).", math.abs(tile.award))
+			elseif tile.kind == "tour" then t("Away tour · travel anywhere next turn")
+			elseif tile.kind == "bench" then t("The bench · roll doubles or pay %d CR", Board.benchFee)
+			elseif tile.kind == "championship" then t("Championship arena · shoot or host")
+			elseif tile.kind == "chance" then t("Chance · card, shield, bonus or shot")
 			else t("Special cell"),
 		footer = if owned then t("Owner: %s", sessionName(holding.owner)) else if tile.price > 0 then propertyGroup(tile) else "",
 		closeLabel = t("Close"), close = function() opened = ""; propertyCard.hide() end,
@@ -797,6 +1040,7 @@ end
 render = function()
 	primary, alternate = nil, nil
 	closeButton.Text = t("Close")
+	if lobbyPreview then lobbyPreview.Parent = nil end
 	body:ClearAllChildren()
 	body.CanvasPosition = Vector2.zero
 	UI.stack(body, 4)
@@ -809,7 +1053,7 @@ render = function()
 	languageButton.Visible,languageButton.Text = s == nil, if russian then "Язык · RU" else "Language · EN"
 	matchClock.Visible = s ~= nil and s.phase ~= "final"
 	local shot = root:GetAttribute("ShotPlaying") == true
-	rulesButton.Visible, clubsButton.Visible, turnPrompt.Visible = not shot, not shot, not shot
+	rulesButton.Visible, clubsButton.Visible, careerButton.Visible, resetCamButton.Visible, turnPrompt.Visible = not shot, not shot, not shot, not shot, not shot
 	local now = workspace:GetServerTimeNow()
 	local waiting = s and now < data.availableAt
 	local seat = s and s.seats[s.active]
@@ -1021,7 +1265,23 @@ snapshots.OnClientEvent:Connect(function(data)
 			if snapshot.serial ~= data.serial or not snapshot.match then return end
 			if not final and snapshot.match.phase == "final" then return end
 			if not final and not shot then
-				audio.play(if last.card > 0 or last.kind == "auctionEmpty" then "card" else "sign")
+				if last.kind == "bankrupt" then
+					audio.play("bankrupt")
+				elseif last.kind == "upgrade" then
+					audio.play("upgrade")
+				elseif last.card > 0 or last.kind == "auctionEmpty" then
+					audio.play("card")
+				else
+					audio.play("sign")
+				end
+			end
+			if last.amount ~= 0 and last.tile and Geometry.cells[last.tile] then
+				local text = string.format("%+d CR", last.amount)
+				local popTint = if last.amount > 0 then colors.mint else colors.pink
+				tableView.popup(Geometry.cells[last.tile], text, popTint)
+			end
+			if last.crossed then
+				tableView.popup(Geometry.cells[1], string.format("+%d CR", Board.kickoffCash), GOLD)
 			end
 			resultBanner.reveal(title, caption, tint, reduced())
 			if exciting then

@@ -117,6 +117,7 @@ function Pawn.make(figure: number, parent: Instance, onPitch: boolean?, uniform:
 		local prefix = if side < 0 then "Left " else "Right "
 		local arm = joint(prefix .. "arm", side * .96, 3.45, 0)
 		local glove = keeper
+		soft("Shoulder cap", .58, .58, .58, side * .96, 3.43, 0, sleeveColor).Material = Enum.Material.SmoothPlastic
 		Meshes.apply("sleeve", soft("Sleeve", .71, .79, .73, side * 1.10, 3.30, .005, sleeveColor, side * .27))
 		soft("Contrast piping", .60, .053, .64, side * 1.24, 3.11, .02, accent, side * .27)
 		soft("Sleeve cuff", .60, .105, .64, side * 1.25, 3.035, .010, trim, side * .28)
@@ -187,27 +188,63 @@ local function reflectX(pose: CFrame): CFrame
 	return CFrame.new(-x, y, z, a, -b, -c, -d, e, f, -g, h, i)
 end
 
-function Pawn.animate(model: Model, name: string, progress: number, weight: number?)
-	local rig = rigs[model]
-	if not rig then return end
-	local def = Board.figures[profiles[model]]
-	local reflected = name == "kick" and def.leftFoot
-	local clip = if name == "cheer" then clips[def.model] elseif name == "idle" then clips[def.model .. "_idle"] else clips[name]
+local function sampleJoint(clip: {{CFrame}}, progress: number, index: number, blend: number, reflected: boolean): CFrame
 	local before, after, alpha = frameAt(clip, progress)
-	local blend = weight or 1
+	local motion = CFrame.identity:Lerp(before[index]:Lerp(after[index], alpha), blend)
+	if reflected then motion = reflectX(motion) end
+	return motion
+end
+
+local function applyTransforms(model: Model, rig: Rig, sample: (number) -> CFrame)
 	local at, scale = model:GetPivot(), model:GetScale()
 	local transforms: {CFrame} = {}
 	for i, joint in rig do
-		local index = if reflected then mirror[i] else i
-		local motion = CFrame.identity:Lerp(before[index]:Lerp(after[index], alpha), blend)
-		if reflected then motion = reflectX(motion) end
+		local motion = sample(i)
 		local parentIndex = joint.parent
-		local base = if parentIndex then transforms[parentIndex] else at
-		local localRest = if parentIndex then joint.rest.Position - rig[parentIndex].rest.Position else joint.rest.Position
-		local pose = base * CFrame.new((localRest + motion.Position) * scale) * motion.Rotation
+		local pose: CFrame
+		if i == 2 or i == 3 or i == 4 then
+			-- Weld head and shoulder sockets to the rotated Torso so limbs never detach during dives or leans.
+			local socketWorld = transforms[1]:PointToWorldSpace((joint.rest.Position - rig[1].rest.Position) * scale)
+			pose = CFrame.new(socketWorld) * at.Rotation * motion.Rotation
+		else
+			local base = if parentIndex then transforms[parentIndex] else at
+			local localRest = if parentIndex then joint.rest.Position - rig[parentIndex].rest.Position else joint.rest.Position
+			pose = base * CFrame.new((localRest + motion.Position) * scale) * motion.Rotation
+		end
 		transforms[i] = pose
 		joint.model:PivotTo(pose)
 	end
+end
+
+local function resolveClip(model: Model, name: string): ({{CFrame}}, boolean)
+	local def = Board.figures[profiles[model]]
+	local reflected = name == "kick" and def.leftFoot
+	local clip = if name == "cheer" then clips[def.model] elseif name == "idle" then clips[def.model .. "_idle"] else clips[name]
+	return clip, reflected
+end
+
+function Pawn.animate(model: Model, name: string, progress: number, weight: number?)
+	local rig = rigs[model]
+	if not rig then return end
+	local clip, reflected = resolveClip(model, name)
+	local blend = weight or 1
+	applyTransforms(model, rig, function(i: number)
+		local index = if reflected then mirror[i] else i
+		return sampleJoint(clip, progress, index, blend, reflected)
+	end)
+end
+
+function Pawn.crossfade(model: Model, fromName: string, fromProgress: number, toName: string, toProgress: number, alpha: number)
+	local rig = rigs[model]
+	if not rig then return end
+	local clipA, refA = resolveClip(model, fromName)
+	local clipB, refB = resolveClip(model, toName)
+	local t = math.clamp(alpha, 0, 1)
+	applyTransforms(model, rig, function(i: number)
+		local a = sampleJoint(clipA, fromProgress, if refA then mirror[i] else i, 1, refA)
+		local b = sampleJoint(clipB, toProgress, if refB then mirror[i] else i, 1, refB)
+		return a:Lerp(b, t)
+	end)
 end
 
 function Pawn.pose(model: Model, phase: number, running: number, celebration: number?)
@@ -248,7 +285,15 @@ function Pawn.run(model: Model, cycle: number, strength: number)
 		local foot = hip + reach * distance
 		local function orient(start: Vector3, finish: Vector3): CFrame
 			local up = (start - finish).Unit
-			return at * CFrame.fromMatrix(start * scale, Vector3.xAxis, up)
+			local right = Vector3.xAxis
+			local forward = right:Cross(up)
+			if forward.Magnitude < 0.001 then
+				forward = Vector3.zAxis
+			else
+				forward = forward.Unit
+			end
+			local orthoRight = up:Cross(forward).Unit
+			return at * CFrame.fromMatrix(start * scale, orthoRight, up, forward)
 		end
 		thigh.model:PivotTo(orient(hip, bent))
 		knee.model:PivotTo(orient(bent, foot))

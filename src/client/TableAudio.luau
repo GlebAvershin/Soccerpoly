@@ -10,6 +10,10 @@ local cues: {[string]: Cue} = {
 	land = {asset = "rbxassetid://9119322058", volume = .36, speed = 1.1, cap = .46},
 	card = {asset = "rbxassetid://9118104432", volume = .26, cap = .78},
 	dice = {asset = "rbxassetid://9114072654", volume = .32, speed = 1.12, cap = .92},
+	double = {asset = "rbxassetid://9114072654", volume = .42, speed = 1.38, cap = .95},
+	coins = {asset = "rbxasset://sounds/electronicpingshort.wav", volume = .30, speed = 1.18},
+	upgrade = {asset = "rbxassetid://9039637670", volume = .38, speed = 1.25, cap = 1.40},
+	bankrupt = {asset = "rbxassetid://9117261163", volume = .46, speed = 0.82, cap = 1.10},
 	goalMotif = {asset = "rbxassetid://9038650772", volume = .24, cap = 2.55},
 	sign = {asset = "rbxassetid://9039637670", volume = .33, cap = 1.70},
 	kick = {asset = "rbxassetid://9119326824", volume = .57, cap = .75},
@@ -131,8 +135,8 @@ local function new()
 			end)
 		end
 		if name == "goal" and musicEnabled then play("goalMotif") end
-		if name == "goal" or name == "final" or name == "offside" then
-			local duration = if name == "final" then 2.8 elseif name == "goal" then 1.65 else .55
+		if name == "goal" or name == "final" or name == "offside" or name == "bankrupt" or name == "upgrade" then
+			local duration = if name == "final" then 2.8 elseif name == "goal" or name == "bankrupt" then 1.65 else .55
 			duckUntil = math.max(duckUntil, os.clock() + duration)
 			duckSerial += 1
 			local serial = duckSerial

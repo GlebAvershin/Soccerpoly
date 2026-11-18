@@ -1,5 +1,7 @@
 --!strict
 local AssetService = game:GetService("AssetService")
+local GuiService = game:GetService("GuiService")
+local TweenService = game:GetService("TweenService")
 local Portraits = require(script.Parent.PlayerSculptData)
 local HeadPaint = require(script.Parent.HeadPaint)
 local texture = require(script.Parent.IndexedImage)
@@ -29,11 +31,21 @@ local function replace(request: Pending, template: MeshPart)
 	part.Transparency = if source:GetAttribute("MeshPlaceholder") then 0 else source.Transparency
 	part.Material, part.CastShadow = source.Material, source.CastShadow
 	part.Anchored, part.CanCollide, part.CanTouch, part.CanQuery = true, false, false, false
+	local popIn = source:GetAttribute("PopIn") == true
 	for key, value in source:GetAttributes() do part:SetAttribute(key, value) end
 	part:SetAttribute("MeshShape", nil)
 	part:SetAttribute("MeshPlaceholder", nil)
+	part:SetAttribute("PopIn", nil)
 	part:SetAttribute("BlenderMesh", true)
 	part.Parent = owner
+	if popIn and not GuiService.ReducedMotionEnabled then
+		local fullSize = part.Size
+		local fullPose = part.CFrame
+		part.Size = fullSize * Vector3.new(1.18, .12, 1.18)
+		part.CFrame = fullPose * CFrame.new(0, -fullSize.Y * .44, 0)
+		TweenService:Create(part, TweenInfo.new(.34, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
+			{Size = fullSize, CFrame = fullPose}):Play()
+	end
 	source:Destroy()
 	if request.legacy then
 		for _, piece in request.legacy do piece:Destroy() end

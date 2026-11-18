@@ -124,6 +124,15 @@ return function(actors: Folder)
 		mast.Transparency = 1
 		mast:SetAttribute("MeshPlaceholder", true)
 		Meshes.apply("lights",mast)
+		local spot = Instance.new("SpotLight")
+		spot.Name = "StadiumSpot"
+		spot.Brightness = 2.2
+		spot.Range = 90
+		spot.Angle = 60
+		spot.Color = C("FFF5DD")
+		spot.Face = Enum.NormalId.Back
+		spot.Shadows = true
+		spot.Parent = mast
 		for i = -2,2 do
 			local lamp = plate(venue, "Floodlamp", Vector3.new(.1,.63,.60),
 				CFrame.new(50.4,20.5,z+i*.97), C("FFF1CA"))

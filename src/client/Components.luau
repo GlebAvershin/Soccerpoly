@@ -1,4 +1,5 @@
 --!strict
+local TweenService = game:GetService("TweenService")
 local UI = {}
 local function c(hex: string): Color3 return Color3.fromHex(hex) end
 UI.color = table.freeze({
@@ -73,18 +74,35 @@ function UI.button(parent: Instance, name: string, text: string, height: number,
 	local b = Instance.new("TextButton")
 	b.Name = name
 	b.Size = UDim2.new(1, 0, 0, height)
-	b.BackgroundColor3 = fill or colors.surface
+	local normalColor = fill or colors.surface
+	b.BackgroundColor3 = normalColor
 	b.BorderSizePixel = 0
 	b.TextColor3 = color or colors.text
 	b.Text, b.TextSize, b.Font = text, 16, Enum.Font.BuilderSansBold
 	b.TextWrapped = true
-	b.AutoButtonColor = callback ~= nil
+	b.AutoButtonColor = false
 	b.Active = callback ~= nil
 	b.Selectable = callback ~= nil
 	UI.round(b, 10)
 	if callback then
-		UI.stroke(b, b.BackgroundColor3:Lerp(colors.ink, .34))
+		local stroke = UI.stroke(b, normalColor:Lerp(colors.ink, .34))
 		b.Activated:Connect(callback)
+		b.MouseEnter:Connect(function()
+			TweenService:Create(b, TweenInfo.new(0.12, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+				{BackgroundColor3 = normalColor:Lerp(Color3.new(1, 1, 1), 0.14)}):Play()
+		end)
+		b.MouseLeave:Connect(function()
+			TweenService:Create(b, TweenInfo.new(0.12, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+				{BackgroundColor3 = normalColor}):Play()
+		end)
+		b.MouseButton1Down:Connect(function()
+			TweenService:Create(b, TweenInfo.new(0.06, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+				{BackgroundColor3 = normalColor:Lerp(colors.ink, 0.22)}):Play()
+		end)
+		b.MouseButton1Up:Connect(function()
+			TweenService:Create(b, TweenInfo.new(0.08, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+				{BackgroundColor3 = normalColor}):Play()
+		end)
 	end
 	b.Parent = parent
 	return b

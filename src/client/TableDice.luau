@@ -2,8 +2,10 @@
 local Debris = game:GetService("Debris")
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Players = game:GetService("Players")
 local Art = require(ReplicatedStorage:WaitForChild("League").Presentation)
 
+local localPlayer = Players.LocalPlayer
 local C = Color3.fromHex
 local HALF = 3.2
 local RADIUS = .68
@@ -19,6 +21,34 @@ local faces = {
 }
 local axes = {Vector3.xAxis, Vector3.yAxis, Vector3.zAxis}
 
+type DiceSkinPalette = {
+	resinA: Color3, pipA: Color3, rimA: Color3, reflA: number,
+	resinB: Color3, pipB: Color3, rimB: Color3, reflB: number,
+}
+
+local SKINS: {[string]: DiceSkinPalette} = {
+	ivory_classic = {
+		resinA = C("FFF5E2"), pipA = C("122430"), rimA = C("D4AF37"), reflA = 0.06,
+		resinB = C("9C1A38"), pipB = C("FFF8E8"), rimB = C("7A142C"), reflB = 0.10,
+	},
+	carbon_stealth = {
+		resinA = C("1A1E24"), pipA = C("00E5FF"), rimA = C("37474F"), reflA = 0.04,
+		resinB = C("382115"), pipB = C("FF9100"), rimB = C("4E342E"), reflB = 0.05,
+	},
+	neon_cyber = {
+		resinA = C("0F172A"), pipA = C("FF007F"), rimA = C("00F5D4"), reflA = 0.16,
+		resinB = C("3B0764"), pipB = C("00F5D4"), rimB = C("F43F5E"), reflB = 0.18,
+	},
+	gold_championship = {
+		resinA = C("FFD700"), pipA = C("8B0000"), rimA = C("FFF8DC"), reflA = 0.35,
+		resinB = C("E2E8F0"), pipB = C("FFD700"), rimB = C("94A3B8"), reflB = 0.28,
+	},
+	obsidian_gold = {
+		resinA = C("111317"), pipA = C("FFD700"), rimA = C("D4AF37"), reflA = 0.40,
+		resinB = C("D4AF37"), pipB = C("111317"), rimB = C("FFF8DC"), reflB = 0.35,
+	},
+}
+
 local function piece(model: Model, name: string, shape: Enum.PartType, size: Vector3, pose: CFrame, tint: Color3): Part
 	local node = Instance.new("Part")
 	node.Name, node.Shape, node.Size, node.CFrame, node.Color = name, shape, size, pose, tint
@@ -29,29 +59,37 @@ local function piece(model: Model, name: string, shape: Enum.PartType, size: Vec
 	return node
 end
 
-local function die(parent: Folder, value: number, ivory: boolean): Model
+local function die(parent: Folder, value: number, isFirst: boolean, skinKey: string?): Model
 	local model = Instance.new("Model")
 	model.Name = "Die " .. value
-	local resin = if ivory then C("FFF1D3") else C("A92143")
-	local pip = if ivory then C("152C39") else C("FFF6DC")
-	local rim = if ivory then C("BC9860") else C("60152C")
+	local palette = SKINS[skinKey or "ivory_classic"] or SKINS.ivory_classic
+	local resin = if isFirst then palette.resinA else palette.resinB
+	local pip = if isFirst then palette.pipA else palette.pipB
+	local rim = if isFirst then palette.rimA else palette.rimB
+	local refl = if isFirst then palette.reflA else palette.reflB
+	local root = piece(model, "DieCore", Enum.PartType.Block, Vector3.one * 0.1, CFrame.identity, resin)
+	root.Transparency = 1
+	model.PrimaryPart = root
 	-- Native flat faces, tangent quarter-round edges and spherical corners always
 	-- have the same dimensions, including when editable-mesh memory is unavailable.
 	for i, axis in axes do
 		local u, v = axes[i % 3 + 1], axes[(i + 1) % 3 + 1]
 		local plane = CFrame.fromMatrix(Vector3.zero, axis, u, v)
-		piece(model, "Moulded face", Enum.PartType.Block, Vector3.new(HALF, CORE, CORE) * 2, plane, resin)
+		local facePart = piece(model, "Moulded face", Enum.PartType.Block, Vector3.new(HALF, CORE, CORE) * 2, plane, resin)
+		facePart.Reflectance = refl
 		for _, su in {-1, 1} do
 			for _, sv in {-1, 1} do
-				piece(model, "Radius edge", Enum.PartType.Cylinder, Vector3.new(CORE, RADIUS, RADIUS) * 2,
+				local edgePart = piece(model, "Radius edge", Enum.PartType.Cylinder, Vector3.new(CORE, RADIUS, RADIUS) * 2,
 					plane + (u * su + v * sv) * CORE, resin)
+				edgePart.Reflectance = refl
 			end
 		end
 	end
 	for _, x in {-CORE, CORE} do
 		for _, y in {-CORE, CORE} do
 			for _, z in {-CORE, CORE} do
-				piece(model, "Polished corner", Enum.PartType.Ball, Vector3.one * RADIUS * 2, CFrame.new(x, y, z), resin)
+				local cornerPart = piece(model, "Polished corner", Enum.PartType.Ball, Vector3.one * RADIUS * 2, CFrame.new(x, y, z), resin)
+				cornerPart.Reflectance = refl
 			end
 		end
 	end
@@ -67,6 +105,7 @@ local function die(parent: Folder, value: number, ivory: boolean): Model
 			local bezel = piece(model, "Pip socket", Enum.PartType.Cylinder, Vector3.new(.072, diameter + .20, diameter + .20),
 				pos + normal * .026, rim)
 			bezel.CastShadow = false
+			bezel.Reflectance = 0.15
 			local inlay = piece(model, "Enamel pip", Enum.PartType.Cylinder, Vector3.new(.048, diameter, diameter),
 				pos + normal * (PIP_LIP - .024), pip)
 			inlay.CastShadow = false
@@ -81,15 +120,22 @@ return function(parent: Folder, first: number, second: number, reduced: boolean)
 	if old then old:Destroy() end
 	local tray = Instance.new("Folder")
 	tray.Name = "Dice roll"
-	local pair = {die(tray, first, true), die(tray, second, false)}
+	local skinKey = if localPlayer then (localPlayer:GetAttribute("CareerEquippedDice") :: string?) else "ivory_classic"
+	local pair = {die(tray, first, true, skinKey), die(tray, second, false, skinKey)}
 	local results = {first, second}
 	local function pose(t: number)
 		for i, result in results do
 			local sign = if i == 1 then -1 else 1
 			local remaining = (1 - t) ^ 1.55
 			local at = Art.boardNear * (-11 - remaining * (7 + i)) + Art.boardRight * sign * (5.55 + remaining * 2.6)
-			local hop = if t < .66 then math.sin(math.pi * t / .66) * (3.9 + i * .6)
-				else math.sin(math.pi * (t - .66) / .34) * .86
+			local hop: number
+			if t < .58 then
+				hop = math.sin(math.pi * t / .58) * (3.8 + i * .5)
+			elseif t < .84 then
+				hop = math.sin(math.pi * (t - .58) / .26) * 1.15
+			else
+				hop = math.sin(math.pi * (t - .84) / .16) * 0.28
+			end
 			local settled = CFrame.Angles(0, Art.boardYaw + sign * .23, 0) * faces[result].top
 			local tumble = CFrame.Angles(remaining * math.pi * (1.55 + i * .23), sign * remaining * 2.16,
 				sign * remaining * 2.72)
@@ -108,11 +154,11 @@ return function(parent: Folder, first: number, second: number, reduced: boolean)
 			while tray.Parent do
 				RunService.RenderStepped:Wait()
 				if not tray.Parent then break end
-				local t = math.clamp((os.clock() - start) / .43, 0, 1)
+				local t = math.clamp((os.clock() - start) / .52, 0, 1)
 				pose(t)
 				if t == 1 then break end
 			end
 		end)
 	end
-	Debris:AddItem(tray, 1.35)
+	Debris:AddItem(tray, 1.85)
 end

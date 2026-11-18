@@ -124,7 +124,8 @@ local function strikerPose(model: Model, figure: number, elapsed: number, celebr
 	model:PivotTo(CFrame.new(-19+5.7*approach+1.25*follow, -.28+lift, shootingLane)
 		* CFrame.Angles(0, math.pi*.5-turn, 0))
 	if celebrate then
-		Pawn.animate(model, "cheer", .10+recovery*.82)
+		local transition = smooth(math.clamp(recovery * 4.5, 0, 1))
+		Pawn.crossfade(model, "kick", 1, "cheer", .10 + recovery * .82, transition)
 	else
 		Pawn.animate(model, "kick", math.clamp(elapsed/.60, 0, 1))
 	end
@@ -350,6 +351,16 @@ return function(effects: Folder, playSound: (string) -> ())
 		local fov = 32+4*portrait
 		local width = (59-27*portrait)*(1-track) + (40-10*portrait)*track
 		local distance = math.max(45, width/(2*math.tan(math.rad(fov)*.5)*aspect*.84))
+		if shot.resolved and (shot.outcome == "goal" or shot.outcome == "save") then
+			local trauma = math.clamp(1 - (shot.elapsed - SHOT_IMPACT) / .34, 0, 1)
+			if trauma > 0 then
+				local shake = trauma * trauma
+				local t = shot.elapsed * 42
+				local kickX = math.sin(t * 1.6) * .55 * shake
+				local kickY = math.cos(t * 2.1) * .42 * shake
+				target += Vector3.new(0, kickY, kickX)
+			end
+		end
 		camera.FieldOfView, camera.Focus = fov, CFrame.new(target)
 		return CFrame.lookAt(target+orbit*distance, target)
 	end

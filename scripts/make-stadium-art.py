@@ -16,12 +16,15 @@ from blender_export import ROOT, blender, export_shapes
 
 NAMES = (
     "table", "enamel", "stand", "tunnel", "dugout", "goal", "lights",
-    "cup", "ball", "academy", "arena", "curls", "sweep", "cap", "crest", "die", "chance", "champions", "tile_case", "tile_enamel", "fade", "arena_plinth", "night_stand", "pitch_mark", "braid", "quiff", "event_card",
+    "cup", "ball", "academy", "arena", "curls", "sweep", "cap", "crest", "die", "chance", "champions",
+    "tile_case", "tile_enamel", "fade", "arena_plinth", "night_stand", "pitch_mark", "braid", "quiff", "event_card",
+    "club_flag", "megastadium",
 )
 INK, NAVY, SLATE = "23334A", "254671", "3C6BA1"
 TEAL, MINT, GOLD = "2679BB", "76CFE2", "EAB561"
 PAPER, STEEL, WHITE = "FFF6E3", "849EB7", "FFFFFF"
-GRASS, DARK_GRASS = "7FAF3A", "669733"
+GRASS, DARK_GRASS = "448E63", "317350"
+LIME, GLASS, PLINTH_DARK = "B8F76C", "63B8E8", "1B1D30"
 
 
 def paint(obj, color, smooth=False):
@@ -193,19 +196,35 @@ def goal():
 
 
 def lights():
-    for x, z in product((-.55, .55), (-.55, .55)):
-        pipe((x, 0, z), (x * .7, 9.5, z * .7), .12, STEEL)
-    for y in range(0, 9, 2):
+    # Sculpted European stadium truss floodlight pylon with angled twin light banks.
+    block((0, .24, 0), (2.25, .48, 2.25), "1E2036", .14, 2)
+    block((0, .56, 0), (1.72, .22, 1.72), "373658", .08, 2)
+    for x, z in product((-.62, .62), (-.62, .62)):
+        pipe((x, .45, z), (x * .56, 9.75, z * .56), .12, STEEL, 8)
+    for y in range(1, 9, 2):
+        t0, t1 = y / 9.75, (y + 2) / 9.75
+        r0, r1 = .60 * (1 - .42 * t0), .60 * (1 - .42 * t1)
         for side in (-1, 1):
-            pipe((-.52, y, side * .53), (.52, y + 2, side * .53), .075, STEEL)
-            pipe((side * .53, y, .53), (side * .53, y + 2, -.53), .075, STEEL)
-            pipe((-.53, y + 2, side * .53), (.53, y + 2, side * .53), .07, NAVY)
-    block((0, .18, 0), (1.75, .4, 1.8), NAVY, .12)
-    block((0, 10.30, 0), (5.55, 1.42, .78), INK, .28, 2)
-    block((0, 10.30, .385), (5.20, 1.08, .17), STEEL, .085)
-    for x, y in product(range(-2, 3), (10.08, 10.53)):
-        block((x * .90, y, .49), (.68, .33, .16), PAPER, .065)
-    block((0, 9.56, 0), (.92, .66, .89), SLATE, .095)
+            pipe((-r0, y, side * r0), (r1, y + 2, side * r1), .068, STEEL)
+            pipe((r0, y, side * r0), (-r1, y + 2, side * r1), .058, NAVY)
+            pipe((side * r0, y, r0), (side * r1, y + 2, -r1), .068, STEEL)
+            pipe((-r1, y + 2, side * r1), (r1, y + 2, side * r1), .07, "4A4972")
+    # Maintenance platform and structural neck
+    block((0, 9.65, .18), (4.6, .22, 1.35), "292B45", .07, 2)
+    block((0, 9.90, -.32), (1.25, .65, .85), SLATE, .09, 2)
+    # Angled twin floodlight bank housing
+    head = block((0, 10.65, .12), (6.10, 1.95, .74), PLINTH_DARK, .22, 2)
+    head.rotation_euler.x = radians(16)
+    bezel = block((0, 10.62, .45), (5.72, 1.58, .18), STEEL, .06)
+    bezel.rotation_euler.x = radians(16)
+    # Bright twin-row stadium LED projectors
+    for row_idx, y_off in enumerate((-.38, .38)):
+        for col in range(-3, 4):
+            lamp = block((col * .76, 10.62 + y_off, .54 - y_off * .28), (.58, .50, .14), WHITE, .045)
+            lamp.rotation_euler.x = radians(16)
+    # Top lime accent bar
+    crest_bar = block((0, 11.62, -.12), (5.45, .14, .18), LIME, .04)
+    crest_bar.rotation_euler.x = radians(16)
 
 
 def trophy():
@@ -269,21 +288,100 @@ def panel(corners, color):
     from_faces(points, faces, color, True)
 
 
+def club_flag():
+    # Level 0: Owned club plinth with mini manicured pitch seal and sculpted waving pennant.
+    block((0, .14, 0), (2.40, .28, 2.00), PLINTH_DARK, .10, 2)
+    block((0, .29, 0), (2.12, .06, 1.72), GOLD, .025)
+    block((0, .34, 0), (1.84, .06, 1.42), GRASS, .02)
+    block((0, .375, 0), (1.70, .02, .08), PAPER, .008)
+    # Metallic flagpole + finial
+    loft([(.34, .22), (.42, .18), (.46, .10)], STEEL, 16)
+    pipe((-.42, .36, -.28), (-.42, 2.15, -.28), .068, PAPER, 10)
+    ellipsoid((-.42, 2.22, -.28), (.20, .20, .20), GOLD)
+    # Waving 3D club pennant (5 curved vertical panels)
+    for i in range(5):
+        t0, t1 = i / 5, (i + 1) / 5
+        x0, x1 = -.36 + t0 * 1.18, -.36 + t1 * 1.18
+        z0, z1 = -.28 + .11 * sin(t0 * pi * 1.6), -.28 + .11 * sin(t1 * pi * 1.6)
+        h0, h1 = .64 * (1 - .38 * t0), .64 * (1 - .38 * t1)
+        cy = 1.74 - .03 * sin(t0 * pi)
+        tint = LIME if i % 2 == 0 else PAPER
+        pts = [
+            blender((x0, cy - h0 * .5, z0 - .035)), blender((x1, cy - h1 * .5, z1 - .035)),
+            blender((x1, cy + h1 * .5, z1 - .035)), blender((x0, cy + h0 * .5, z0 - .035)),
+            blender((x0, cy - h0 * .5, z0 + .035)), blender((x1, cy - h1 * .5, z1 + .035)),
+            blender((x1, cy + h1 * .5, z1 + .035)), blender((x0, cy + h0 * .5, z0 + .035)),
+        ]
+        fcs = [(0, 1, 2, 3), (7, 6, 5, 4), (0, 4, 5, 1), (2, 6, 7, 3), (0, 3, 7, 4), (1, 5, 6, 2)]
+        from_faces(pts, fcs, tint, True)
+
+
 def club_stadium(upgraded):
-    block((0, .18, 0), (3.18, .32, 2.53), INK, .13, 2)
-    block((0, .36, 0), (2.04, .12, 1.80), GRASS, .06)
+    # Level 1 (academy) and Level 2 (covered arena) with detailed stepped terraces and trusses.
+    block((0, .18, 0), (3.40, .34, 2.75), PLINTH_DARK, .13, 2)
+    block((0, .36, 0), (2.20, .12, 1.92), GRASS, .05)
     for i in (-1, 0, 1):
-        block((0, .434, i * .55), (1.78, .035, .21), DARK_GRASS, .012)
-    block((0, .453, 0), (1.85, .035, .075), PAPER, .012)
+        block((0, .43, i * .58), (1.92, .035, .24), DARK_GRASS, .01)
+    block((0, .45, 0), (1.96, .03, .07), PAPER, .01)
+    # Mini goals inside the club stadium
+    for z in (-.84, .84):
+        block((0, .54, z), (.58, .18, .06), PAPER, .02)
     for sign in (-1, 1):
-        block((sign * 1.20, .57, 0), (.65, .55, 2.15), STEEL, .13, 2)
-        block((sign * 1.03, .62, 0), (.25, .16, 1.97), MINT, .049)
-        if upgraded:
-            block((sign * 1.25, 1.07, 0), (.24, .70, 2.06), SLATE, .068)
-            block((sign * 1.12, 1.36, 0), (.82, .25, 2.52), PAPER, .12, 2)
-            block((sign * 1.02, 1.40, 0), (.64, .12, 2.05), GOLD, .056)
-            for z in (-1.12, 1.12):
-                block((sign * .88, .66, z), (.25, .54, .19), STEEL, .044)
+        # Stepped lower seating tiers
+        block((sign * 1.24, .54, 0), (.74, .46, 2.30), "353658", .10, 2)
+        block((sign * 1.12, .64, 0), (.24, .18, 2.10), MINT, .04)
+        block((sign * 1.38, .80, 0), (.24, .20, 2.10), SLATE, .04)
+        if not upgraded:
+            # Level 1 Academy: training dugout & twin floodlight posts
+            for z in (-.96, .96):
+                pipe((sign * 1.48, .55, z), (sign * 1.48, 1.42, z), .05, STEEL)
+                block((sign * 1.42, 1.45, z), (.22, .14, .26), WHITE, .03)
+        else:
+            # Level 2 Covered Arena: upper VIP glass band, sweeping cantilevered roof & gold crown
+            block((sign * 1.44, 1.14, 0), (.30, .56, 2.34), GLASS, .06)
+            for z in (-1.05, -.35, .35, 1.05):
+                pipe((sign * 1.56, .62, z), (sign * 1.56, 1.54, z), .06, STEEL)
+                pipe((sign * 1.56, 1.54, z), (sign * .82, 1.60, z), .055, PAPER)
+            roof = block((sign * 1.22, 1.62, 0), (1.02, .20, 2.66), PAPER, .09, 2)
+            roof.rotation_euler.y = radians(sign * 7)
+            trim = block((sign * 1.02, 1.72, 0), (.72, .09, 2.34), GOLD, .04)
+            trim.rotation_euler.y = radians(sign * 7)
+            block((sign * .86, 1.50, 0), (.10, .09, 2.48), LIME, .02)
+
+
+def megastadium():
+    # Level 3 Flagship Champions Bowl: 4-sided enclosed modern European stadium with 4 light pylons.
+    block((0, .20, 0), (3.85, .38, 3.25), PLINTH_DARK, .16, 2)
+    block((0, .40, 0), (2.25, .12, 1.78), GRASS, .05)
+    for i in (-1, 0, 1):
+        block((0, .47, i * .54), (2.05, .03, .22), DARK_GRASS, .01)
+    block((0, .49, 0), (2.08, .03, .065), PAPER, .01)
+    # 4-sided enclosed bowl facade (double-tier seating + glass ring + aerodynamic roof ring)
+    for sign in (-1, 1):
+        # Long sides (East/West)
+        block((sign * 1.44, .76, 0), (.78, .82, 2.74), "34355B", .11, 2)
+        block((sign * 1.22, .86, 0), (.24, .18, 2.36), MINT, .04)
+        block((sign * 1.48, 1.08, 0), (.24, .22, 2.44), GLASS, .04)
+        block((sign * 1.56, 1.38, 0), (.38, .44, 2.84), "282A46", .08, 2)
+        roof_s = block((sign * 1.32, 1.82, 0), (1.08, .22, 3.06), PAPER, .10, 2)
+        roof_s.rotation_euler.y = radians(sign * 8)
+        block((sign * .88, 1.72, 0), (.10, .10, 2.50), LIME, .02)
+        # End stands (North/South)
+        block((0, .74, sign * 1.22), (2.48, .78, .66), "34355B", .10, 2)
+        block((0, .86, sign * 1.02), (2.10, .18, .22), GOLD, .04)
+        block((0, 1.28, sign * 1.32), (2.56, .42, .42), GLASS, .07)
+        roof_e = block((0, 1.74, sign * 1.12), (2.78, .20, .88), PAPER, .09, 2)
+        roof_e.rotation_euler.x = radians(-sign * 8)
+        block((0, 1.66, sign * .76), (2.10, .09, .10), LIME, .02)
+    # Golden architectural crown arches over the long stands
+    for sign in (-1, 1):
+        pipe((sign * 1.36, 1.94, -1.25), (sign * 1.36, 2.26, 0), .085, GOLD, 8)
+        pipe((sign * 1.36, 2.26, 0), (sign * 1.36, 1.94, 1.25), .085, GOLD, 8)
+    # Four corner Champions League floodlight pylons
+    for sx, sz in product((-1, 1), (-1, 1)):
+        pipe((sx * 1.68, .38, sz * 1.38), (sx * 1.56, 2.46, sz * 1.26), .075, STEEL, 8)
+        head = block((sx * 1.48, 2.54, sz * 1.18), (.42, .26, .42), WHITE, .06)
+        head.rotation_euler.z = atan2(-sz, -sx)
 
 
 def hair(style):
@@ -349,28 +447,49 @@ def octagonal_layer(half, cut, floor, ceiling, color):
 
 
 def arena_plinth():
-    octagonal_layer(70, 10.5, 0, .54, "171624")
-    octagonal_layer(72, 12.5, .54, 2.76, "262441")
-    octagonal_layer(72.15, 12.7, 2.76, 3.03, "ACF24B")
-    octagonal_layer(71.75, 12.3, 3.03, 3.83, "403F62")
-    octagonal_layer(70.8, 10.1, 3.83, 4.12, "171A2B")
+    octagonal_layer(70.2, 10.6, 0, .62, "141523")
+    octagonal_layer(72.0, 12.5, .62, 2.66, "23243E")
+    octagonal_layer(72.35, 12.8, 2.66, 3.04, "B8F76C")
+    octagonal_layer(71.85, 12.3, 3.04, 3.84, "3A3B5E")
+    octagonal_layer(70.9, 10.2, 3.84, 4.14, "16192B")
 
 
 def night_stand():
-    block((0, .35, 0), (20, .70, 6.8), "22223A", .15, 2)
-    for row in range(4):
-        y, z = .91 + row * .55, -2.48 + row * 1.37
-        block((0, y * .5, z), (19.6, y, 1.40), "3C385E", .06)
-        for seat in range(-5, 6):
-            tint = "8571BD" if (seat - row * 2) % 7 in (0, 1) else "56527B"
-            block((seat * 1.62, y + .09, z), (1.29, .16, .73), tint, .055)
-            block((seat * 1.62, y + .27, z + .34), (1.29, .43, .16), tint, .05)
-    for x in (-8.7, 8.7):
-        pipe((x, 1.8, 2.6), (x, 4.75, 2.6), .13, "6A6688")
-        pipe((x, 3.4, 2.6), (x, 4.46, -2.3), .085, "6A6688")
-    canopy = block((0, 4.59, .18), (20.5, .36, 5.5), "2C2847", .15, 2)
-    canopy.rotation_euler.x = radians(7)
-    block((0, 4.22, -2.58), (19.3, .13, .14), "B8F76C", .04)
+    # Double-deck European arena grandstand with VIP glass box tier & steel cantilevered roof.
+    block((0, .38, 0), (20.4, .76, 7.2), "1D1E34", .16, 2)
+    # Front concrete fascia with glowing accent stripe
+    block((0, .86, -3.32), (20.0, .44, .32), "35365A", .07)
+    block((0, .92, -3.50), (19.4, .11, .08), GOLD, .025)
+    # Lower seating deck (3 stepped rows)
+    for row in range(3):
+        y, z = .92 + row * .52, -2.55 + row * 1.18
+        block((0, y * .5, z), (19.8, y, 1.24), "343458", .05)
+        for seat in range(-6, 7):
+            tint = "9483D4" if (seat - row * 2) % 5 == 0 else ("676296" if (seat + row) % 2 == 0 else "4D4A76")
+            block((seat * 1.44, y + .11, z), (1.16, .16, .68), tint, .05)
+            block((seat * 1.44, y + .30, z + .30), (1.16, .42, .16), tint, .045)
+    # Mid-tier VIP Glass Box Skybox band
+    block((0, 2.55, 1.35), (19.8, .92, 1.55), "242640", .08)
+    block((0, 2.58, .54), (19.0, .62, .16), GLASS, .03)
+    for mullion in range(-6, 7, 2):
+        block((mullion * 1.50, 2.58, .48), (.16, .68, .22), STEEL, .02)
+    # Upper seating deck (2 high rows)
+    for row in range(2):
+        y, z = 3.18 + row * .54, 1.32 + row * 1.16
+        block((0, y, z), (19.8, .38, 1.18), "3F3E68", .05)
+        for seat in range(-6, 7):
+            tint = "A595E4" if (seat + row) % 4 == 0 else "5E598C"
+            block((seat * 1.44, y + .24, z), (1.16, .24, .64), tint, .045)
+    # Structural roof columns & cantilevered rafters
+    for x in (-8.9, -3.0, 3.0, 8.9):
+        pipe((x, 1.95, 3.05), (x, 5.15, 3.05), .14, STEEL, 8)
+        pipe((x, 4.95, 3.05), (x, 4.72, -2.55), .10, "878DB0", 6)
+        pipe((x, 3.65, 3.05), (x, 4.82, .60), .08, "6D7396", 6)
+    # Sleek aerodynamic canopy roof + inner lime LED strip
+    canopy = block((0, 5.02, .28), (20.8, .34, 6.2), "282848", .15, 2)
+    canopy.rotation_euler.x = radians(6)
+    block((0, 5.18, .28), (19.8, .12, 4.8), "3C3C66", .06)
+    block((0, 4.58, -2.74), (19.8, .15, .16), LIME, .04)
 
 
 def pitch_mark():
@@ -444,6 +563,7 @@ def build_scene():
         lambda: ticket_shell(.64, .71, .12, .024),
         lambda: ticket_shell(.37, .68, .065, .013),
         lambda: hair("fade"), arena_plinth, night_stand, pitch_mark, braided_hair, swept_quiff, event_card,
+        club_flag, megastadium,
     )
     objects = []
     for name, build in zip(NAMES, builders):
@@ -482,6 +602,7 @@ def build_scene():
 
 
 export_only = "--" in sys.argv and "--export" in sys.argv[sys.argv.index("--") + 1:]
+export_fbx = "--" in sys.argv and "--fbx" in sys.argv[sys.argv.index("--") + 1:]
 if export_only:
     models = [bpy.context.scene.objects[name] for name in NAMES]
 else:
@@ -489,3 +610,25 @@ else:
     bpy.context.preferences.filepaths.save_version = 0
     bpy.ops.wm.save_as_mainfile(filepath=str(ROOT / "art/stadium-kit.blend"), compress=True)
 export_shapes(models, "src/client/StadiumMeshData.luau")
+if export_fbx:
+    fbx_dir = ROOT / "art/fbx"
+    fbx_dir.mkdir(parents=True, exist_ok=True)
+    fbx_targets = ("club_flag", "academy", "arena", "megastadium", "night_stand", "lights", "arena_plinth", "cup", "ball")
+    for obj in models:
+        if obj.name not in fbx_targets:
+            continue
+        bpy.ops.object.select_all(action="DESELECT")
+        saved_loc = obj.location.copy()
+        obj.location = (0, 0, 0)
+        obj.select_set(True)
+        bpy.context.view_layer.objects.active = obj
+        bpy.ops.export_scene.fbx(
+            filepath=str(fbx_dir / f"{obj.name}.fbx"),
+            use_selection=True,
+            axis_forward="-Z",
+            axis_up="Y",
+            apply_scale_options="FBX_SCALE_ALL",
+            mesh_smooth_type="FACE",
+        )
+        obj.location = saved_loc
+    print(f"Exported {len(fbx_targets)} FBX assets to art/fbx/")
