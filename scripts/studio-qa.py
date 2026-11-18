@@ -30,23 +30,23 @@ with tempfile.TemporaryDirectory(prefix=mode + "-", dir=work) as folder:
     shutil.copy(root / "default.project.json", tmp)
     shutil.copy(root / "tests/studio-report.server.luau", tmp / "src/server")
     shutil.copy(root / "tests/studio-player.client.luau", tmp / "src/client")
-    place = tmp / "Footbolapolia QA.rbxl"
+    place = tmp / "Soccerpoly QA.rbxl"
     subprocess.run([args.rojo, "build", "-o", str(place)], cwd=tmp, check=True)
     launch = tmp / "launch.luau"
     command = (f'test:ExecutePlayModeAsync("{mode}")' if args.players == 1
                else f'test:ExecuteMultiplayerTestAsync({args.players}, "{mode}")')
     device = ("local fixture = game:GetService('StarterPlayer').StarterPlayerScripts."
-              f'Footbolapolia["studio-player"]\nfixture:SetAttribute("ExpectedPlayers", {args.players})\n')
+              f'Soccerpoly["studio-player"]\nfixture:SetAttribute("ExpectedPlayers", {args.players})\n')
     device += f'fixture:SetAttribute("Edition", "{args.edition}")\n'
     if args.shot:
         roll = {"goal": 1, "save": 4, "offside": 6}[args.shot]
         device += (f'fixture:SetAttribute("ExpectedShot", "{args.shot}")\n'
-                   f'game:GetService("ServerScriptService").Footbolapolia.Match:SetAttribute("StudioShotRoll", {roll})\n')
+                   f'game:GetService("ServerScriptService").Soccerpoly.Match:SetAttribute("StudioShotRoll", {roll})\n')
     if args.art:
         device += 'fixture:SetAttribute("VerifyBlenderArt", true)\n'
     if args.matchday:
         device += ('fixture:SetAttribute("VerifyMatchday", true)\n'
-                   'game:GetService("ServerScriptService").Footbolapolia.Match:SetAttribute("StudioMatchdaySmoke", true)\n')
+                   'game:GetService("ServerScriptService").Soccerpoly.Match:SetAttribute("StudioMatchdaySmoke", true)\n')
     if args.device:
         portrait = args.device.startswith("portrait")
         direction = "Portrait" if portrait else "LandscapeLeft"
@@ -56,7 +56,7 @@ sim:SetDeviceAsync("{'iphone_XR' if args.device == 'portrait' else 'iphone_7'}")
 local orientation = Enum.ScreenOrientation.{direction}
 game:GetService("StarterGui").ScreenOrientation = orientation
 sim:SetOrientationAsync(orientation)
-game:GetService("StarterPlayer").StarterPlayerScripts.Footbolapolia["studio-player"]:SetAttribute("Device", "{args.device}")
+game:GetService("StarterPlayer").StarterPlayerScripts.Soccerpoly["studio-player"]:SetAttribute("Device", "{args.device}")
 """
     launch.write_text("task.wait(2)\nlocal test = game:GetService('StudioTestService')\n"
                       + device + f'local result = {command}\nprint("WORLD DRAFT QA", result)\n')

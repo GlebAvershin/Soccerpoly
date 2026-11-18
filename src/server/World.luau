@@ -178,7 +178,7 @@ local function pitch(stage: Folder)
 		surface.MaxDistance, surface.Active, surface.AutoLocalize = 12000, false, false
 		local text = Instance.new("TextLabel")
 		text.Size, text.BackgroundTransparency = UDim2.fromScale(1, 1), 1
-		text.Text = if side > 0 then "CONTINENTAL CUP" else "FOOTBOLAPOLIA"
+		text.Text = if side > 0 then "CONTINENTAL CUP" else "SOCCERPOLY"
 		text.FontFace = Font.new("rbxasset://fonts/families/Oswald.json", Enum.FontWeight.Bold)
 		text.TextSize, text.TextColor3, text.Parent = 163, C("EEE9C8"), surface
 		surface.Parent = sign
@@ -201,7 +201,7 @@ local function ribbon(parent: Folder, name: string, pose: CFrame, width: number)
 	surface.SizingMode, surface.Parent = Enum.SurfaceGuiSizingMode.FixedSize, board
 	local word = Instance.new("TextLabel")
 	word.Name = "Message"
-	word.Text, word.Font, word.TextScaled = "FOOTBOLAPOLIA", Enum.Font.BuilderSansExtraBold, true
+	word.Text, word.Font, word.TextScaled = "SOCCERPOLY", Enum.Font.BuilderSansExtraBold, true
 	word.TextColor3, word.BackgroundTransparency = Art.mint, 1
 	word.Size, word.Parent = UDim2.fromScale(1, 1), surface
 end

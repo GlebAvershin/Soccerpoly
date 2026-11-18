@@ -145,11 +145,11 @@ def dashboard(out, readout, segments, economy):
     data_label = "Synthetic onboarding fixture" if readout["dataset"] == "synthetic_ab" else "Closed playtest"
     followup = "Collect live assignments before choosing what to ship." if readout["dataset"] == "synthetic_ab" else "Review data quality and platform coverage before a rollout decision."
     page = f"""<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width">
-<title>Footbolapolia product analysis</title>
+<title>Soccerpoly product analysis</title>
 <style>
 *{{box-sizing:border-box}}body{{font:16px system-ui;color:#eaf1f8;background:#101c2a;margin:0}}main{{max-width:1180px;margin:auto;padding:clamp(20px,5vw,65px)}}h1{{font-size:clamp(2rem,5vw,3.8rem);line-height:1.05;margin:.35em 0}}h2{{font-size:1.15rem}}p,small{{color:#bacadc;line-height:1.52}}strong{{font-size:2rem;color:#c4ff87}}section{{margin-top:34px}}.grid{{display:grid;grid-template-columns:repeat(auto-fit,minmax(245px,1fr));gap:14px}}article{{background:#172a3e;border:1px solid #30506a;padding:10px 19px;border-radius:10px}}.scroller{{overflow:auto}}table{{width:100%;border-collapse:collapse;text-align:left;font-variant-numeric:tabular-nums;font-size:.86rem}}th,td{{padding:.65rem;border-bottom:1px solid #345069;white-space:nowrap}}th{{color:#9fd7fa}}input,select{{padding:.5rem;margin:.5rem;color:#edf4ff;background:#203752;border:1px solid #63849e;border-radius:5px}}
 </style>
-<main><small>FOOTBOLAPOLIA · CONTINENTAL CUP</small><h1>Coach hint experiment</h1>
+<main><small>SOCCERPOLY · CONTINENTAL CUP</small><h1>Coach hint experiment</h1>
 <p>{data_label}. {readout['control_players']:,} control and {readout['coach_players']:,} coach assignments.
 Planned per arm: {readout['minimum_per_arm']:,} for the primary metric and {readout['guardrail_minimum_per_arm']:,} for completion. Allocation p = {readout['srm_p']:.3f}.</p>
 <div class="grid">{delta("First route within 90 seconds",primary)}{delta("Season completion",guardrail)}

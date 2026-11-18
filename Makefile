@@ -16,7 +16,7 @@ test:
 
 build:
 	mkdir -p dist
-	"$(ROJO)" build -o dist/Footbolapolia.rbxl
+	"$(ROJO)" build -o dist/Soccerpoly.rbxl
 
 analytics:
 	mkdir -p .tools

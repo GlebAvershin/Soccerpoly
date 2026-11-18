@@ -53,7 +53,7 @@ GuiService:GetPropertyChangedSignal("ReducedMotionEnabled"):Connect(function()
 	tableView.reduceMotion(reduced())
 end)
 
-local brand = UI.box(root, "Footbolapolia wordmark", colors.ink, 5)
+local brand = UI.box(root, "Soccerpoly wordmark", colors.ink, 5)
 brand.BackgroundTransparency = .14
 brand.Position, brand.Size = UDim2.fromOffset(13, 8), UDim2.fromOffset(151, 28)
 for i = 1, 2 do
@@ -61,7 +61,7 @@ for i = 1, 2 do
 	slash.Position, slash.Size = UDim2.fromOffset(9 + (i - 1) * 7, 5), UDim2.fromOffset(4, 16)
 	slash.Rotation = 21
 end
-local brandText = UI.label(brand, "FOOTBOLAPOLIA", 16, {font = BLACK, color = colors.text, ellipsis = true})
+local brandText = UI.label(brand, "SOCCERPOLY", 16, {font = BLACK, color = colors.text, ellipsis = true})
 brandText.Position, brandText.Size = UDim2.fromOffset(25, 0), UDim2.new(1, -27, 1, 0)
 local scores = UI.box(root, "Scoreboard", colors.ink, 6)
 scores.AnchorPoint, scores.Position = Vector2.new(.5, 0), UDim2.new(.5, 0, 0, 10)
@@ -819,7 +819,7 @@ render = function()
 		or (mine and (s.phase == "matchday" or s.phase == "championship" or s.phase == "debt" or s.phase == "tour" or s.phase == "shield"))))
 	if opened ~= "inspect" then propertyCard.hide() end
 	if not data then
-		phase.Text = "FOOTBOLAPOLIA"
+		phase.Text = "SOCCERPOLY"
 		title("Connect to table…")
 	elseif not s then
 		phase.Text = t("SELECT A FIGURE")

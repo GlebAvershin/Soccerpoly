@@ -581,13 +581,13 @@ function Arena.new(myId: number, root: Frame, translate: (string) -> string, pla
 			textLabel.Text, textLabel.TextColor3 = title, tint
 			task.delay(1.65, function()
 				if ribbonVersion == revision and textLabel.Parent then
-					textLabel.Text, textLabel.TextColor3 = "FOOTBOLAPOLIA", Art.mint
+					textLabel.Text, textLabel.TextColor3 = "SOCCERPOLY", Art.mint
 				end
 			end)
 		end,
 		relocalize = function()
 			ribbonVersion += 1
-			if ribbonText then ribbonText.Text, ribbonText.TextColor3 = "FOOTBOLAPOLIA", Art.mint end
+			if ribbonText then ribbonText.Text, ribbonText.TextColor3 = "SOCCERPOLY", Art.mint end
 			labels.translate()
 		end,
 		playShot = function(outcome: string, figure: number, impact: () -> ())

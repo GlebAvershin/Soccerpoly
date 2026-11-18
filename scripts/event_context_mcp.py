@@ -11,7 +11,7 @@ from mcp.server.fastmcp import FastMCP
 
 from event_studio import SOURCE, load, validate
 
-server = FastMCP("Footbolapolia Event Studio")
+server = FastMCP("Soccerpoly Event Studio")
 
 
 @server.resource("worlddraft://event/continental-cup")

@@ -1,4 +1,4 @@
-# Footbolapolia для портфолио Playrix
+# Soccerpoly для портфолио Playrix
 
 Две вакансии изучены по публичным данным сайта Playrix 16 ноября 2026 года. Страницы загружают описания через `job/getList`. Инженерная вакансия обновлена в источнике 13 ноября 2026 года, аналитическая — 29 мая 2026 года. [AI-Native Software Engineer (Games)](https://playrix.com/job/open/ai/ai-native-software-engineer-games) · [Product Analyst (Game)](https://playrix.com/job/open/Analytics/product-analyst-game).
 

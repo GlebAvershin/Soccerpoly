@@ -1,5 +1,5 @@
 {
-  "name": "Footbolapolia",
+  "name": "Soccerpoly",
   "tree": {
     "$className": "DataModel",
     "Lighting": {
@@ -21,13 +21,13 @@
       }
     },
     "ServerScriptService": {
-      "Footbolapolia": {
+      "Soccerpoly": {
         "$path": "src/server"
       }
     },
     "StarterPlayer": {
       "StarterPlayerScripts": {
-        "Footbolapolia": {
+        "Soccerpoly": {
           "$path": "src/client"
         }
       }

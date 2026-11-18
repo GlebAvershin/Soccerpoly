@@ -1,10 +1,10 @@
 # Creator Hub listing draft
 
-**Title:** Footbolapolia: The World Draft
+**Title:** Soccerpoly
 
-**EN:** Choose a figure and build a club empire on a tabletop football stadium. Pick one of two routes, sign clubs, collect leagues, upgrade stadiums and win cups. After eight rounds, the most valuable squad wins. Play solo with bots or share the table with up to five friends.
+**EN:** Pick a footballer, roll the dice and build your club empire. Collect clubs from five leagues, upgrade stadiums and take your shot at goal. Play solo with bots or share a four-seat board with friends. English and Russian are available in game.
 
-**RU:** Выбери фигурку и собери футбольную империю на настольной арене с трёхмерной картой мира. Планируй маршрут, подписывай клубы, собирай лиги, улучшай стадионы и выигрывай кубки. Через восемь раундов победит самый ценный состав. Играй с ботами или собери стол до шести человек.
+**RU:** Выбери футболиста, бросай кубики и собирай клубы пяти лиг. Улучшай стадионы и выходи на удар по воротам. Играй с ботами или пригласи друзей за стол на четверых. В игре доступны русский и английский языки.
 
 **Assets:** use the original PNGs in `art/`. Genre: Strategy / Board & Card Games. First publish with a closed audience. The metadata makes no affiliation claim.
 

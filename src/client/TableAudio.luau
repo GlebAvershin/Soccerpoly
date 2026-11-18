@@ -30,9 +30,9 @@ local function new()
 		bus.Name, bus.Parent = name, SoundService
 		return bus
 	end
-	local music = group("Footbolapolia Music")
-	local crowd = group("Footbolapolia Stadium")
-	local effects = group("Footbolapolia Effects")
+	local music = group("Soccerpoly Music")
+	local crowd = group("Soccerpoly Stadium")
+	local effects = group("Soccerpoly Effects")
 	local function make(bus: SoundGroup, name: string, asset: string): Sound
 		local sound = Instance.new("Sound")
 		sound.Name, sound.SoundId, sound.SoundGroup = name, asset, bus

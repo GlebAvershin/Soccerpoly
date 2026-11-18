@@ -1,4 +1,4 @@
-# Правила Footbolapolia v0.13.0
+# Правила Soccerpoly v0.13.0
 
 Матч рассчитан на четверых. Фигурка идёт на сумму двух кубиков. Дубль даёт дополнительный бросок, а третий подряд отправляет на скамейку. На скамейке можно заплатить 50 CR или бросить на дубль. За проход старта начисляется 200 CR.
 
@@ -14,7 +14,7 @@
 
 ## Архив правил версии с двумя маршрутами
 
-# Footbolapolia — The World Draft
+# Soccerpoly — The World Draft
 
 **Pitch:** Football club ownership as a quick, social table game. Pick a route, sign clubs around a miniature world and build league sets before the final whistle.
 

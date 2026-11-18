@@ -1,4 +1,4 @@
-# Footbolapolia · материалы игры
+# Soccerpoly · материалы игры
 
 [Фигурки, роспись и поле в v0.19.0](../docs/ART_DIRECTION.md) · [Сцена команды в Blender](player-lineup-v0190.blend)
 

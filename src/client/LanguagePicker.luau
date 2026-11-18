@@ -9,7 +9,7 @@ return function(root: Frame, selectLanguage: (string)->())
 	local limit=Instance.new("UISizeConstraint")
 	limit.MaxSize,limit.Parent=Vector2.new(414,246), card
 	UI.stroke(card, UI.color.outline)
-	local word=UI.label(card,"FOOTBOLAPOLIA",14,{color=UI.color.mint,font=Enum.Font.BuilderSansBold})
+	local word=UI.label(card,"SOCCERPOLY",14,{color=UI.color.mint,font=Enum.Font.BuilderSansBold})
 	word.Position,word.Size=UDim2.fromOffset(22,15),UDim2.new(1,-44,0,26)
 	local title=UI.label(card,"Game language / Язык игры",22,{font=Enum.Font.BuilderSansExtraBold})
 	title.Position,title.Size=UDim2.fromOffset(22,44),UDim2.new(1,-44,0,48)

@@ -9,7 +9,7 @@ import tempfile
 from airflow.sdk import dag, task
 
 
-@dag(dag_id="footbolapolia_portfolio", start_date=datetime(2026, 11, 16, tzinfo=timezone.utc),
+@dag(dag_id="soccerpoly_portfolio", start_date=datetime(2026, 11, 16, tzinfo=timezone.utc),
      schedule=None, catchup=False, max_active_runs=1, tags=["worlddraft", "synthetic"])
 def worlddraft_pipeline():
     @task

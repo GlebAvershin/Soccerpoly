@@ -155,7 +155,7 @@ local ok, err = pcall(function()
 		end
 		inspection:Destroy()
 		waitFor(function()
-			local music = game:GetService("SoundService"):FindFirstChild("Footbolapolia Music")
+			local music = game:GetService("SoundService"):FindFirstChild("Soccerpoly Music")
 			local sound = music and music:FindFirstChild("Feel That Move")
 			return sound and sound.IsLoaded and sound.IsPlaying
 		end, "music")
@@ -325,7 +325,7 @@ local ok, err = pcall(function()
 	end
 	if verifyMatchday then
 		waitFor(function()
-			local music = game:GetService("SoundService")["Footbolapolia Music"]
+			local music = game:GetService("SoundService")["Soccerpoly Music"]
 			local score = music:FindFirstChild("Plug In and Party (match underscore)")
 			return score and score.IsLoaded and score.IsPlaying and score.Volume > .90 and not music["Feel That Move"].IsPlaying
 		end, "crossfade to match music")
@@ -372,7 +372,7 @@ local ok, err = pcall(function()
 			local ball = effects["Motion effects"]:FindFirstChild("Matchday ball")
 			assert(ball and ball.PrimaryPart and replay:FindFirstChild("Goalkeeper") and replay:FindFirstChild("Striker"))
 			local from = ball:GetPivot().Position
-			local sounds = game:GetService("SoundService")["Footbolapolia Effects"]
+			local sounds = game:GetService("SoundService")["Soccerpoly Effects"]
 			waitFor(function()
 				return sounds.kick.IsLoaded and sounds.kick.IsPlaying and (ball:GetPivot().Position - from).Magnitude > 4
 			end, "kick sound and moving ball", 1)
@@ -392,7 +392,7 @@ local ok, err = pcall(function()
 			assert(#dice:GetChildren() == 2)
 			if verifyMatchday then
 				waitFor(function()
-					local sound = game:GetService("SoundService")["Footbolapolia Effects"].dice
+					local sound = game:GetService("SoundService")["Soccerpoly Effects"].dice
 					return sound.IsLoaded and sound.IsPlaying
 				end, "dice sound", 1)
 			end

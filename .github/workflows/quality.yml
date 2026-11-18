@@ -1,4 +1,4 @@
-name: Footbolapolia QA
+name: Soccerpoly QA
 on: [push, pull_request]
 permissions:
   contents: read
@@ -33,12 +33,12 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@v4
         with:
-          name: Footbolapolia-Place-${{ github.sha }}
-          path: dist/Footbolapolia.rbxl
+          name: Soccerpoly-Place-${{ github.sha }}
+          path: dist/Soccerpoly.rbxl
           if-no-files-found: error
 
       - uses: actions/upload-artifact@v4
         with:
-          name: Footbolapolia-Analytics-${{ github.sha }}
+          name: Soccerpoly-Analytics-${{ github.sha }}
           path: dist/analytics/
           if-no-files-found: error

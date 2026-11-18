@@ -468,7 +468,7 @@ def build_scene():
         obj.location = ((i % 5 - 2) * 17, (i // 5) * 13 + 5, 0)
     for obj in objects:
         obj.asset_mark()
-        obj.asset_data.description = f"Footbolapolia Continental Cup / {obj.name}"
+        obj.asset_data.description = f"Soccerpoly Continental Cup / {obj.name}"
     bpy.ops.object.select_all(action="DESELECT")
     for screen in bpy.data.screens:
         for area in screen.areas:

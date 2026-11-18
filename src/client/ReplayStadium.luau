@@ -87,7 +87,7 @@ local function led(parent: Folder, a: Vector3, b: Vector3)
 		local label = Instance.new("TextLabel")
 		label.Size, label.BackgroundTransparency = UDim2.fromScale(.78,.80), 1
 		label.Position = UDim2.fromScale(.13,.10)
-		label.Text = if i%2==0 then "CONTINENTAL CUP" else "FOOTBOLAPOLIA"
+		label.Text = if i%2==0 then "CONTINENTAL CUP" else "SOCCERPOLY"
 		label.TextColor3, label.Font, label.TextScaled = C("F4EFDC"), Enum.Font.BuilderSansExtraBold, true
 		label.Parent = fill
 		for j = 1, 2 do

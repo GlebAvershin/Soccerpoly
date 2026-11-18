@@ -149,14 +149,14 @@ cup = '''
 </g>'''
 left = (
     shield(114, 148, 0.38)
-    + label(179, 145, "FOOTBOLAPOLIA", 29, NAVY, 900, 'letter-spacing="2"')
+    + label(179, 145, "SOCCERPOLY", 29, NAVY, 900, 'letter-spacing="2"')
     + label(72, 373, "THE WORLD", 88, NAVY, 900, 'letter-spacing="-3"')
     + label(65, 503, "DRAFT", 147, TEAL, 900, 'letter-spacing="-5"')
     + rect(77, 542, 86, 6, GOLD, 3)
     + label(77, 608, "Build your football empire.", 29, NAVY, 650)
 )
 art = rect(0, 0, 1600, 900, "url(#night)") + ground + lines + shadow + platform + "".join(tokens) + cup + left
-(ART / "world-draft-thumb.svg").write_text(canvas(1920, 1080, 1600, 900, art, "Footbolapolia: The World Draft — cover"))
+(ART / "world-draft-thumb.svg").write_text(canvas(1920, 1080, 1600, 900, art, "Soccerpoly: The World Draft — cover"))
 icon = (
     rect(0, 0, 512, 512, "url(#night)")
     + rect(0, 0, 512, 512, "url(#grid)")
@@ -165,7 +165,7 @@ icon = (
     + '<path d="M48 222H464M256 30V424" stroke="#70bcab" stroke-opacity=".38" stroke-width="2"/>'
     + shield(256, 220, 1.36)
     + label(256, 452, "WORLD DRAFT", 40, NAVY, 900, 'text-anchor="middle" letter-spacing="1.5"')
-    + label(256, 479, "F O O T B O L A P O L I A", 12, TEAL, 700, 'text-anchor="middle"')
+    + label(256, 479, "S O C C E R P O L Y", 12, TEAL, 700, 'text-anchor="middle"')
 )
 (ART / "world-draft-icon.svg").write_text(canvas(512, 512, 512, 512, icon, "World Draft — game icon"))
 print(f"Created key art for {len(tiles)} tiles and {len(land)} map spans")
