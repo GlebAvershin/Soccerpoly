@@ -412,6 +412,12 @@ local function drawDialog()
 		local barFill = UI.box(barBg, "XpFill", colors.mint, 4)
 		barFill.Size = UDim2.fromScale(math.clamp(curXp / neededXp, 0.05, 1), 1)
 
+		local canSpin = Player:GetAttribute("CareerCanSpin") ~= false
+		local spinBanner = UI.button(dialogBody, "WheelBtn", t("Daily Lucky Spin") .. (if canSpin then " ✦ (" .. t("Spin Available!") .. ")" else " (" .. t("Next spin tomorrow") .. ")"), 38, function()
+			show("wheel")
+		end, if canSpin then GOLD else colors.surface, if canSpin then colors.ink else colors.muted)
+		spinBanner.Size = UDim2.new(1, 0, 0, 38)
+
 		local isVip = Player:GetAttribute("CareerIsVip") == true
 		local vipCard = UI.box(dialogBody, "VipCard", if isVip then Color3.fromHex("182820") else Color3.fromHex("221A2E"), 10)
 		vipCard.Size, vipCard.AutomaticSize = UDim2.new(1, 0, 0, 0), Enum.AutomaticSize.Y
@@ -565,6 +571,102 @@ local function drawDialog()
 			qBtn.Position = UDim2.new(1, 0, 0.5, 0)
 			qBtn.Size = UDim2.new(0.38, 0, 0, 30)
 		end
+	elseif opened == "wheel" then
+		titleLabel.Text = t("DAILY LUCKY WHEEL")
+		local canSpin = Player:GetAttribute("CareerCanSpin") ~= false
+		local wheelCenter = UI.box(dialogBody, "WheelWrapper", colors.surface, 12)
+		wheelCenter.Size = UDim2.new(1, 0, 0, 260)
+		UI.pad(wheelCenter, 10, 10)
+
+		local wheelDisc = Instance.new("Frame")
+		wheelDisc.Name = "WheelDisc"
+		wheelDisc.Size = UDim2.fromOffset(170, 170)
+		wheelDisc.AnchorPoint = Vector2.new(0.5, 0.5)
+		wheelDisc.Position = UDim2.fromScale(0.5, 0.40)
+		wheelDisc.BackgroundColor3 = Color3.fromHex("141822")
+		wheelDisc.BorderSizePixel = 0
+		wheelDisc.Parent = wheelCenter
+		local discCorner = Instance.new("UICorner")
+		discCorner.CornerRadius = UDim.new(1, 0)
+		discCorner.Parent = wheelDisc
+		local discStroke = Instance.new("UIStroke")
+		discStroke.Color = GOLD
+		discStroke.Thickness = 3
+		discStroke.Parent = wheelDisc
+
+		local pointer = Instance.new("TextLabel")
+		pointer.Name = "Pointer"
+		pointer.Size = UDim2.fromOffset(26, 26)
+		pointer.AnchorPoint = Vector2.new(0.5, 0)
+		pointer.Position = UDim2.new(0.5, 0, 0, 2)
+		pointer.BackgroundTransparency = 1
+		pointer.Text = "▼"
+		pointer.TextColor3 = GOLD
+		pointer.Font = Enum.Font.BuilderSansExtraBold
+		pointer.TextSize = 22
+		pointer.ZIndex = 5
+		pointer.Parent = wheelCenter
+
+		local sectorLabels = {"+100 CR", "+150 XP", "+200 CR", "+1 Cup", "+250 XP", "+300 CR"}
+		local sectorColors = {Art.mint, GOLD, Color3.fromHex("00B4D8"), Color3.fromHex("FF9E00"), Color3.fromHex("7209B7"), Color3.fromHex("F72585")}
+		for i = 1, 6 do
+			local angle = (i - 1) * 60
+			local spoke = Instance.new("Frame")
+			spoke.Name = "Spoke" .. i
+			spoke.Size = UDim2.fromScale(1, 1)
+			spoke.BackgroundTransparency = 1
+			spoke.Rotation = angle
+			spoke.Parent = wheelDisc
+
+			local tag = UI.label(spoke, sectorLabels[i], 12, {font = BLACK, color = sectorColors[i], align = Enum.TextXAlignment.Center})
+			tag.AnchorPoint = Vector2.new(0.5, 0)
+			tag.Position = UDim2.fromScale(0.5, 0.08)
+			tag.Size = UDim2.fromOffset(70, 20)
+		end
+
+		local statusLabel = UI.label(wheelCenter, if canSpin then t("Spin Available!") else t("Next spin tomorrow"), 13,
+			{font = BOLD, color = if canSpin then colors.mint else colors.muted, align = Enum.TextXAlignment.Center})
+		statusLabel.AnchorPoint = Vector2.new(0.5, 1)
+		statusLabel.Position = UDim2.new(0.5, 0, 1, -44)
+		statusLabel.Size = UDim2.new(1, 0, 0, 20)
+
+		local isSpinning = false
+		local spinBtn = UI.button(wheelCenter, "SpinBtn", t("SPIN"), 38, if canSpin then function()
+			if isSpinning then return end
+			isSpinning = true
+			local wd = ReplicatedStorage:WaitForChild("WorldDraft", 5)
+			local wheelAction = if wd then wd:FindFirstChild("WheelAction") :: RemoteEvent? else nil
+			if wheelAction then
+				wheelAction:FireServer()
+				audio.play("select")
+				local conn
+				conn = wheelAction.OnClientEvent:Connect(function(ok, sectorIdx, kind, amount)
+					conn:Disconnect()
+					if ok then
+						local targetRot = 360 * 5 + (6 - sectorIdx) * 60 + 30
+						local tween = TweenService:Create(wheelDisc, TweenInfo.new(3.2, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {Rotation = targetRot})
+						tween:Play()
+						task.spawn(function()
+							for _ = 1, 16 do
+								task.wait(0.16)
+								audio.play("select")
+							end
+							task.wait(0.6)
+							audio.play("upgrade")
+							statusLabel.Text = t("Congratulations! You won %s", sectorLabels[sectorIdx])
+							statusLabel.TextColor3 = GOLD
+							task.wait(2.2)
+							drawDialog()
+						end)
+					else
+						isSpinning = false
+					end
+				end)
+			end
+		end else nil, if canSpin then GOLD else colors.panel, if canSpin then colors.ink else colors.outline)
+		spinBtn.AnchorPoint = Vector2.new(0.5, 1)
+		spinBtn.Position = UDim2.new(0.5, 0, 1, 0)
+		spinBtn.Size = UDim2.new(0.70, 0, 0, 38)
 	else
 		UI.label(dialogBody, t("Complete leagues or collect all four venues."), 13, {color = colors.muted})
 		local match = snapshot and snapshot.match

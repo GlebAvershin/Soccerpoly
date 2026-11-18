@@ -26,10 +26,20 @@ export type CareerProfile = {
 	unlockedCosmetics: {[string]: boolean},
 	loginStreak: number,
 	lastLoginTimestamp: number,
+	lastDailySpin: number,
 	isVip: boolean,
 	quests: {[string]: Quest},
 	questsDay: number,
 	savedAt: number,
+}
+
+local WHEEL_SECTORS = {
+	{kind = "cash", amount = 100, label = "+100 CR"},
+	{kind = "xp", amount = 150, label = "+150 XP"},
+	{kind = "cash", amount = 200, label = "+200 CR"},
+	{kind = "trophy", amount = 1, label = "+1 Cup"},
+	{kind = "xp", amount = 250, label = "+250 XP"},
+	{kind = "cash", amount = 300, label = "+300 CR"},
 }
 
 local function defaultQuests(): {[string]: Quest}
@@ -54,6 +64,7 @@ local DEFAULT_PROFILE: CareerProfile = table.freeze({
 	},
 	loginStreak = 1,
 	lastLoginTimestamp = 0,
+	lastDailySpin = 0,
 	isVip = false,
 	quests = defaultQuests(),
 	questsDay = 0,
@@ -91,6 +102,9 @@ local function applyAttributes(player: Player, profile: CareerProfile)
 	player:SetAttribute("CareerEquippedAura", profile.equippedAura)
 	player:SetAttribute("CareerLoginStreak", profile.loginStreak)
 	player:SetAttribute("CareerIsVip", profile.isVip)
+	local now = os.time()
+	local canSpin = (now - (profile.lastDailySpin or 0)) >= 20 * 3600
+	player:SetAttribute("CareerCanSpin", canSpin)
 	pcall(function()
 		player:SetAttribute("CareerUnlocked", HttpService:JSONEncode(profile.unlockedCosmetics))
 		player:SetAttribute("CareerQuests", HttpService:JSONEncode(profile.quests))
@@ -174,6 +188,7 @@ local function loadProfile(player: Player)
 				unlockedCosmetics = saved.unlockedCosmetics or {["ivory_classic"] = true, ["mint_classic"] = true},
 				loginStreak = saved.loginStreak or 1,
 				lastLoginTimestamp = saved.lastLoginTimestamp or 0,
+				lastDailySpin = saved.lastDailySpin or 0,
 				isVip = saved.isVip or false,
 				quests = saved.quests or defaultQuests(),
 				questsDay = saved.questsDay or 0,
@@ -297,9 +312,45 @@ function CareerStore.claimQuest(player: Player, questId: string): boolean
 	return true
 end
 
+function CareerStore.spinWheel(player: Player): (boolean, number, string, number)
+	local profile = cache[player.UserId]
+	if not profile then return false, 1, "", 0 end
+	local now = os.time()
+	if profile.lastDailySpin and profile.lastDailySpin > 0 and (now - profile.lastDailySpin) < 20 * 3600 then
+		return false, 1, "", 0
+	end
+	profile.lastDailySpin = now
+
+	local sectorIdx = math.random(1, #WHEEL_SECTORS)
+	local sector = WHEEL_SECTORS[sectorIdx]
+	if sector.kind == "cash" then
+		profile.careerEarnings += sector.amount
+	elseif sector.kind == "xp" then
+		local gain = sector.amount
+		if profile.isVip then gain = math.floor(gain * 1.25) end
+		profile.managerXp += gain
+		checkUnlocksForLevel(profile)
+	elseif sector.kind == "trophy" then
+		profile.trophies += sector.amount
+	end
+
+	applyAttributes(player, profile)
+	pendingSaves[player.UserId] = true
+	saveProfile(player.UserId)
+	return true, sectorIdx, sector.kind, sector.amount
+end
+
 function CareerStore.init(network: Folder)
 	local channel = Instance.new("RemoteEvent")
 	channel.Name, channel.Parent = "CareerAction", network
+
+	local wheelChannel = Instance.new("RemoteEvent")
+	wheelChannel.Name, wheelChannel.Parent = "WheelAction", network
+
+	wheelChannel.OnServerEvent:Connect(function(player)
+		local ok, sectorIdx, kind, amount = CareerStore.spinWheel(player)
+		wheelChannel:FireClient(player, ok, sectorIdx, kind, amount)
+	end)
 
 	local emoteChannel = Instance.new("RemoteEvent")
 	emoteChannel.Name, emoteChannel.Parent = "EmoteAction", network
