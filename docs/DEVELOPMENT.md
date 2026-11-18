@@ -89,10 +89,10 @@ make verify
 
 ```sh
 python3 scripts/studio-qa.py --launchservices
-python3 scripts/studio-qa.py --launchservices --device portrait-small --edition ru --matchday
+python3 scripts/studio-qa.py --device portrait-small --edition ru --matchday
 ```
 
-Запускайте сценарии по очереди. Признак успеха — строка `WORLD DRAFT QA PASS WorldDraftSmoke`. Логи сохраняются в `.tools/`. На Windows этот же скрипт принимает `--studio` с полным путём к установленному `RobloxStudioBeta.exe`. Для ручного сетевого теста выберите **Server & Clients** в Studio и два клиента. Начните партию у хоста и проверьте, что покупка или аренда одинаково отображается в обоих окнах.
+Запускайте сценарии по очереди. Первая команда открывает Studio через системный launcher macOS. Вторая запускает исполняемый файл Studio напрямую. При проверке портретного режима вариант с launcher достиг тайм-аута, а прямой запуск завершился успешно. Признак успеха — строка `WORLD DRAFT QA PASS WorldDraftSmoke`. Логи сохраняются в `.tools/`. На Windows этот же скрипт принимает `--studio` с полным путём к установленному `RobloxStudioBeta.exe`. Для ручного сетевого теста выберите **Server & Clients** в Studio и два клиента. Начните партию у хоста и проверьте, что покупка или аренда одинаково отображается в обоих окнах.
 
 ## Если запуск остановился
 
