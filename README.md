@@ -4,11 +4,11 @@
 
 **Soccerpoly** — футбольная стратегия на четверых. На 32 клетках расположены 20 клубов из пяти лиг, четыре стадиона и клетки событий. В одиночной партии свободные места занимают боты.
 
-[Скачать Soccerpoly v0.24.2 для Roblox Studio](https://github.com/GlebAvershin/Soccerpoly/releases/download/v0.24.2/Soccerpoly-v0.24.2.rbxl)
+[Играть в Roblox](https://www.roblox.com/games/114770772027261/Soccerpoly) · [Инструкция для разработчика](docs/DEVELOPMENT.md) · [Скачать сборку для Studio](https://github.com/GlebAvershin/Soccerpoly/releases/download/v0.24.2/Soccerpoly-v0.24.2.rbxl)
 
 ## Запуск
 
-1. Откройте `dist/Soccerpoly.rbxl` в Roblox Studio и нажмите **Play**.
+1. Откройте скачанный `Soccerpoly-v0.24.2.rbxl` (или свою сборку `dist/Soccerpoly.rbxl`) в Roblox Studio и нажмите **Play**.
 2. При первом запуске лобби открывается на английском. Выберите фигурку и начните матч. Бросьте два кубика. Сумма определит клетку, а дубль даст дополнительный бросок.
 3. На свободном клубе выберите уровень постройки и подтвердите покупку. Нажмите на любую клубную клетку, чтобы открыть её цены, аренду и выкуп. Игра заканчивается при выполнении условия победы или по таймеру. Хост выбирает быстрый матч на 20 минут или длинный на 60.
 
@@ -25,35 +25,20 @@
 
 ## Сборка из исходников
 
-Нужны Roblox Studio, [Rojo 7.7.1](https://github.com/rojo-rbx/rojo/releases/tag/v7.7.1) и для проверок [Luau CLI 0.747](https://github.com/luau-lang/luau/releases/tag/0.747): `luau`, `luau-compile`, `luau-analyze`. Для `make verify` нужны также Python 3.9+ и компилятор C++17. Положите инструменты в PATH. Rojo можно установить через Rokit по `rokit.toml`.
+Для первой сборки нужны Git, Rojo 7.7.1 и Roblox Studio. В инструкции есть команды для Windows и macOS, синхронизация правок со Studio, тест с двумя клиентами и диагностика запуска. [Настройка и разработка](docs/DEVELOPMENT.md)
 
-```sh
-make verify
-rojo serve  # необязательно: подключить Rojo Plugin в собственной копии place
-```
-
-`make verify` компилирует исходники, проверяет каталог и типы Luau, запускает тесты, пересчитывает аналитические витрины, проверяет баланс через C++17 и собирает place. Движковый код дополнительно проверяется в Studio. GitHub Actions повторяет быстрые проверки и публикует файл сборки как артефакт CI при подключении внешнего репозитория. Текущее хранилище — локальный Git.
-
-```sh
-python3 scripts/studio-qa.py --launchservices
-python3 scripts/studio-qa.py --art --matchday --launchservices
-python3 scripts/studio-qa.py --players 2 --launchservices
-python3 scripts/studio-qa.py --players 4 --launchservices
-python3 scripts/studio-qa.py --device portrait --launchservices
-python3 scripts/studio-qa.py --device landscape --launchservices
-```
-
-`--launchservices` запускает отдельную копию Studio через штатный macOS launcher. Двухклиентский режим Studio использует локальный временный серверный place в каталоге Roblox. Тесты копируют код в одноразовую сборку внутри `.tools`; тестовые скрипты не входят в релиз. Не запускайте одновременно несколько тестов Studio с локальным сервером.
+При каждом push и pull request GitHub Actions собирает place и проверяет правила, контент и аналитику. [Прогоны CI](https://github.com/GlebAvershin/Soccerpoly/actions/workflows/quality.yml) · [Релизы](https://github.com/GlebAvershin/Soccerpoly/releases)
 
 ## Документация
 
 | Материал | Что внутри |
 | --- | --- |
+| [Рабочее место разработчика](docs/DEVELOPMENT.md) | Установка, карта кода, первая правка и тесты |
 | [Playrix](docs/PLAYRIX.md) | Покрытие двух вакансий, готовые артефакты и демонстрация |
 | [Настольный референс и клубы](docs/REFERENCE.md) | Фото физической игры, рейтинг популярности и состав пяти лиг |
 | [AI workflow](docs/AI_WORKFLOW.md) | Бриф, MCP, валидатор, компиляция контента и проверка |
 | [Аналитика](docs/ANALYTICS.md) | A/B, SQL, Python, Jupyter, экономика и план подключения сервисов |
-| [Дизайн](docs/GAME.md) | Правила, баланс, состав среза, контракты |
+| [Руководство игрока](docs/GAME.md) | Первый ход, сделки, чемпионат и условия победы |
 | [Арена и анимация](docs/ART_DIRECTION.md) | Визуальное направление, читаемость поля и показ событий |
 | [Рынок](docs/MARKET.md) | Данные Roblox, конкуренты, референс Wildberries, сегмент и план проверки |
 | [Монетизация](docs/MONETIZATION.md) | Cosmetics Pass, сценарии DevEx и требования к обработке покупок |
@@ -81,4 +66,4 @@ flowchart LR
 - `native/` — C++17, STL и OpenGL inspector для баланса Matchday.
 - `scripts/` и `tests/` — редактор контента, MCP, проверки и сборка.
 
-Игра использует оригинальные игровые названия и модели. Физическая настолка служит референсом формата. В архивной обложке используется маска суши Natural Earth.
+На поле представлены реальные футбольные клубы. Физическая настолка служит референсом формата. В архивной обложке используется маска суши Natural Earth.
