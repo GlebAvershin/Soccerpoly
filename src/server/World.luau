@@ -85,11 +85,12 @@ local function pitch(stage: Folder)
 	plate(field, "Brushed champagne reveal", 0, -.09, 0, 90.4, .46, 90.4, brass).Material = Enum.Material.Metal
 	plate(field, "Enamel apron", 0, .105, 0, 89.65, .14, 89.65, enamel)
 	plate(field, "Turf binding", 0, .163, 0, 84.6, .1, 72.7, C("112B27"))
-	local turf = {C("33785B"), C("428765")}
-	local strips = 10
+	local turf = {C("1E5936"), C("266E43")}
+	local strips = 14
+	local stripWidth = 84 / strips
 	for i = 1, strips do
-		local grass = plate(field, "Mown turf", (i - (strips + 1) / 2) * 8.4, .20, 0,
-			8.4, .17, 72, turf[1 + (i - 1) % 2])
+		local grass = plate(field, "Mown turf", (i - (strips + 1) / 2) * stripWidth, .20, 0,
+			stripWidth, .17, 72, turf[1 + (i - 1) % 2])
 		grass.Material, grass.CastShadow = Enum.Material.Grass, false
 	end
 	stroke("Halfway line", 0, -32.5, 0, 32.5, .56, chalk)
@@ -118,26 +119,36 @@ local function pitch(stage: Folder)
 		end
 	end
 
-	-- The full circle is a turned medallion with a small cup die-stamped in the enamel.
-	disk("Centre circle", 0, 0, 16.6, .353, chalk)
-	disk("Centre enamel", 0, 0, 15.55, .364, C("286C52"))
-	disk("Cup seal rim", 0, 0, 9.0, .372, C("96B78A"))
-	disk("Cup seal", 0, 0, 8.48, .380, C("225C4B"))
-	local gilt = C("EACD88")
+	-- Masterpiece 3D Continental Championship Centerpiece
+	local goldMetal = C("D4AF37")
+	disk("Centre gold bezel", 0, 0, 16.8, .345, goldMetal)
+	disk("Centre circle", 0, 0, 16.4, .352, chalk)
+	disk("Centre enamel", 0, 0, 15.55, .360, C("123321"))
+	disk("Cup seal rim", 0, 0, 9.4, .370, goldMetal)
+	disk("Cup seal", 0, 0, 8.8, .378, C("0E291B"))
+
+	-- 3D Sculpted Championship Star & Trophy Inlay
+	local gilt = C("FFD700")
 	local function engraving(x0: number, z0: number, x1: number, z1: number, width: number)
-		stroke("Championship cup engraving", x0, z0, x1, z1, width, gilt, .397)
+		stroke("Championship cup engraving", x0, z0, x1, z1, width, gilt, .398)
 	end
-	engraving(-1.46, -1.68, 1.46, -1.68, .50)
-	engraving(-1.29, -1.53, -.98, .02, .58)
-	engraving(1.29, -1.53, .98, .02, .58)
-	engraving(-.98, .02, 0, .80, .53)
-	engraving(.98, .02, 0, .80, .53)
-	engraving(0, .68, 0, 1.78, .49)
-	engraving(-1.12, 1.91, 1.12, 1.91, .53)
+	engraving(-1.46, -1.68, 1.46, -1.68, .52)
+	engraving(-1.29, -1.53, -.98, .02, .60)
+	engraving(1.29, -1.53, .98, .02, .60)
+	engraving(-.98, .02, 0, .80, .55)
+	engraving(.98, .02, 0, .80, .55)
+	engraving(0, .68, 0, 1.78, .50)
+	engraving(-1.12, 1.91, 1.12, 1.91, .55)
 	for _, side in {-1, 1} do
-		engraving(side * 1.30, -1.31, side * 2.21, -1.31, .30)
-		engraving(side * 2.21, -1.31, side * 1.91, -.32, .30)
-		engraving(side * 1.91, -.32, side * 1.04, .02, .30)
+		engraving(side * 1.30, -1.31, side * 2.21, -1.31, .32)
+		engraving(side * 2.21, -1.31, side * 1.91, -.32, .32)
+		engraving(side * 1.91, -.32, side * 1.04, .02, .32)
+	end
+	-- 4 Gold Star Rivets around the Cup
+	for _, sx in {-3.2, 3.2} do
+		for _, sz in {-3.2, 3.2} do
+			disk("Trophy star rivet", sx, sz, .55, .395, gilt)
+		end
 	end
 
 	for _, side in {-1, 1} do

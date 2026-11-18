@@ -413,11 +413,50 @@ function Arena.new(myId: number, root: Frame, translate: (string) -> string, pla
 	local function pulse(at: Vector3, color: Color3, impact: boolean)
 		if reduced then return end
 		local glow = medallion(effects, "Landing pulse", Vector3.new(at.X, Art.tileTop + .038, at.Z), 1.2, .032, color)
-		glow.Material, glow.Transparency = Enum.Material.Neon, if impact then .34 else .62
-		local reach = if impact then 6.2 else 3.2
-		TweenService:Create(glow, TweenInfo.new(if impact then .31 else .17, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+		glow.Material, glow.Transparency = Enum.Material.Neon, if impact then .22 else .55
+		local reach = if impact then 7.2 else 3.2
+		TweenService:Create(glow, TweenInfo.new(if impact then .34 else .17, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
 			{Size = Vector3.new(.025, reach, reach), Transparency = 1}):Play()
-		Debris:AddItem(glow, .36)
+		Debris:AddItem(glow, .38)
+
+		if impact then
+			local core = medallion(effects, "Impact Core", Vector3.new(at.X, Art.tileTop + .042, at.Z), 0.8, .035, Art.gold)
+			core.Material, core.Transparency = Enum.Material.Neon, 0.1
+			TweenService:Create(core, TweenInfo.new(.22, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+				{Size = Vector3.new(.025, 4.0, 4.0), Transparency = 1}):Play()
+			Debris:AddItem(core, .25)
+
+			for i = 1, 8 do
+				local a = i * math.pi / 4
+				local spark = medallion(effects, "StepSpark", Vector3.new(at.X, Art.tileTop + 0.05, at.Z), 0.38, 0.02, Art.gold)
+				spark.Material = Enum.Material.Neon
+				local endPos = at + Vector3.new(math.cos(a) * 2.6, 0.05, math.sin(a) * 2.6)
+				TweenService:Create(spark, TweenInfo.new(0.28, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+					Position = endPos,
+					Size = Vector3.new(0.01, 0.08, 0.08),
+					Transparency = 1,
+				}):Play()
+				Debris:AddItem(spark, 0.30)
+			end
+		end
+	end
+
+	local function flashTile(index: number, color: Color3)
+		if reduced then return end
+		local arenaStage = workspace:FindFirstChild("WorldDraftArena")
+		local board = if arenaStage then arenaStage:FindFirstChild("Board") else nil
+		if not board then return end
+		local children = board:GetChildren()
+		local cell = children[index]
+		if not cell then return end
+		local face = cell:FindFirstChild("Porcelain face")
+		if face and face:IsA("BasePart") then
+			local original = face.Color
+			face.Color = color:Lerp(Color3.new(1, 1, 1), 0.4)
+			TweenService:Create(face, TweenInfo.new(0.45, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+				Color = original
+			}):Play()
+		end
 	end
 
 	local function markDestination(index: number, color: Color3)
@@ -897,7 +936,10 @@ function Arena.new(myId: number, root: Frame, translate: (string) -> string, pla
 			entry.bounced = landed
 			if ending or landed % 2 == 1 then playSound(if ending then "land" else "step") end
 			local index = Game.target(entry.from, landed)
-			if ending then markDestination(index, entry.color) end
+			if ending then
+				markDestination(index, entry.color)
+				flashTile(index, entry.color)
+			end
 			pulse(if ending then entry.destination else position(index), entry.color, ending)
 		end
 	end)

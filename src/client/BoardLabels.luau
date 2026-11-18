@@ -134,7 +134,8 @@ return function(root: Frame, translate: (string)->string)
 		sheet.Face, sheet.Adornee, sheet.Name = Enum.NormalId.Back, part, "Cell"..i
 		sheet.AutoLocalize, sheet.Active, sheet.AlwaysOnTop, sheet.LightInfluence = false, false, false, 0
 		sheet.SizingMode = Enum.SurfaceGuiSizingMode.FixedSize
-		sheet.CanvasSize = Vector2.new(math.round(part.Size.X*22), math.round(part.Size.Y*22))
+		-- Sharp high-definition canvas size (44 pixels per stud, 2x original)
+		sheet.CanvasSize = Vector2.new(math.round(part.Size.X * 44), math.round(part.Size.Y * 44))
 		sheet.MaxDistance, sheet.Enabled, sheet.Parent = 12000, visible, group
 		local card = UI.box(sheet, "Printed programme", style.ink(tile))
 		card.Size, card.ClipsDescendants = UDim2.fromScale(1,1), true
