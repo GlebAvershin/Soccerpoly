@@ -4,7 +4,7 @@ COMPILE ?= luau-compile
 ANALYZE ?= luau-analyze
 PYTHON ?= python3
 
-.PHONY: test build verify analytics native native-preview
+.PHONY: test build verify analytics native native-preview publish
 test:
 	"$(PYTHON)" scripts/event_studio.py check
 	"$(COMPILE)" --null src tests analytics
@@ -28,6 +28,9 @@ native:
 
 native-preview:
 	"$(PYTHON)" scripts/native_preview.py --preview dist/analytics/cup-odds.ppm
+
+publish: build
+	"$(PYTHON)" scripts/publish_roblox.py
 
 verify: test build analytics native
 	git diff --check
