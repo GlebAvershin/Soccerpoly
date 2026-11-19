@@ -21,6 +21,7 @@ local function band(parent: Frame, name: string, y: number, height: number, font
 	text.FontFace, text.TextColor3 = font, color
 	text.TextWrapped = false
 	text.TextScaled = true
+	text.ZIndex = 5
 	text.Position, text.Size = UDim2.fromScale(.035, y), UDim2.fromScale(.93, height)
 	text.Text, text.Parent = "", parent
 	return text
@@ -41,37 +42,37 @@ local function setLayout(entry, compact: boolean)
 	local shallow = sy < 14 -- vertical side cells have sy ~ 11.76, horizontal end cells have sy ~ 16.90
 	if entry.buyable then
 		if shallow then
-			artHeight = if compact then .24 else .26
-			nameHeight = if compact then .44 else .48
-			priceHeight = if compact then .22 else .22
-			priceY = 1.0 - priceHeight - .006
+			artHeight = if compact then .32 else .34
+			nameHeight = if compact then .32 else .34
+			priceHeight = if compact then .18 else .20
+			priceY = 1.0 - priceHeight - .020
 		else
-			artHeight = if compact then .40 else .42
-			nameHeight = if compact then .30 else .32
-			priceHeight = if compact then .20 else .20
-			priceY = 1.0 - priceHeight - .006
+			artHeight = if compact then .38 else .40
+			nameHeight = if compact then .28 else .30
+			priceHeight = if compact then .18 else .20
+			priceY = 1.0 - priceHeight - .020
 		end
 	else
 		if shallow then
-			artHeight = if compact then .34 else .36
-			nameHeight = if compact then .56 else .60
+			artHeight = if compact then .42 else .44
+			nameHeight = if compact then .44 else .46
 			priceHeight = 0
 			priceY = 1.0
 		else
-			artHeight = if compact then .50 else .52
-			nameHeight = if compact then .42 else .44
+			artHeight = if compact then .48 else .50
+			nameHeight = if compact then .40 else .42
 			priceHeight = 0
 			priceY = 1.0
 		end
 	end
 
 	local inset = if compact then .024 else .028
-	local titleY = artHeight + .008
+	local titleY = artHeight + .036
 	entry.poster.Size = UDim2.fromScale(1, artHeight)
 	if entry.rule then
-		entry.rule.Position = UDim2.fromScale(0.03, artHeight)
+		entry.rule.Position = UDim2.fromScale(0.03, artHeight + .008)
 	end
-	entry.title.Position, entry.title.Size = UDim2.fromScale(inset, titleY), UDim2.fromScale(1 - 2 * inset, nameHeight - .008)
+	entry.title.Position, entry.title.Size = UDim2.fromScale(inset, titleY), UDim2.fromScale(1 - 2 * inset, nameHeight - .010)
 	entry.cost.Position, entry.cost.Size = UDim2.fromScale(inset, priceY), UDim2.fromScale(1 - 2 * inset, priceHeight)
 	entry.owner.Position, entry.owner.Size = UDim2.fromScale(0, artHeight), UDim2.fromScale(.026, 1 - artHeight)
 	entry.title.Text, entry.nativeTitle.Text = name, name
@@ -167,26 +168,30 @@ return function(root: Frame, translate: (string)->string)
 		sheet.Face, sheet.Adornee, sheet.Name = Enum.NormalId.Back, part, "Cell"..i
 		sheet.AutoLocalize, sheet.Active, sheet.AlwaysOnTop, sheet.LightInfluence = false, false, false, 0
 		sheet.SizingMode = Enum.SurfaceGuiSizingMode.FixedSize
-		-- Ultra-sharp high-definition canvas size (60 pixels per stud, crystal clear)
-		sheet.CanvasSize = Vector2.new(math.round(part.Size.X * 60), math.round(part.Size.Y * 60))
+		-- Ultra-sharp 80 pixels per stud high-definition canvas size (crystal clear)
+		sheet.CanvasSize = Vector2.new(math.round(part.Size.X * 80), math.round(part.Size.Y * 80))
 		sheet.MaxDistance, sheet.Enabled, sheet.Parent = 12000, visible, group
 		local card = UI.box(sheet, "Printed programme", style.ink(tile))
 		card.Size, card.ClipsDescendants = UDim2.fromScale(1,1), true
 		local shallow = part.Size.Y < 14
-		local initArt = if buyable then (if shallow then .24 else .42) else (if shallow then .34 else .52)
-		local initNameH = if buyable then (if shallow then .48 else .32) else (if shallow then .60 else .44)
-		local initPriceH = if buyable then (if shallow then .22 else .20) else 0
-		local initPriceY = if buyable then (1.0 - initPriceH - .006) else 1.0
-		local initTitleY = initArt + .008
+		local initArt = if buyable then (if shallow then .34 else .40) else (if shallow then .44 else .50)
+		local initNameH = if buyable then (if shallow then .34 else .30) else (if shallow then .46 else .42)
+		local initPriceH = if buyable then .20 else 0
+		local initPriceY = if buyable then (1.0 - initPriceH - .020) else 1.0
+		local initTitleY = initArt + .036
 
 		local poster = illustrate(card,tile)
 		poster.Size = UDim2.fromScale(1, initArt)
+		poster.ZIndex = 1
 		local goldRule = UI.box(card, "Programme rule", Art.gold)
-		goldRule.Position, goldRule.Size = UDim2.fromScale(0.03, initArt), UDim2.fromScale(0.94, 0.005)
+		goldRule.Position, goldRule.Size = UDim2.fromScale(0.03, initArt + .008), UDim2.fromScale(0.94, 0.005)
 		goldRule.BackgroundTransparency = 0.55
+		goldRule.ZIndex = 2
 		local color = style.title
-		local title = band(card, "Club name", initTitleY, initNameH - .008, style.clubFace, color)
+		local title = band(card, "Club name", initTitleY, initNameH - .010, style.clubFace, color)
+		title.ZIndex = 5
 		local cost = band(card, "Club cost", initPriceY, initPriceH, style.amountFace, style.price)
+		cost.ZIndex = 5
 		cost.Visible = buyable
 		local rules = {}
 		if buyable then
@@ -194,11 +199,13 @@ return function(root: Frame, translate: (string)->string)
 				local rule = UI.box(card, "Price rule", style.price)
 				rule.Position, rule.Size = UDim2.fromScale(x,.88), UDim2.fromScale(.21,.015)
 				rule.BackgroundTransparency = .62
+				rule.ZIndex = 3
 				table.insert(rules,rule)
 			end
 		end
 		local mark = UI.box(card, "Owner", Art.gold)
 		mark.Position, mark.Size = UDim2.fromScale(0, initArt), UDim2.fromScale(.026, 1 - initArt)
+		mark.ZIndex = 4
 		local frame = UI.box(overlay, sheet.Name)
 		frame.Size, frame.Interactable = UDim2.fromScale(1,1), false
 		local function display(source: GuiObject): GuiObject
@@ -206,8 +213,13 @@ return function(root: Frame, translate: (string)->string)
 			copy.Visible, copy.Parent = false, frame
 			return copy
 		end
-		local nativeTitle, nativeCost = display(title), display(cost)
-		local layers = {{print=poster, native=display(poster)}, {print=title, native=nativeTitle}}
+		local nativePoster = display(poster)
+		nativePoster.ZIndex = 1
+		local nativeTitle = display(title)
+		nativeTitle.ZIndex = 5
+		local nativeCost = display(cost)
+		nativeCost.ZIndex = 5
+		local layers = {{print=poster, native=nativePoster}, {print=title, native=nativeTitle}}
 		if buyable then table.insert(layers, {print=cost, native=nativeCost}) end
 		local entry = {part=part, surface=sheet, title=title, cost=cost, nativeTitle=nativeTitle,
 			nativeCost=nativeCost, owner=mark, layers=layers, poster=poster, rule=goldRule, rules=rules, buyable=buyable, compact=nil, name=nil}

@@ -568,9 +568,10 @@ function Arena.new(myId: number, root: Frame, translate: (string) -> string, pla
 			if displayRoot then
 				local centre = displayRoot:FindFirstChild("Centre")
 				if centre then
-					local phaseLabel = centre:FindFirstChild("PhaseLabel") :: TextLabel?
-					local subLabel = centre:FindFirstChild("SubLabel") :: TextLabel?
-					local leaderStat = centre:FindFirstChild("LeaderStat") :: TextLabel?
+					local phaseLabel = centre:FindFirstChild("PhaseLabel", true) :: TextLabel?
+					local subLabel = centre:FindFirstChild("SubLabel", true) :: TextLabel?
+					local leaderStat = centre:FindFirstChild("LeaderStat", true) :: TextLabel?
+					local arenaStat = centre:FindFirstChild("ArenaStat", true) :: TextLabel?
 					if phaseLabel and subLabel and leaderStat then
 						if s.phase == "final" then
 							local winnerIdx = s.winner or 1
@@ -581,6 +582,9 @@ function Arena.new(myId: number, root: Frame, translate: (string) -> string, pla
 							subLabel.Text = string.format("CONGRATULATIONS %s!", winnerFigure.name:upper())
 							subLabel.TextColor3 = Art.seatColors[winnerIdx] or Art.gold
 							leaderStat.Text = string.format("CHAMPION'S REVENUE: %d CR · TROPHIES: %d", winnerSeat.cash, winnerSeat.trophies or 1)
+							if arenaStat then
+								arenaStat.Text = "TOURNAMENT COMPLETE · TROPHY AWARDED"
+							end
 						else
 							local activeSeat = s.seats[s.active]
 							local activeFigure = if activeSeat then Board.figures[activeSeat.figure] else nil
@@ -596,8 +600,9 @@ function Arena.new(myId: number, root: Frame, translate: (string) -> string, pla
 								else s.phase:upper()
 							phaseLabel.Text = phaseTitle
 							phaseLabel.TextColor3 = if s.phase == "buy" then Art.gold
-								elseif s.phase == "upgrade" then Color3.fromHex("78ACD0")
+								elseif s.phase == "upgrade" then Color3.fromHex("00D2FF")
 								elseif s.phase == "shot" then Color3.fromHex("FF3B60")
+								elseif s.phase == "roll" or s.phase == "move" then Color3.fromHex("00FF87")
 								else Art.mint
 							if activeFigure then
 								subLabel.Text = if s.phase == "move" then string.format("%s ADVANCING ACROSS ARENA", activeFigure.name:upper())
@@ -616,6 +621,11 @@ function Arena.new(myId: number, root: Frame, translate: (string) -> string, pla
 							local ownedCount = 0
 							for _, c in s.clubs do if c.owner == leaderSeat.id then ownedCount += 1 end end
 							leaderStat.Text = string.format("TABLE LEADER: %s · %d CR · %d CLUBS", leaderFigure.name:upper(), leaderSeat.cash, ownedCount)
+							if arenaStat then
+								local totalClubs = 0
+								for _, c in s.clubs do if c.owner ~= 0 then totalClubs += 1 end end
+								arenaStat.Text = string.format("SIGNED: %d/32 CLUBS · STADIUMS IN PLAY", totalClubs)
+							end
 						end
 					end
 				end

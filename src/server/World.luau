@@ -286,51 +286,55 @@ local function surroundings(stage: Folder)
 
 	-- Architectural Jumbotron LED Screen over North Terrace
 	local jumbotronRig = folder(scene, "Stadium Jumbotron")
-	local jPose = CFrame.new(0, 18.2, -55.5) * CFrame.Angles(math.rad(4.5), 0, 0)
-	plate(jumbotronRig, "Jumbotron Truss L", -28.2, 12.0, -56.0, 1.4, 20.0, 1.4, C("242C38")).Material = Enum.Material.Metal
-	plate(jumbotronRig, "Jumbotron Truss R", 28.2, 12.0, -56.0, 1.4, 20.0, 1.4, C("242C38")).Material = Enum.Material.Metal
-	plate(jumbotronRig, "Jumbotron Beam Top", 0, 27.2, -56.0, 58.0, 1.3, 1.4, C("242C38")).Material = Enum.Material.Metal
-	plate(jumbotronRig, "Jumbotron Beam Bottom", 0, 9.2, -56.0, 58.0, 1.3, 1.4, C("242C38")).Material = Enum.Material.Metal
+	local jPose = CFrame.new(0, 20.5, -55.0) * CFrame.Angles(math.rad(6.0), 0, 0)
+	plate(jumbotronRig, "Jumbotron Truss L", -33.5, 13.0, -55.8, 1.6, 24.0, 1.6, C("242C38")).Material = Enum.Material.Metal
+	plate(jumbotronRig, "Jumbotron Truss R", 33.5, 13.0, -55.8, 1.6, 24.0, 1.6, C("242C38")).Material = Enum.Material.Metal
+	plate(jumbotronRig, "Jumbotron Beam Top", 0, 31.2, -55.8, 69.0, 1.5, 1.6, C("242C38")).Material = Enum.Material.Metal
+	plate(jumbotronRig, "Jumbotron Beam Bottom", 0, 9.8, -55.8, 69.0, 1.5, 1.6, C("242C38")).Material = Enum.Material.Metal
 
-	-- Top Floodlight Gantry with 8 High-Powered Stadium Spotlights
-	for idx, fx in {-24, -17, -10, -3, 3, 10, 17, 24} do
-		local lamp = plate(jumbotronRig, "Jumbotron Spot "..idx, fx, 28.1, -55.8, 1.6, .9, .7, C("EDF4FF"))
+	-- Top Floodlight Gantry with 10 High-Powered Stadium Spotlights
+	for idx, fx in {-28, -21, -14, -7, 0, 7, 14, 21, 28} do
+		local lamp = plate(jumbotronRig, "Jumbotron Spot "..idx, fx, 32.2, -55.4, 2.0, 1.1, .8, C("EDF4FF"))
 		lamp.Material = Enum.Material.Neon
 	end
 
-	local jHousing = part(jumbotronRig, "Jumbotron Housing", Vector3.new(56.4, 18.2, .85), jPose * CFrame.new(0, 0, -.45), C("0A0F14"))
+	local jHousing = part(jumbotronRig, "Jumbotron Housing", Vector3.new(66.4, 22.0, .85), jPose * CFrame.new(0, 0, -.45), C("0A0F14"))
 	jHousing.Material = Enum.Material.Metal
-	local jBezel = part(jumbotronRig, "Jumbotron Bezel", Vector3.new(55.2, 17.2, .22), jPose * CFrame.new(0, 0, -.05), C("C8A25D"))
+	local jBezel = part(jumbotronRig, "Jumbotron Bezel", Vector3.new(65.2, 21.0, .22), jPose * CFrame.new(0, 0, -.05), C("D4AF37"))
 	jBezel.Material = Enum.Material.Metal
 
-	local jumbotronBoard = part(jumbotronRig, "Jumbotron Screen", Vector3.new(54.0, 16.2, .1), jPose * CFrame.new(0, 0, .08), C("080C10"))
+	-- Neon Accent Rails for broadcast ambiance
+	plate(jumbotronRig, "Jumbotron Neon Top", 0, 30.5, -54.6, 64.0, .35, .25, C("00FF87")).Material = Enum.Material.Neon
+	plate(jumbotronRig, "Jumbotron Neon Bottom", 0, 10.5, -54.6, 64.0, .35, .25, C("D4AF37")).Material = Enum.Material.Neon
+
+	local jumbotronBoard = part(jumbotronRig, "Jumbotron Screen", Vector3.new(64.0, 20.0, .1), jPose * CFrame.new(0, 0, .08), C("080C10"))
 	local jumbotronGui = Instance.new("SurfaceGui")
 	jumbotronGui.Name = "JumbotronDisplay"
 	jumbotronGui.AutoLocalize = false
 	jumbotronGui.Face = Enum.NormalId.Back
 	jumbotronGui.LightInfluence = 0
-	jumbotronGui.CanvasSize = Vector2.new(2880, 864)
+	jumbotronGui.CanvasSize = Vector2.new(3840, 1200)
 	jumbotronGui.SizingMode = Enum.SurfaceGuiSizingMode.FixedSize
 	jumbotronGui.Parent = jumbotronBoard
 
 	local jumbotronRoot = Instance.new("Frame")
 	jumbotronRoot.Name = "DisplayRoot"
 	jumbotronRoot.Size = UDim2.fromScale(1, 1)
-	jumbotronRoot.BackgroundColor3 = C("0A0F14")
+	jumbotronRoot.BackgroundColor3 = C("060A10")
 	jumbotronRoot.BorderSizePixel = 0
 	jumbotronRoot.Parent = jumbotronGui
 
 	local jHeader = Instance.new("Frame")
 	jHeader.Name = "Header"
-	jHeader.Size = UDim2.new(1, 0, 0, 108)
-	jHeader.BackgroundColor3 = C("101722")
+	jHeader.Size = UDim2.new(1, 0, 0, 140)
+	jHeader.BackgroundColor3 = C("0E1724")
 	jHeader.BorderSizePixel = 0
 	jHeader.Parent = jumbotronRoot
 
 	local liveDot = Instance.new("Frame")
 	liveDot.Name = "LiveDot"
-	liveDot.Size = UDim2.fromOffset(32, 32)
-	liveDot.Position = UDim2.new(0, 48, 0.5, -16)
+	liveDot.Size = UDim2.fromOffset(36, 36)
+	liveDot.Position = UDim2.new(0, 60, 0.5, -18)
 	liveDot.BackgroundColor3 = C("FF2D55")
 	liveDot.BorderSizePixel = 0
 	liveDot.Parent = jHeader
@@ -339,95 +343,133 @@ local function surroundings(stage: Folder)
 	dotCorner.Parent = liveDot
 
 	local liveLabel = Instance.new("TextLabel")
-	liveLabel.Size = UDim2.new(0, 360, 1, 0)
-	liveLabel.Position = UDim2.new(0, 96, 0, 0)
+	liveLabel.Size = UDim2.new(0, 480, 1, 0)
+	liveLabel.Position = UDim2.new(0, 116, 0, 0)
 	liveLabel.BackgroundTransparency = 1
-	liveLabel.Text = "MATCHDAY LIVE"
+	liveLabel.Text = "● LIVE BROADCAST"
 	liveLabel.TextColor3 = C("FF3B60")
 	liveLabel.FontFace = Font.new("rbxasset://fonts/families/BuilderSans.json", Enum.FontWeight.ExtraBold)
-	liveLabel.TextSize = 44
+	liveLabel.TextSize = 54
 	liveLabel.TextXAlignment = Enum.TextXAlignment.Left
 	liveLabel.Parent = jHeader
 
 	local cupTitle = Instance.new("TextLabel")
-	cupTitle.Size = UDim2.new(1, -680, 1, 0)
-	cupTitle.Position = UDim2.new(0, 440, 0, 0)
+	cupTitle.Size = UDim2.new(1, -1200, 1, 0)
+	cupTitle.Position = UDim2.new(0, 600, 0, 0)
 	cupTitle.BackgroundTransparency = 1
-	cupTitle.Text = "★ SOCCERPOLY CONTINENTAL CUP • OFFICIAL MATCH ARENA ★"
-	cupTitle.TextColor3 = C("F4E2B8")
+	cupTitle.Text = "★ SOCCERPOLY CONTINENTAL CUP 2026 • CHAMPIONS ARENA ★"
+	cupTitle.TextColor3 = C("FFD700")
 	cupTitle.FontFace = Font.new("rbxasset://fonts/families/BuilderSans.json", Enum.FontWeight.ExtraBold)
-	cupTitle.TextSize = 48
+	cupTitle.TextSize = 58
 	cupTitle.TextXAlignment = Enum.TextXAlignment.Center
 	cupTitle.Parent = jHeader
 
+	local rightStatus = Instance.new("TextLabel")
+	rightStatus.Size = UDim2.new(0, 520, 1, 0)
+	rightStatus.Position = UDim2.new(1, -560, 0, 0)
+	rightStatus.BackgroundTransparency = 1
+	rightStatus.Text = "MATCHDAY 1 · OFFICIAL"
+	rightStatus.TextColor3 = C("D8E8F5")
+	rightStatus.FontFace = Font.new("rbxasset://fonts/families/BuilderSans.json", Enum.FontWeight.Bold)
+	rightStatus.TextSize = 48
+	rightStatus.TextXAlignment = Enum.TextXAlignment.Right
+	rightStatus.Parent = jHeader
+
 	local jCentre = Instance.new("Frame")
 	jCentre.Name = "Centre"
-	jCentre.Size = UDim2.new(1, -64, 0, 624)
-	jCentre.Position = UDim2.new(0, 32, 0, 124)
-	jCentre.BackgroundColor3 = C("0D141E")
+	jCentre.Size = UDim2.new(1, -64, 0, 880)
+	jCentre.Position = UDim2.new(0, 32, 0, 160)
+	jCentre.BackgroundColor3 = C("0A1220")
 	jCentre.BorderSizePixel = 0
 	jCentre.Parent = jumbotronRoot
 	local centreCorner = Instance.new("UICorner")
-	centreCorner.CornerRadius = UDim.new(0, 24)
+	centreCorner.CornerRadius = UDim.new(0, 32)
 	centreCorner.Parent = jCentre
 	local centreBorder = Instance.new("UIStroke")
 	centreBorder.Color = C("D4AF37")
-	centreBorder.Thickness = 4
-	centreBorder.Transparency = 0.35
+	centreBorder.Thickness = 5
+	centreBorder.Transparency = 0.25
 	centreBorder.Parent = jCentre
 
 	local phaseLabel = Instance.new("TextLabel")
 	phaseLabel.Name = "PhaseLabel"
-	phaseLabel.Size = UDim2.new(1, -80, 0, 240)
+	phaseLabel.Size = UDim2.new(1, -80, 0, 320)
 	phaseLabel.Position = UDim2.new(0, 40, 0, 36)
 	phaseLabel.BackgroundTransparency = 1
 	phaseLabel.Text = "READY FOR KICKOFF"
 	phaseLabel.TextColor3 = Art.mint
 	phaseLabel.FontFace = Font.new("rbxasset://fonts/families/BuilderSans.json", Enum.FontWeight.ExtraBold)
-	phaseLabel.TextSize = 168
+	phaseLabel.TextSize = 220
 	phaseLabel.TextScaled = true
 	phaseLabel.Parent = jCentre
 
 	local subLabel = Instance.new("TextLabel")
 	subLabel.Name = "SubLabel"
-	subLabel.Size = UDim2.new(1, -80, 0, 136)
-	subLabel.Position = UDim2.new(0, 40, 0, 292)
+	subLabel.Size = UDim2.new(1, -80, 0, 220)
+	subLabel.Position = UDim2.new(0, 40, 0, 370)
 	subLabel.BackgroundTransparency = 1
 	subLabel.Text = "CHOOSE YOUR FIGURE & ENTER THE ARENA"
 	subLabel.TextColor3 = C("FFFFFF")
 	subLabel.FontFace = Font.new("rbxasset://fonts/families/BuilderSans.json", Enum.FontWeight.Bold)
-	subLabel.TextSize = 72
+	subLabel.TextSize = 110
 	subLabel.TextScaled = true
 	subLabel.Parent = jCentre
 
+	local statsRow = Instance.new("Frame")
+	statsRow.Name = "StatsRow"
+	statsRow.Size = UDim2.new(1, -80, 0, 180)
+	statsRow.Position = UDim2.new(0, 40, 0, 640)
+	statsRow.BackgroundTransparency = 1
+	statsRow.Parent = jCentre
+
 	local leaderStat = Instance.new("TextLabel")
 	leaderStat.Name = "LeaderStat"
-	leaderStat.Size = UDim2.new(1, -80, 0, 124)
-	leaderStat.Position = UDim2.new(0, 40, 0, 452)
+	leaderStat.Size = UDim2.new(0.5, -20, 1, 0)
+	leaderStat.Position = UDim2.new(0, 0, 0, 0)
 	leaderStat.BackgroundTransparency = 1
 	leaderStat.Text = "TABLE STAKES: 1,500 CR · 8 LEAGUE STADIUMS"
 	leaderStat.TextColor3 = Art.gold
 	leaderStat.FontFace = Font.new("rbxasset://fonts/families/BuilderSans.json", Enum.FontWeight.Bold)
-	leaderStat.TextSize = 60
+	leaderStat.TextSize = 72
 	leaderStat.TextScaled = true
-	leaderStat.Parent = jCentre
+	leaderStat.TextXAlignment = Enum.TextXAlignment.Left
+	leaderStat.Parent = statsRow
+
+	local arenaStat = Instance.new("TextLabel")
+	arenaStat.Name = "ArenaStat"
+	arenaStat.Size = UDim2.new(0.5, -20, 1, 0)
+	arenaStat.Position = UDim2.new(0.5, 20, 0, 0)
+	arenaStat.BackgroundTransparency = 1
+	arenaStat.Text = "SIGNED: 0/32 CLUBS · STADIUMS IN PLAY"
+	arenaStat.TextColor3 = C("78ACD0")
+	arenaStat.FontFace = Font.new("rbxasset://fonts/families/BuilderSans.json", Enum.FontWeight.Bold)
+	arenaStat.TextSize = 72
+	arenaStat.TextScaled = true
+	arenaStat.TextXAlignment = Enum.TextXAlignment.Right
+	arenaStat.Parent = statsRow
 
 	local jFooter = Instance.new("Frame")
 	jFooter.Name = "Footer"
-	jFooter.Size = UDim2.new(1, 0, 0, 100)
-	jFooter.Position = UDim2.new(0, 0, 1, -100)
-	jFooter.BackgroundColor3 = C("0A1017")
+	jFooter.Size = UDim2.new(1, 0, 0, 120)
+	jFooter.Position = UDim2.new(0, 0, 1, -120)
+	jFooter.BackgroundColor3 = C("080C14")
 	jFooter.BorderSizePixel = 0
 	jFooter.Parent = jumbotronRoot
+
+	local footerRule = Instance.new("Frame")
+	footerRule.Size = UDim2.new(1, 0, 0, 3)
+	footerRule.BackgroundColor3 = C("D4AF37")
+	footerRule.BorderSizePixel = 0
+	footerRule.Parent = jFooter
 
 	local ticker = Instance.new("TextLabel")
 	ticker.Name = "Ticker"
 	ticker.Size = UDim2.fromScale(1, 1)
 	ticker.BackgroundTransparency = 1
-	ticker.Text = "★ SOCCERPOLY MATCHDAY ★ UPGRADE TO MEGASTADIUM FOR MAXIMUM RENT ★ DOUBLE ROLL GIVES EXTRA TURN ★"
-	ticker.TextColor3 = C("D8E8F5")
+	ticker.Text = "★ SOCCERPOLY CONTINENTAL CUP ★ BUILD MEGASTADIUMS FOR MAXIMUM MATCH REVENUE ★ ROLL DOUBLES FOR EXTRA TURN ★"
+	ticker.TextColor3 = C("E2EEFA")
 	ticker.FontFace = Font.new("rbxasset://fonts/families/BuilderSans.json", Enum.FontWeight.Bold)
-	ticker.TextSize = 48
+	ticker.TextSize = 54
 	ticker.Parent = jFooter
 	ribbon(scene, "Live stadium ribbon", CFrame.new(22.2, 5.12, -64.6), 34)
 	ribbon(scene, "Front stadium ribbon", CFrame.new(0, -1.70, 72.25), 36)
