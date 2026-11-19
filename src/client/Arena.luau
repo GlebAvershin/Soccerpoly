@@ -373,9 +373,9 @@ function Arena.new(myId: number, root: Frame, translate: (string) -> string, pla
 				verticalOffset = (size.Y*.5-origin.Y)/focalLength
 			end
 			-- On portrait phones, frame the playing track directly so the board is close, large and legible
-			local extent = if portraitCamera then (span - 14.0) else Art.plinthWidth
-			local trackWidth = if shortLandscape then span elseif portraitCamera then (span - 16.0) else extent
-			local padding = if portraitCamera then (extent * .25 * math.cos(angle)) else (extent * .5 * math.cos(angle))
+			local extent = if portraitCamera then (span - 16.0) else Art.plinthWidth
+			local trackWidth = if shortLandscape then span elseif portraitCamera then (span - 18.0) else extent
+			local padding = if portraitCamera then (extent * .18 * math.cos(angle)) else (extent * .5 * math.cos(angle))
 			distance = math.max(trackWidth*focalLength/widthPixels,extent*math.sin(angle)*focalLength/heightPixels)
 				+ padding + Art.tileTop*math.sin(angle)
 		end
@@ -384,11 +384,11 @@ function Arena.new(myId: number, root: Frame, translate: (string) -> string, pla
 		local near = base:PointToObjectSpace(Vector3.new(half, Art.tileTop, half))
 		local far = base:PointToObjectSpace(Vector3.new(-half, Art.tileTop, -half))
 		local centerY = (near.Y / -near.Z + far.Y / -far.Z) * .5
-		local targetY = if shortLandscape then 0 elseif portraitCamera then -.015 else -.071
+		local targetY = if shortLandscape then 0 elseif portraitCamera then -.010 else -.071
 		overview = base * CFrame.new(0, (centerY + verticalOffset - targetY * tangent) * distance, 0)
 		local followAngle = math.rad(34)
 		focusOrbit = Vector3.zAxis * math.cos(followAngle) + Vector3.yAxis * math.sin(followAngle)
-		focusDistance = span / (2*tangent*aspect*.86) * (if portraitCamera then .28 else .48)
+		focusDistance = span / (2*tangent*aspect*.86) * (if portraitCamera then .25 else .48)
 		boardPose, viewPoint, overviewDistance = nil, nil, distance
 		oldSize, oldRoot, camera.FieldOfView = size, root.AbsoluteSize, fov
 	end
