@@ -42,37 +42,37 @@ local function setLayout(entry, compact: boolean)
 	local shallow = sy < 14 -- vertical side cells have sy ~ 11.76, horizontal end cells have sy ~ 16.90
 	if entry.buyable then
 		if shallow then
-			artHeight = if compact then .32 else .34
-			nameHeight = if compact then .32 else .34
-			priceHeight = if compact then .18 else .20
-			priceY = 1.0 - priceHeight - .020
-		else
-			artHeight = if compact then .38 else .40
+			artHeight = if compact then .28 else .30
 			nameHeight = if compact then .28 else .30
-			priceHeight = if compact then .18 else .20
-			priceY = 1.0 - priceHeight - .020
+			priceHeight = if compact then .16 else .18
+			priceY = 1.0 - priceHeight - .025
+		else
+			artHeight = if compact then .36 else .38
+			nameHeight = if compact then .26 else .28
+			priceHeight = if compact then .16 else .18
+			priceY = 1.0 - priceHeight - .025
 		end
 	else
 		if shallow then
-			artHeight = if compact then .42 else .44
-			nameHeight = if compact then .44 else .46
+			artHeight = if compact then .40 else .42
+			nameHeight = if compact then .38 else .40
 			priceHeight = 0
 			priceY = 1.0
 		else
-			artHeight = if compact then .48 else .50
-			nameHeight = if compact then .40 else .42
+			artHeight = if compact then .46 else .48
+			nameHeight = if compact then .36 else .38
 			priceHeight = 0
 			priceY = 1.0
 		end
 	end
 
 	local inset = if compact then .024 else .028
-	local titleY = artHeight + .036
+	local titleY = artHeight + .045
 	entry.poster.Size = UDim2.fromScale(1, artHeight)
 	if entry.rule then
-		entry.rule.Position = UDim2.fromScale(0.03, artHeight + .008)
+		entry.rule.Position = UDim2.fromScale(0.03, artHeight + .012)
 	end
-	entry.title.Position, entry.title.Size = UDim2.fromScale(inset, titleY), UDim2.fromScale(1 - 2 * inset, nameHeight - .010)
+	entry.title.Position, entry.title.Size = UDim2.fromScale(inset, titleY), UDim2.fromScale(1 - 2 * inset, nameHeight - .015)
 	entry.cost.Position, entry.cost.Size = UDim2.fromScale(inset, priceY), UDim2.fromScale(1 - 2 * inset, priceHeight)
 	entry.owner.Position, entry.owner.Size = UDim2.fromScale(0, artHeight), UDim2.fromScale(.026, 1 - artHeight)
 	entry.title.Text, entry.nativeTitle.Text = name, name
@@ -168,27 +168,27 @@ return function(root: Frame, translate: (string)->string)
 		sheet.Face, sheet.Adornee, sheet.Name = Enum.NormalId.Back, part, "Cell"..i
 		sheet.AutoLocalize, sheet.Active, sheet.AlwaysOnTop, sheet.LightInfluence = false, false, false, 0
 		sheet.SizingMode = Enum.SurfaceGuiSizingMode.FixedSize
-		-- Ultra-sharp 80 pixels per stud high-definition canvas size (crystal clear)
-		sheet.CanvasSize = Vector2.new(math.round(part.Size.X * 80), math.round(part.Size.Y * 80))
+		-- Ultra-sharp 100 pixels per stud high-definition canvas size (crystal clear Retina sharpness)
+		sheet.CanvasSize = Vector2.new(math.round(part.Size.X * 100), math.round(part.Size.Y * 100))
 		sheet.MaxDistance, sheet.Enabled, sheet.Parent = 12000, visible, group
 		local card = UI.box(sheet, "Printed programme", style.ink(tile))
 		card.Size, card.ClipsDescendants = UDim2.fromScale(1,1), true
 		local shallow = part.Size.Y < 14
-		local initArt = if buyable then (if shallow then .34 else .40) else (if shallow then .44 else .50)
-		local initNameH = if buyable then (if shallow then .34 else .30) else (if shallow then .46 else .42)
-		local initPriceH = if buyable then .20 else 0
-		local initPriceY = if buyable then (1.0 - initPriceH - .020) else 1.0
-		local initTitleY = initArt + .036
+		local initArt = if buyable then (if shallow then .30 else .38) else (if shallow then .42 else .48)
+		local initNameH = if buyable then (if shallow then .30 else .28) else (if shallow then .40 else .38)
+		local initPriceH = if buyable then .18 else 0
+		local initPriceY = if buyable then (1.0 - initPriceH - .025) else 1.0
+		local initTitleY = initArt + .045
 
 		local poster = illustrate(card,tile)
 		poster.Size = UDim2.fromScale(1, initArt)
 		poster.ZIndex = 1
 		local goldRule = UI.box(card, "Programme rule", Art.gold)
-		goldRule.Position, goldRule.Size = UDim2.fromScale(0.03, initArt + .008), UDim2.fromScale(0.94, 0.005)
+		goldRule.Position, goldRule.Size = UDim2.fromScale(0.03, initArt + .012), UDim2.fromScale(0.94, 0.005)
 		goldRule.BackgroundTransparency = 0.55
 		goldRule.ZIndex = 2
 		local color = style.title
-		local title = band(card, "Club name", initTitleY, initNameH - .010, style.clubFace, color)
+		local title = band(card, "Club name", initTitleY, initNameH - .015, style.clubFace, color)
 		title.ZIndex = 5
 		local cost = band(card, "Club cost", initPriceY, initPriceH, style.amountFace, style.price)
 		cost.ZIndex = 5
@@ -243,22 +243,9 @@ return function(root: Frame, translate: (string)->string)
 					setLayout(entry,compact)
 				end
 				for _, layer in entry.layers do
-					local target = projectBand(camera, entry.part, layer.print)
-					local glyph = layer.native
-					glyph.Position = UDim2.fromOffset(target.Min.X,target.Min.Y)
-					glyph.Size = UDim2.fromOffset(target.Width,target.Height)
-					local painted = target
-					if glyph:IsA("TextLabel") and glyph.TextBounds.X > 0 then
-						local centre = (target.Min + target.Max) * .5
-						local extent = glyph.TextBounds * .5 + Vector2.one
-						painted = Rect.new(centre - extent, centre + extent)
-					end
-					local exposed = true
-					for _, mask in masks do
-						if intersects(painted,mask) then exposed = false break end
-					end
-					-- The printed copy sits on the tile behind a passing player.
-					glyph.Visible, layer.print.Visible = exposed, not exposed
+					-- Keep 3D SurfaceGui always cleanly visible with true 3D perspective and zero overlap
+					layer.print.Visible = true
+					layer.native.Visible = false
 				end
 			end
 		end,

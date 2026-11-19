@@ -86,14 +86,16 @@ function Card.new(root: Frame)
 			local tile = Board.tiles[info.index]
 			local bodyInk = style.ink(tile)
 			local ruled = bodyInk:Lerp(style.title, .09)
-			local paper = UI.box(wrapper, "Club dossier", bodyInk, 7)
+			local paper = UI.box(wrapper, "Club dossier", bodyInk, 10)
 			paper.Size, paper.Active = UDim2.fromScale(1, 1), true
-			UI.stroke(paper, bodyInk:Lerp(style.price,.47))
+			UI.stroke(paper, Art.gold, 1.5)
 			local league = Art.accent(tile.kind, tile.league)
-			local header = UI.box(paper, "Club header", colors.ink, 6)
+			local header = UI.box(paper, "Club header", colors.ink, 10)
 			header.Position, header.Size = UDim2.fromOffset(0, 0), UDim2.new(1, 0, 0, 37)
 			local tab = UI.box(header, "League accent", league)
 			tab.Position, tab.Size = UDim2.fromOffset(11, 10), UDim2.fromOffset(4, 17)
+			local headerRule = UI.box(header, "HeaderRule", league)
+			headerRule.Position, headerRule.Size = UDim2.new(0, 0, 1, -2), UDim2.new(1, 0, 0, 2)
 			local title = text(header, info.title, 36, 0, 23, colors.text)
 			title.FontFace = style.clubFace
 			title.TextXAlignment = Enum.TextXAlignment.Left
