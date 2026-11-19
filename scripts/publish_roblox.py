@@ -2,6 +2,8 @@
 """Publish the compiled Soccerpoly place directly to Roblox via Open Cloud API."""
 import os
 import sys
+import shutil
+import subprocess
 from pathlib import Path
 import urllib.request
 import urllib.error
@@ -26,8 +28,19 @@ def load_env():
                 os.environ.setdefault(k.strip(), v.strip().strip('"').strip("'"))
 
 
+def build_place(rbxl_path: Path):
+    rojo_bin = shutil.which("rojo") or (ROOT / ".tools/bin/rojo" if (ROOT / ".tools/bin/rojo").exists() else None)
+    if rojo_bin:
+        print(f"Building fresh binary with Rojo ({rojo_bin})...")
+        rbxl_path.parent.mkdir(parents=True, exist_ok=True)
+        subprocess.run([str(rojo_bin), "build", "-o", str(rbxl_path)], cwd=ROOT, check=True)
+    else:
+        print("Warning: rojo binary not found on PATH or in .tools/bin; publishing existing build.")
+
+
 def publish(universe_id: str = DEFAULT_UNIVERSE_ID, place_id: str = DEFAULT_PLACE_ID, rbxl_path: Path = DEFAULT_PLACE_PATH):
     load_env()
+    build_place(rbxl_path)
     api_key = os.environ.get("ROBLOX_OPEN_CLOUD_API_KEY")
     if not api_key:
         print("[ERROR] ROBLOX_OPEN_CLOUD_API_KEY not found in environment or .env file.")
