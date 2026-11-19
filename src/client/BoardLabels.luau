@@ -32,22 +32,39 @@ end
 
 -- Reserve a visible panorama on shallow side cards. Deeper end cards can
 -- use the extra space for artwork after both lines reach their target height.
+-- Normalize text height so vertical and horizontal board cells have matching font size.
 local function setLayout(entry, compact: boolean)
-	local artHeight = if entry.buyable then .45 else .55
-	local nameHeight = if entry.buyable then .32 else .40
-	local priceY, priceHeight = .775,.21
+	local sy = entry.part.Size.Y
 	local name = entry.name
-	if compact and entry.buyable then
-		priceHeight = math.min(.502, 6.35 / entry.part.Size.Y)
-		nameHeight = math.min(.38, 5.4 / entry.part.Size.Y)
+	local nameHeight: number, priceHeight: number, priceY: number, artHeight: number
+
+	if entry.buyable then
+		local targetNameStuds = if compact then 4.8 else 5.2
+		local targetPriceStuds = if compact then 2.9 else 3.4
+		nameHeight = math.clamp(targetNameStuds / sy, .28, .44)
+		priceHeight = math.clamp(targetPriceStuds / sy, .18, .28)
 		priceY = .99 - priceHeight
-		artHeight = priceY - nameHeight - .006
+		artHeight = priceY - nameHeight - .008
+		if artHeight < .15 then
+			artHeight = .15
+			local remaining = .99 - artHeight - .008
+			nameHeight = remaining * .60
+			priceHeight = remaining * .40
+			priceY = .99 - priceHeight
+		end
+	else
+		local targetNameStuds = if compact then 5.2 else 5.8
+		nameHeight = math.clamp(targetNameStuds / sy, .32, .44)
+		artHeight = 1.0 - nameHeight - .008
+		priceHeight = 0
+		priceY = 1.0
 	end
-	local inset = if compact then .028 else .035
-	entry.poster.Size = UDim2.fromScale(1,artHeight)
-	entry.title.Position, entry.title.Size = UDim2.fromScale(inset,artHeight), UDim2.fromScale(1-2*inset,nameHeight)
-	entry.cost.Position, entry.cost.Size = UDim2.fromScale(inset,priceY), UDim2.fromScale(1-2*inset,priceHeight)
-	entry.owner.Position, entry.owner.Size = UDim2.fromScale(0,artHeight), UDim2.fromScale(.026,1-artHeight)
+
+	local inset = if compact then .024 else .028
+	entry.poster.Size = UDim2.fromScale(1, artHeight)
+	entry.title.Position, entry.title.Size = UDim2.fromScale(inset, artHeight), UDim2.fromScale(1 - 2 * inset, nameHeight)
+	entry.cost.Position, entry.cost.Size = UDim2.fromScale(inset, priceY), UDim2.fromScale(1 - 2 * inset, priceHeight)
+	entry.owner.Position, entry.owner.Size = UDim2.fromScale(0, artHeight), UDim2.fromScale(.026, 1 - artHeight)
 	entry.title.Text, entry.nativeTitle.Text = name, name
 	for _, rule in entry.rules do rule.Visible = not compact end
 	entry.compact = compact
@@ -134,8 +151,8 @@ return function(root: Frame, translate: (string)->string)
 		sheet.Face, sheet.Adornee, sheet.Name = Enum.NormalId.Back, part, "Cell"..i
 		sheet.AutoLocalize, sheet.Active, sheet.AlwaysOnTop, sheet.LightInfluence = false, false, false, 0
 		sheet.SizingMode = Enum.SurfaceGuiSizingMode.FixedSize
-		-- Sharp high-definition canvas size (44 pixels per stud, 2x original)
-		sheet.CanvasSize = Vector2.new(math.round(part.Size.X * 44), math.round(part.Size.Y * 44))
+		-- Ultra-sharp high-definition canvas size (60 pixels per stud, crystal clear)
+		sheet.CanvasSize = Vector2.new(math.round(part.Size.X * 60), math.round(part.Size.Y * 60))
 		sheet.MaxDistance, sheet.Enabled, sheet.Parent = 12000, visible, group
 		local card = UI.box(sheet, "Printed programme", style.ink(tile))
 		card.Size, card.ClipsDescendants = UDim2.fromScale(1,1), true

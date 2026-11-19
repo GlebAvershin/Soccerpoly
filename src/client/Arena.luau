@@ -351,7 +351,7 @@ function Arena.new(myId: number, root: Frame, translate: (string) -> string, pla
 		local tangent = math.tan(math.rad(fov) * .5)
 		portraitCamera = aspect < .86
 		shortLandscape = aspect > 1 and root.AbsoluteSize.Y < 430
-		local angle = math.rad(if portraitCamera then 63 elseif shortLandscape then 42 else 40)
+		local angle = math.rad(if portraitCamera then 56 elseif shortLandscape then 42 else 40)
 		local orbit = Vector3.zAxis * math.cos(angle) + Vector3.yAxis * math.sin(angle)
 		local span = Geometry.width
 		local width = .85
@@ -372,10 +372,9 @@ function Arena.new(myId: number, root: Frame, translate: (string) -> string, pla
 			if shortLandscape then
 				verticalOffset = (size.Y*.5-origin.Y)/focalLength
 			end
-			local extent = Art.plinthWidth
-			-- At the sides of a landscape phone, the bleachers can sit behind the HUD.
-			-- Keep the playing track clear of the controls and fit the whole base vertically.
-			local trackWidth = if shortLandscape then span else extent
+			-- On portrait phones, frame the playing track directly so the board is close, large and legible
+			local extent = if portraitCamera then (span + 2.5) else Art.plinthWidth
+			local trackWidth = if shortLandscape then span elseif portraitCamera then (span + 2.0) else extent
 			distance = math.max(trackWidth*focalLength/widthPixels,extent*math.sin(angle)*focalLength/heightPixels)
 				+ extent*.5*math.cos(angle) + Art.tileTop*math.sin(angle)
 		end

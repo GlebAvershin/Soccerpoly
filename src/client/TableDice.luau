@@ -135,7 +135,7 @@ local function die(parent: Folder, value: number, isFirst: boolean, skinKey: str
 		sg.Face = faceId
 		sg.Adornee = root
 		sg.SizingMode = Enum.SurfaceGuiSizingMode.FixedSize
-		sg.CanvasSize = Vector2.new(256, 256)
+		sg.CanvasSize = Vector2.new(512, 512)
 		sg.LightInfluence = 0.32
 		sg.Active, sg.AlwaysOnTop = false, false
 		sg.Parent = model
@@ -148,12 +148,12 @@ local function die(parent: Folder, value: number, isFirst: boolean, skinKey: str
 		card.Parent = sg
 
 		local cardCorner = Instance.new("UICorner")
-		cardCorner.CornerRadius = UDim.new(0, 24)
+		cardCorner.CornerRadius = UDim.new(0, 48)
 		cardCorner.Parent = card
 
 		local cardBorder = Instance.new("UIStroke")
 		cardBorder.Color = rim
-		cardBorder.Thickness = 3.5
+		cardBorder.Thickness = 6.0
 		cardBorder.Transparency = 0.15
 		cardBorder.Parent = card
 

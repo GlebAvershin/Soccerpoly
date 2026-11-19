@@ -67,10 +67,11 @@ local function pitch(stage: Folder)
 		local level = y or .328
 		beam(field, name, Vector3.new(x0, level, z0), Vector3.new(x1, level, z1), width, .028, tint)
 	end
-	local function disk(name: string, x: number, z: number, diameter: number, top: number, tint: Color3)
+	local function disk(name: string, x: number, z: number, diameter: number, top: number, tint: Color3): Part
 		local coin = part(field, name, Vector3.new(.034, diameter, diameter),
 			CFrame.new(x, top - .017, z) * CFrame.Angles(0, 0, math.pi / 2), tint)
 		coin.Shape, coin.CastShadow = Enum.PartType.Cylinder, false
+		return coin
 	end
 	local function arc(name: string, x: number, z: number, radius: number, start: number, finish: number, steps: number, width: number)
 		for i = 0, steps - 1 do
@@ -121,16 +122,16 @@ local function pitch(stage: Folder)
 
 	-- Masterpiece 3D Continental Championship Centerpiece
 	local goldMetal = C("D4AF37")
-	disk("Centre gold bezel", 0, 0, 16.8, .345, goldMetal)
+	disk("Centre gold bezel", 0, 0, 16.8, .345, goldMetal).Material = Enum.Material.Metal
 	disk("Centre circle", 0, 0, 16.4, .352, chalk)
 	disk("Centre enamel", 0, 0, 15.55, .360, C("123321"))
-	disk("Cup seal rim", 0, 0, 9.4, .370, goldMetal)
+	disk("Cup seal rim", 0, 0, 9.4, .370, goldMetal).Material = Enum.Material.Metal
 	disk("Cup seal", 0, 0, 8.8, .378, C("0E291B"))
 
 	-- 3D Sculpted Championship Star & Trophy Inlay
 	local gilt = C("FFD700")
 	local function engraving(x0: number, z0: number, x1: number, z1: number, width: number)
-		stroke("Championship cup engraving", x0, z0, x1, z1, width, gilt, .398)
+		beam(field, "Championship cup engraving", Vector3.new(x0, .398, z0), Vector3.new(x1, .398, z1), width, .028, gilt).Material = Enum.Material.Metal
 	end
 	engraving(-1.46, -1.68, 1.46, -1.68, .52)
 	engraving(-1.29, -1.53, -.98, .02, .60)
@@ -285,20 +286,22 @@ local function surroundings(stage: Folder)
 
 	-- Architectural Jumbotron LED Screen over North Terrace
 	local jumbotronRig = folder(scene, "Stadium Jumbotron")
-	plate(jumbotronRig, "Jumbotron Truss L", -14, 11.2, -66.8, 1.1, 14.5, 1.1, C("242C38"))
-	plate(jumbotronRig, "Jumbotron Truss R", 14, 11.2, -66.8, 1.1, 14.5, 1.1, C("242C38"))
-	plate(jumbotronRig, "Jumbotron Beam Top", 0, 18.2, -66.8, 31, .9, 1.1, C("242C38"))
-	plate(jumbotronRig, "Jumbotron Beam Bottom", 0, 8.5, -66.8, 31, .9, 1.1, C("242C38"))
-	plate(jumbotronRig, "Jumbotron Housing", 0, 13.4, -66.5, 29.6, 9.2, .75, C("0F1318"))
-	plate(jumbotronRig, "Jumbotron Bezel", 0, 13.4, -66.15, 29.1, 8.7, .18, C("C8A25D"))
+	plate(jumbotronRig, "Jumbotron Truss L", -18.2, 12.0, -57.8, 1.2, 16.5, 1.2, C("242C38")).Material = Enum.Material.Metal
+	plate(jumbotronRig, "Jumbotron Truss R", 18.2, 12.0, -57.8, 1.2, 16.5, 1.2, C("242C38")).Material = Enum.Material.Metal
+	plate(jumbotronRig, "Jumbotron Beam Top", 0, 20.8, -57.8, 39.5, 1.1, 1.2, C("242C38")).Material = Enum.Material.Metal
+	plate(jumbotronRig, "Jumbotron Beam Bottom", 0, 8.8, -57.8, 39.5, 1.1, 1.2, C("242C38")).Material = Enum.Material.Metal
+	local jHousing = plate(jumbotronRig, "Jumbotron Housing", 0, 14.8, -57.5, 38.2, 12.4, .85, C("0F1318"))
+	jHousing.Material = Enum.Material.Metal
+	local jBezel = plate(jumbotronRig, "Jumbotron Bezel", 0, 14.8, -57.15, 37.4, 11.6, .22, C("C8A25D"))
+	jBezel.Material = Enum.Material.Metal
 
-	local jumbotronBoard = plate(jumbotronRig, "Jumbotron Screen", 0, 13.4, -66.0, 28.6, 8.2, .1, C("090D12"))
+	local jumbotronBoard = plate(jumbotronRig, "Jumbotron Screen", 0, 14.8, -57.0, 36.6, 10.8, .1, C("080C10"))
 	local jumbotronGui = Instance.new("SurfaceGui")
 	jumbotronGui.Name = "JumbotronDisplay"
 	jumbotronGui.AutoLocalize = false
 	jumbotronGui.Face = Enum.NormalId.Back
 	jumbotronGui.LightInfluence = 0
-	jumbotronGui.CanvasSize = Vector2.new(1280, 360)
+	jumbotronGui.CanvasSize = Vector2.new(2048, 640)
 	jumbotronGui.SizingMode = Enum.SurfaceGuiSizingMode.FixedSize
 	jumbotronGui.Parent = jumbotronBoard
 
@@ -311,16 +314,16 @@ local function surroundings(stage: Folder)
 
 	local jHeader = Instance.new("Frame")
 	jHeader.Name = "Header"
-	jHeader.Size = UDim2.new(1, 0, 0, 44)
-	jHeader.BackgroundColor3 = C("121A22")
+	jHeader.Size = UDim2.new(1, 0, 0, 68)
+	jHeader.BackgroundColor3 = C("101720")
 	jHeader.BorderSizePixel = 0
 	jHeader.Parent = jumbotronRoot
 
 	local liveDot = Instance.new("Frame")
 	liveDot.Name = "LiveDot"
-	liveDot.Size = UDim2.fromOffset(12, 12)
-	liveDot.Position = UDim2.new(0, 18, 0.5, -6)
-	liveDot.BackgroundColor3 = C("FF3344")
+	liveDot.Size = UDim2.fromOffset(18, 18)
+	liveDot.Position = UDim2.new(0, 26, 0.5, -9)
+	liveDot.BackgroundColor3 = C("FF2D55")
 	liveDot.BorderSizePixel = 0
 	liveDot.Parent = jHeader
 	local dotCorner = Instance.new("UICorner")
@@ -328,77 +331,84 @@ local function surroundings(stage: Folder)
 	dotCorner.Parent = liveDot
 
 	local liveLabel = Instance.new("TextLabel")
-	liveLabel.Size = UDim2.new(0, 150, 1, 0)
-	liveLabel.Position = UDim2.new(0, 38, 0, 0)
+	liveLabel.Size = UDim2.new(0, 240, 1, 0)
+	liveLabel.Position = UDim2.new(0, 56, 0, 0)
 	liveLabel.BackgroundTransparency = 1
 	liveLabel.Text = "MATCHDAY LIVE"
-	liveLabel.TextColor3 = C("FF4455")
-	liveLabel.Font = Enum.Font.BuilderSansExtraBold
-	liveLabel.TextSize = 20
+	liveLabel.TextColor3 = C("FF3B60")
+	liveLabel.FontFace = Font.new("rbxasset://fonts/families/BuilderSans.json", Enum.FontWeight.ExtraBold)
+	liveLabel.TextSize = 28
 	liveLabel.TextXAlignment = Enum.TextXAlignment.Left
 	liveLabel.Parent = jHeader
 
 	local cupTitle = Instance.new("TextLabel")
-	cupTitle.Size = UDim2.new(1, -340, 1, 0)
-	cupTitle.Position = UDim2.new(0, 190, 0, 0)
+	cupTitle.Size = UDim2.new(1, -440, 1, 0)
+	cupTitle.Position = UDim2.new(0, 280, 0, 0)
 	cupTitle.BackgroundTransparency = 1
 	cupTitle.Text = "SOCCERPOLY CONTINENTAL CUP • OFFICIAL MATCH ARENA"
-	cupTitle.TextColor3 = C("EAD9AF")
-	cupTitle.Font = Enum.Font.BuilderSansExtraBold
-	cupTitle.TextSize = 22
+	cupTitle.TextColor3 = C("F4E2B8")
+	cupTitle.FontFace = Font.new("rbxasset://fonts/families/BuilderSans.json", Enum.FontWeight.ExtraBold)
+	cupTitle.TextSize = 30
 	cupTitle.TextXAlignment = Enum.TextXAlignment.Center
 	cupTitle.Parent = jHeader
 
 	local jCentre = Instance.new("Frame")
 	jCentre.Name = "Centre"
-	jCentre.Size = UDim2.new(1, -24, 0, 252)
-	jCentre.Position = UDim2.new(0, 12, 0, 52)
-	jCentre.BackgroundColor3 = C("10161E")
+	jCentre.Size = UDim2.new(1, -36, 0, 470)
+	jCentre.Position = UDim2.new(0, 18, 0, 80)
+	jCentre.BackgroundColor3 = C("0D141E")
 	jCentre.BorderSizePixel = 0
 	jCentre.Parent = jumbotronRoot
 	local centreCorner = Instance.new("UICorner")
-	centreCorner.CornerRadius = UDim.new(0, 8)
+	centreCorner.CornerRadius = UDim.new(0, 14)
 	centreCorner.Parent = jCentre
+	local centreBorder = Instance.new("UIStroke")
+	centreBorder.Color = C("C8A25D")
+	centreBorder.Thickness = 2.5
+	centreBorder.Transparency = 0.45
+	centreBorder.Parent = jCentre
 
 	local phaseLabel = Instance.new("TextLabel")
 	phaseLabel.Name = "PhaseLabel"
-	phaseLabel.Size = UDim2.new(1, -20, 0, 102)
-	phaseLabel.Position = UDim2.new(0, 10, 0, 10)
+	phaseLabel.Size = UDim2.new(1, -40, 0, 180)
+	phaseLabel.Position = UDim2.new(0, 20, 0, 24)
 	phaseLabel.BackgroundTransparency = 1
 	phaseLabel.Text = "READY FOR KICKOFF"
 	phaseLabel.TextColor3 = Art.mint
-	phaseLabel.FontFace = Font.new("rbxasset://fonts/families/Oswald.json", Enum.FontWeight.Bold)
-	phaseLabel.TextSize = 82
+	phaseLabel.FontFace = Font.new("rbxasset://fonts/families/BuilderSans.json", Enum.FontWeight.ExtraBold)
+	phaseLabel.TextSize = 120
 	phaseLabel.TextScaled = true
 	phaseLabel.Parent = jCentre
 
 	local subLabel = Instance.new("TextLabel")
 	subLabel.Name = "SubLabel"
-	subLabel.Size = UDim2.new(1, -20, 0, 48)
-	subLabel.Position = UDim2.new(0, 10, 0, 122)
+	subLabel.Size = UDim2.new(1, -40, 0, 96)
+	subLabel.Position = UDim2.new(0, 20, 0, 218)
 	subLabel.BackgroundTransparency = 1
 	subLabel.Text = "CHOOSE YOUR FIGURE & ENTER THE ARENA"
-	subLabel.TextColor3 = C("DFE5EC")
-	subLabel.Font = Enum.Font.BuilderSansMedium
-	subLabel.TextSize = 34
+	subLabel.TextColor3 = C("FFFFFF")
+	subLabel.FontFace = Font.new("rbxasset://fonts/families/BuilderSans.json", Enum.FontWeight.Bold)
+	subLabel.TextSize = 54
+	subLabel.TextScaled = true
 	subLabel.Parent = jCentre
 
 	local leaderStat = Instance.new("TextLabel")
 	leaderStat.Name = "LeaderStat"
-	leaderStat.Size = UDim2.new(1, -20, 0, 46)
-	leaderStat.Position = UDim2.new(0, 10, 0, 186)
+	leaderStat.Size = UDim2.new(1, -40, 0, 92)
+	leaderStat.Position = UDim2.new(0, 20, 0, 336)
 	leaderStat.BackgroundTransparency = 1
 	leaderStat.Text = "TABLE STAKES: 1,500 CR · 8 LEAGUE STADIUMS"
 	leaderStat.TextColor3 = Art.gold
-	leaderStat.Font = Enum.Font.BuilderSansBold
-	leaderStat.TextSize = 28
+	leaderStat.FontFace = Font.new("rbxasset://fonts/families/BuilderSans.json", Enum.FontWeight.Bold)
+	leaderStat.TextSize = 46
+	leaderStat.TextScaled = true
 	leaderStat.Parent = jCentre
 
 	local jFooter = Instance.new("Frame")
 	jFooter.Name = "Footer"
-	jFooter.Size = UDim2.new(1, 0, 0, 46)
-	jFooter.Position = UDim2.new(0, 0, 1, -46)
-	jFooter.BackgroundColor3 = C("0C141C")
+	jFooter.Size = UDim2.new(1, 0, 0, 72)
+	jFooter.Position = UDim2.new(0, 0, 1, -72)
+	jFooter.BackgroundColor3 = C("0A1017")
 	jFooter.BorderSizePixel = 0
 	jFooter.Parent = jumbotronRoot
 
@@ -407,9 +417,9 @@ local function surroundings(stage: Folder)
 	ticker.Size = UDim2.fromScale(1, 1)
 	ticker.BackgroundTransparency = 1
 	ticker.Text = "★ SOCCERPOLY MATCHDAY ★ UPGRADE TO MEGASTADIUM FOR MAXIMUM RENT ★ DOUBLE ROLL GIVES EXTRA TURN ★"
-	ticker.TextColor3 = C("8CA3B8")
-	ticker.Font = Enum.Font.BuilderSansMedium
-	ticker.TextSize = 22
+	ticker.TextColor3 = C("D8E8F5")
+	ticker.FontFace = Font.new("rbxasset://fonts/families/BuilderSans.json", Enum.FontWeight.Bold)
+	ticker.TextSize = 32
 	ticker.Parent = jFooter
 	ribbon(scene, "Live stadium ribbon", CFrame.new(22.2, 5.12, -64.6), 34)
 	ribbon(scene, "Front stadium ribbon", CFrame.new(0, -1.70, 72.25), 36)
