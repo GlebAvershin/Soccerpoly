@@ -286,22 +286,30 @@ local function surroundings(stage: Folder)
 
 	-- Architectural Jumbotron LED Screen over North Terrace
 	local jumbotronRig = folder(scene, "Stadium Jumbotron")
-	plate(jumbotronRig, "Jumbotron Truss L", -18.2, 12.0, -57.8, 1.2, 16.5, 1.2, C("242C38")).Material = Enum.Material.Metal
-	plate(jumbotronRig, "Jumbotron Truss R", 18.2, 12.0, -57.8, 1.2, 16.5, 1.2, C("242C38")).Material = Enum.Material.Metal
-	plate(jumbotronRig, "Jumbotron Beam Top", 0, 20.8, -57.8, 39.5, 1.1, 1.2, C("242C38")).Material = Enum.Material.Metal
-	plate(jumbotronRig, "Jumbotron Beam Bottom", 0, 8.8, -57.8, 39.5, 1.1, 1.2, C("242C38")).Material = Enum.Material.Metal
-	local jHousing = plate(jumbotronRig, "Jumbotron Housing", 0, 14.8, -57.5, 38.2, 12.4, .85, C("0F1318"))
+	local jPose = CFrame.new(0, 18.2, -55.5) * CFrame.Angles(math.rad(4.5), 0, 0)
+	plate(jumbotronRig, "Jumbotron Truss L", -28.2, 12.0, -56.0, 1.4, 20.0, 1.4, C("242C38")).Material = Enum.Material.Metal
+	plate(jumbotronRig, "Jumbotron Truss R", 28.2, 12.0, -56.0, 1.4, 20.0, 1.4, C("242C38")).Material = Enum.Material.Metal
+	plate(jumbotronRig, "Jumbotron Beam Top", 0, 27.2, -56.0, 58.0, 1.3, 1.4, C("242C38")).Material = Enum.Material.Metal
+	plate(jumbotronRig, "Jumbotron Beam Bottom", 0, 9.2, -56.0, 58.0, 1.3, 1.4, C("242C38")).Material = Enum.Material.Metal
+
+	-- Top Floodlight Gantry with 8 High-Powered Stadium Spotlights
+	for idx, fx in {-24, -17, -10, -3, 3, 10, 17, 24} do
+		local lamp = plate(jumbotronRig, "Jumbotron Spot "..idx, fx, 28.1, -55.8, 1.6, .9, .7, C("EDF4FF"))
+		lamp.Material = Enum.Material.Neon
+	end
+
+	local jHousing = part(jumbotronRig, "Jumbotron Housing", Vector3.new(56.4, 18.2, .85), jPose * CFrame.new(0, 0, -.45), C("0A0F14"))
 	jHousing.Material = Enum.Material.Metal
-	local jBezel = plate(jumbotronRig, "Jumbotron Bezel", 0, 14.8, -57.15, 37.4, 11.6, .22, C("C8A25D"))
+	local jBezel = part(jumbotronRig, "Jumbotron Bezel", Vector3.new(55.2, 17.2, .22), jPose * CFrame.new(0, 0, -.05), C("C8A25D"))
 	jBezel.Material = Enum.Material.Metal
 
-	local jumbotronBoard = plate(jumbotronRig, "Jumbotron Screen", 0, 14.8, -57.0, 36.6, 10.8, .1, C("080C10"))
+	local jumbotronBoard = part(jumbotronRig, "Jumbotron Screen", Vector3.new(54.0, 16.2, .1), jPose * CFrame.new(0, 0, .08), C("080C10"))
 	local jumbotronGui = Instance.new("SurfaceGui")
 	jumbotronGui.Name = "JumbotronDisplay"
 	jumbotronGui.AutoLocalize = false
 	jumbotronGui.Face = Enum.NormalId.Back
 	jumbotronGui.LightInfluence = 0
-	jumbotronGui.CanvasSize = Vector2.new(2048, 640)
+	jumbotronGui.CanvasSize = Vector2.new(1440, 432)
 	jumbotronGui.SizingMode = Enum.SurfaceGuiSizingMode.FixedSize
 	jumbotronGui.Parent = jumbotronBoard
 
@@ -314,15 +322,15 @@ local function surroundings(stage: Folder)
 
 	local jHeader = Instance.new("Frame")
 	jHeader.Name = "Header"
-	jHeader.Size = UDim2.new(1, 0, 0, 68)
-	jHeader.BackgroundColor3 = C("101720")
+	jHeader.Size = UDim2.new(1, 0, 0, 54)
+	jHeader.BackgroundColor3 = C("101722")
 	jHeader.BorderSizePixel = 0
 	jHeader.Parent = jumbotronRoot
 
 	local liveDot = Instance.new("Frame")
 	liveDot.Name = "LiveDot"
-	liveDot.Size = UDim2.fromOffset(18, 18)
-	liveDot.Position = UDim2.new(0, 26, 0.5, -9)
+	liveDot.Size = UDim2.fromOffset(16, 16)
+	liveDot.Position = UDim2.new(0, 24, 0.5, -8)
 	liveDot.BackgroundColor3 = C("FF2D55")
 	liveDot.BorderSizePixel = 0
 	liveDot.Parent = jHeader
@@ -331,83 +339,83 @@ local function surroundings(stage: Folder)
 	dotCorner.Parent = liveDot
 
 	local liveLabel = Instance.new("TextLabel")
-	liveLabel.Size = UDim2.new(0, 240, 1, 0)
-	liveLabel.Position = UDim2.new(0, 56, 0, 0)
+	liveLabel.Size = UDim2.new(0, 200, 1, 0)
+	liveLabel.Position = UDim2.new(0, 50, 0, 0)
 	liveLabel.BackgroundTransparency = 1
 	liveLabel.Text = "MATCHDAY LIVE"
 	liveLabel.TextColor3 = C("FF3B60")
 	liveLabel.FontFace = Font.new("rbxasset://fonts/families/BuilderSans.json", Enum.FontWeight.ExtraBold)
-	liveLabel.TextSize = 28
+	liveLabel.TextSize = 22
 	liveLabel.TextXAlignment = Enum.TextXAlignment.Left
 	liveLabel.Parent = jHeader
 
 	local cupTitle = Instance.new("TextLabel")
-	cupTitle.Size = UDim2.new(1, -440, 1, 0)
-	cupTitle.Position = UDim2.new(0, 280, 0, 0)
+	cupTitle.Size = UDim2.new(1, -340, 1, 0)
+	cupTitle.Position = UDim2.new(0, 220, 0, 0)
 	cupTitle.BackgroundTransparency = 1
-	cupTitle.Text = "SOCCERPOLY CONTINENTAL CUP • OFFICIAL MATCH ARENA"
+	cupTitle.Text = "★ SOCCERPOLY CONTINENTAL CUP • OFFICIAL MATCH ARENA ★"
 	cupTitle.TextColor3 = C("F4E2B8")
 	cupTitle.FontFace = Font.new("rbxasset://fonts/families/BuilderSans.json", Enum.FontWeight.ExtraBold)
-	cupTitle.TextSize = 30
+	cupTitle.TextSize = 24
 	cupTitle.TextXAlignment = Enum.TextXAlignment.Center
 	cupTitle.Parent = jHeader
 
 	local jCentre = Instance.new("Frame")
 	jCentre.Name = "Centre"
-	jCentre.Size = UDim2.new(1, -36, 0, 470)
-	jCentre.Position = UDim2.new(0, 18, 0, 80)
+	jCentre.Size = UDim2.new(1, -32, 0, 312)
+	jCentre.Position = UDim2.new(0, 16, 0, 62)
 	jCentre.BackgroundColor3 = C("0D141E")
 	jCentre.BorderSizePixel = 0
 	jCentre.Parent = jumbotronRoot
 	local centreCorner = Instance.new("UICorner")
-	centreCorner.CornerRadius = UDim.new(0, 14)
+	centreCorner.CornerRadius = UDim.new(0, 12)
 	centreCorner.Parent = jCentre
 	local centreBorder = Instance.new("UIStroke")
 	centreBorder.Color = C("C8A25D")
-	centreBorder.Thickness = 2.5
-	centreBorder.Transparency = 0.45
+	centreBorder.Thickness = 2
+	centreBorder.Transparency = 0.40
 	centreBorder.Parent = jCentre
 
 	local phaseLabel = Instance.new("TextLabel")
 	phaseLabel.Name = "PhaseLabel"
-	phaseLabel.Size = UDim2.new(1, -40, 0, 180)
-	phaseLabel.Position = UDim2.new(0, 20, 0, 24)
+	phaseLabel.Size = UDim2.new(1, -40, 0, 120)
+	phaseLabel.Position = UDim2.new(0, 20, 0, 18)
 	phaseLabel.BackgroundTransparency = 1
 	phaseLabel.Text = "READY FOR KICKOFF"
 	phaseLabel.TextColor3 = Art.mint
 	phaseLabel.FontFace = Font.new("rbxasset://fonts/families/BuilderSans.json", Enum.FontWeight.ExtraBold)
-	phaseLabel.TextSize = 120
+	phaseLabel.TextSize = 84
 	phaseLabel.TextScaled = true
 	phaseLabel.Parent = jCentre
 
 	local subLabel = Instance.new("TextLabel")
 	subLabel.Name = "SubLabel"
-	subLabel.Size = UDim2.new(1, -40, 0, 96)
-	subLabel.Position = UDim2.new(0, 20, 0, 218)
+	subLabel.Size = UDim2.new(1, -40, 0, 68)
+	subLabel.Position = UDim2.new(0, 20, 0, 146)
 	subLabel.BackgroundTransparency = 1
 	subLabel.Text = "CHOOSE YOUR FIGURE & ENTER THE ARENA"
 	subLabel.TextColor3 = C("FFFFFF")
 	subLabel.FontFace = Font.new("rbxasset://fonts/families/BuilderSans.json", Enum.FontWeight.Bold)
-	subLabel.TextSize = 54
+	subLabel.TextSize = 36
 	subLabel.TextScaled = true
 	subLabel.Parent = jCentre
 
 	local leaderStat = Instance.new("TextLabel")
 	leaderStat.Name = "LeaderStat"
-	leaderStat.Size = UDim2.new(1, -40, 0, 92)
-	leaderStat.Position = UDim2.new(0, 20, 0, 336)
+	leaderStat.Size = UDim2.new(1, -40, 0, 62)
+	leaderStat.Position = UDim2.new(0, 20, 0, 226)
 	leaderStat.BackgroundTransparency = 1
 	leaderStat.Text = "TABLE STAKES: 1,500 CR · 8 LEAGUE STADIUMS"
 	leaderStat.TextColor3 = Art.gold
 	leaderStat.FontFace = Font.new("rbxasset://fonts/families/BuilderSans.json", Enum.FontWeight.Bold)
-	leaderStat.TextSize = 46
+	leaderStat.TextSize = 30
 	leaderStat.TextScaled = true
 	leaderStat.Parent = jCentre
 
 	local jFooter = Instance.new("Frame")
 	jFooter.Name = "Footer"
-	jFooter.Size = UDim2.new(1, 0, 0, 72)
-	jFooter.Position = UDim2.new(0, 0, 1, -72)
+	jFooter.Size = UDim2.new(1, 0, 0, 50)
+	jFooter.Position = UDim2.new(0, 0, 1, -50)
 	jFooter.BackgroundColor3 = C("0A1017")
 	jFooter.BorderSizePixel = 0
 	jFooter.Parent = jumbotronRoot
@@ -419,7 +427,7 @@ local function surroundings(stage: Folder)
 	ticker.Text = "★ SOCCERPOLY MATCHDAY ★ UPGRADE TO MEGASTADIUM FOR MAXIMUM RENT ★ DOUBLE ROLL GIVES EXTRA TURN ★"
 	ticker.TextColor3 = C("D8E8F5")
 	ticker.FontFace = Font.new("rbxasset://fonts/families/BuilderSans.json", Enum.FontWeight.Bold)
-	ticker.TextSize = 32
+	ticker.TextSize = 24
 	ticker.Parent = jFooter
 	ribbon(scene, "Live stadium ribbon", CFrame.new(22.2, 5.12, -64.6), 34)
 	ribbon(scene, "Front stadium ribbon", CFrame.new(0, -1.70, 72.25), 36)

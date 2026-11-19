@@ -351,7 +351,7 @@ function Arena.new(myId: number, root: Frame, translate: (string) -> string, pla
 		local tangent = math.tan(math.rad(fov) * .5)
 		portraitCamera = aspect < .86
 		shortLandscape = aspect > 1 and root.AbsoluteSize.Y < 430
-		local angle = math.rad(if portraitCamera then 56 elseif shortLandscape then 42 else 40)
+		local angle = math.rad(if portraitCamera then 48 elseif shortLandscape then 42 else 40)
 		local orbit = Vector3.zAxis * math.cos(angle) + Vector3.yAxis * math.sin(angle)
 		local span = Geometry.width
 		local width = .85
@@ -373,8 +373,8 @@ function Arena.new(myId: number, root: Frame, translate: (string) -> string, pla
 				verticalOffset = (size.Y*.5-origin.Y)/focalLength
 			end
 			-- On portrait phones, frame the playing track directly so the board is close, large and legible
-			local extent = if portraitCamera then (span + 2.5) else Art.plinthWidth
-			local trackWidth = if shortLandscape then span elseif portraitCamera then (span + 2.0) else extent
+			local extent = if portraitCamera then (span - 6.0) else Art.plinthWidth
+			local trackWidth = if shortLandscape then span elseif portraitCamera then (span - 8.0) else extent
 			distance = math.max(trackWidth*focalLength/widthPixels,extent*math.sin(angle)*focalLength/heightPixels)
 				+ extent*.5*math.cos(angle) + Art.tileTop*math.sin(angle)
 		end
@@ -383,11 +383,11 @@ function Arena.new(myId: number, root: Frame, translate: (string) -> string, pla
 		local near = base:PointToObjectSpace(Vector3.new(half, Art.tileTop, half))
 		local far = base:PointToObjectSpace(Vector3.new(-half, Art.tileTop, -half))
 		local centerY = (near.Y / -near.Z + far.Y / -far.Z) * .5
-		local targetY = if shortLandscape then 0 elseif portraitCamera then .01 else -.071
+		local targetY = if shortLandscape then 0 elseif portraitCamera then -.03 else -.071
 		overview = base * CFrame.new(0, (centerY + verticalOffset - targetY * tangent) * distance, 0)
 		local followAngle = math.rad(34)
 		focusOrbit = Vector3.zAxis * math.cos(followAngle) + Vector3.yAxis * math.sin(followAngle)
-		focusDistance = span / (2*tangent*aspect*.86) * .48
+		focusDistance = span / (2*tangent*aspect*.86) * (if portraitCamera then .36 else .48)
 		boardPose, viewPoint, overviewDistance = nil, nil, distance
 		oldSize, oldRoot, camera.FieldOfView = size, root.AbsoluteSize, fov
 	end
@@ -591,11 +591,13 @@ function Arena.new(myId: number, root: Frame, translate: (string) -> string, pla
 								elseif s.phase == "shot" then "PENALTY SHOOTOUT"
 								elseif s.phase == "bench" then "ON THE BENCH"
 								elseif s.phase == "tour" then "AWAY TOUR"
+								elseif s.phase == "move" then "DRIBBLE ON PITCH"
 								else s.phase:upper()
 							phaseLabel.Text = phaseTitle
 							phaseLabel.TextColor3 = Art.mint
 							if activeFigure then
-								subLabel.Text = string.format("MANAGER ON PITCH: %s", activeFigure.name:upper())
+								subLabel.Text = if s.phase == "move" then string.format("%s ADVANCING ACROSS ARENA", activeFigure.name:upper())
+									else string.format("MANAGER ON PITCH: %s", activeFigure.name:upper())
 								subLabel.TextColor3 = Art.seatColors[s.active] or Art.mint
 							end
 

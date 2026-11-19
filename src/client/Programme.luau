@@ -43,7 +43,7 @@ return function(parent: Instance, tile, detail: boolean?): Frame
 			if badgeArt then
 				local badge = ink(rail, "Embroidered kit", badgeArt)
 				badge.AnchorPoint, badge.Position = Vector2.new(.5,.5), UDim2.fromScale(.32,.5)
-				badge.SizeConstraint, badge.Size = Enum.SizeConstraint.RelativeYY, UDim2.fromScale(1,1)
+				badge.SizeConstraint, badge.Size = Enum.SizeConstraint.RelativeYY, UDim2.fromScale(.78,.78)
 			end
 		end
 	else
@@ -62,7 +62,7 @@ return function(parent: Instance, tile, detail: boolean?): Frame
 	local fade = Instance.new("Frame")
 	fade.Name, fade.BorderSizePixel, fade.BackgroundColor3 = "Ink wash", 0, style.ink(tile)
 	fade.Position, fade.Size = UDim2.fromScale(0,.66), UDim2.fromScale(1,.34)
-	fade.ZIndex, fade.Parent = 2, rail
+	fade.ZIndex, fade.Parent = 1, rail
 	local wash = Instance.new("UIGradient")
 	wash.Rotation, wash.Transparency, wash.Parent = 90, NumberSequence.new(1,0), fade
 	return rail
