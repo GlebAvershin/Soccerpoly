@@ -41,20 +41,20 @@ local function setLayout(entry, compact: boolean)
 	local shallow = sy < 14 -- vertical side cells have sy ~ 11.76, horizontal end cells have sy ~ 16.90
 	if entry.buyable then
 		if shallow then
-			artHeight = if compact then .26 else .28
-			nameHeight = if compact then .40 else .43
-			priceHeight = if compact then .22 else .23
+			artHeight = if compact then .24 else .26
+			nameHeight = if compact then .44 else .48
+			priceHeight = if compact then .22 else .22
 			priceY = 1.0 - priceHeight - .006
 		else
 			artHeight = if compact then .40 else .42
-			nameHeight = if compact then .29 else .31
-			priceHeight = if compact then .20 else .21
+			nameHeight = if compact then .30 else .32
+			priceHeight = if compact then .20 else .20
 			priceY = 1.0 - priceHeight - .006
 		end
 	else
 		if shallow then
-			artHeight = if compact then .36 else .38
-			nameHeight = if compact then .54 else .58
+			artHeight = if compact then .34 else .36
+			nameHeight = if compact then .56 else .60
 			priceHeight = 0
 			priceY = 1.0
 		else
@@ -66,7 +66,7 @@ local function setLayout(entry, compact: boolean)
 	end
 
 	local inset = if compact then .024 else .028
-	local titleY = artHeight + .006
+	local titleY = artHeight + .008
 	entry.poster.Size = UDim2.fromScale(1, artHeight)
 	if entry.rule then
 		entry.rule.Position = UDim2.fromScale(0.03, artHeight)
@@ -93,10 +93,16 @@ local function projectBand(camera: Camera, part: BasePart, original: GuiObject):
 	end
 	local tl, tr = point(x0, y0), point(x1, y0)
 	local bl, br = point(x0, y1), point(x1, y1)
-	local left, right = math.ceil(math.max(tl.X, bl.X)), math.floor(math.min(tr.X, br.X))
-	local top, bottom = math.ceil(tl.Y), math.floor(bl.Y)
-	if top > bottom then top, bottom = bottom, top end
-	return Rect.new(left, top, math.max(left + 1, right), math.max(top + 1, bottom))
+	local left = math.ceil(math.max(tl.X, bl.X))
+	local right = math.floor(math.min(tr.X, br.X))
+	-- Strict mathematical inscribe: guarantees adjacent vertical bands never overlap
+	local top = math.ceil(math.max(tl.Y, tr.Y))
+	local bottom = math.floor(math.min(bl.Y, br.Y))
+	if top >= bottom then
+		top = math.min(tl.Y, tr.Y)
+		bottom = math.max(bl.Y, br.Y)
+	end
+	return Rect.new(left, math.floor(top), math.max(left + 1, right), math.max(math.floor(top) + 1, math.ceil(bottom)))
 end
 
 return function(root: Frame, translate: (string)->string)
@@ -167,11 +173,11 @@ return function(root: Frame, translate: (string)->string)
 		local card = UI.box(sheet, "Printed programme", style.ink(tile))
 		card.Size, card.ClipsDescendants = UDim2.fromScale(1,1), true
 		local shallow = part.Size.Y < 14
-		local initArt = if buyable then (if shallow then .28 else .42) else (if shallow then .38 else .52)
-		local initNameH = if buyable then (if shallow then .43 else .31) else (if shallow then .58 else .44)
-		local initPriceH = if buyable then (if shallow then .23 else .21) else 0
+		local initArt = if buyable then (if shallow then .24 else .42) else (if shallow then .34 else .52)
+		local initNameH = if buyable then (if shallow then .48 else .32) else (if shallow then .60 else .44)
+		local initPriceH = if buyable then (if shallow then .22 else .20) else 0
 		local initPriceY = if buyable then (1.0 - initPriceH - .006) else 1.0
-		local initTitleY = initArt + .006
+		local initTitleY = initArt + .008
 
 		local poster = illustrate(card,tile)
 		poster.Size = UDim2.fromScale(1, initArt)
@@ -204,7 +210,7 @@ return function(root: Frame, translate: (string)->string)
 		local layers = {{print=poster, native=display(poster)}, {print=title, native=nativeTitle}}
 		if buyable then table.insert(layers, {print=cost, native=nativeCost}) end
 		local entry = {part=part, surface=sheet, title=title, cost=cost, nativeTitle=nativeTitle,
-			nativeCost=nativeCost, owner=mark, layers=layers, poster=poster, rule=goldRule, rules=rules, buyable=buyable, compact=nil}
+			nativeCost=nativeCost, owner=mark, layers=layers, poster=poster, rule=goldRule, rules=rules, buyable=buyable, compact=nil, name=nil}
 		sheets[i] = entry
 		setCopy(i, entry)
 	end

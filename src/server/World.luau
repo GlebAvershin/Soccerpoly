@@ -209,11 +209,11 @@ local function ribbon(parent: Folder, name: string, pose: CFrame, width: number)
 	local board = part(parent, name, Vector3.new(width, 2.08, .15), pose, C("181B2B"))
 	local surface = Instance.new("SurfaceGui")
 	surface.AutoLocalize = false
-	surface.Face, surface.LightInfluence, surface.CanvasSize = Enum.NormalId.Back, 0, Vector2.new(640, 56)
+	surface.Face, surface.LightInfluence, surface.CanvasSize = Enum.NormalId.Back, 0, Vector2.new(1920, 168)
 	surface.SizingMode, surface.Parent = Enum.SurfaceGuiSizingMode.FixedSize, board
 	local word = Instance.new("TextLabel")
 	word.Name = "Message"
-	word.Text, word.Font, word.TextScaled = "SOCCERPOLY", Enum.Font.BuilderSansExtraBold, true
+	word.Text, word.Font, word.TextScaled = "★ SOCCERPOLY CONTINENTAL CUP ★", Enum.Font.BuilderSansExtraBold, true
 	word.TextColor3, word.BackgroundTransparency = Art.mint, 1
 	word.Size, word.Parent = UDim2.fromScale(1, 1), surface
 end
@@ -309,7 +309,7 @@ local function surroundings(stage: Folder)
 	jumbotronGui.AutoLocalize = false
 	jumbotronGui.Face = Enum.NormalId.Back
 	jumbotronGui.LightInfluence = 0
-	jumbotronGui.CanvasSize = Vector2.new(1440, 432)
+	jumbotronGui.CanvasSize = Vector2.new(2880, 864)
 	jumbotronGui.SizingMode = Enum.SurfaceGuiSizingMode.FixedSize
 	jumbotronGui.Parent = jumbotronBoard
 
@@ -322,15 +322,15 @@ local function surroundings(stage: Folder)
 
 	local jHeader = Instance.new("Frame")
 	jHeader.Name = "Header"
-	jHeader.Size = UDim2.new(1, 0, 0, 54)
+	jHeader.Size = UDim2.new(1, 0, 0, 108)
 	jHeader.BackgroundColor3 = C("101722")
 	jHeader.BorderSizePixel = 0
 	jHeader.Parent = jumbotronRoot
 
 	local liveDot = Instance.new("Frame")
 	liveDot.Name = "LiveDot"
-	liveDot.Size = UDim2.fromOffset(16, 16)
-	liveDot.Position = UDim2.new(0, 24, 0.5, -8)
+	liveDot.Size = UDim2.fromOffset(32, 32)
+	liveDot.Position = UDim2.new(0, 48, 0.5, -16)
 	liveDot.BackgroundColor3 = C("FF2D55")
 	liveDot.BorderSizePixel = 0
 	liveDot.Parent = jHeader
@@ -339,83 +339,83 @@ local function surroundings(stage: Folder)
 	dotCorner.Parent = liveDot
 
 	local liveLabel = Instance.new("TextLabel")
-	liveLabel.Size = UDim2.new(0, 200, 1, 0)
-	liveLabel.Position = UDim2.new(0, 50, 0, 0)
+	liveLabel.Size = UDim2.new(0, 360, 1, 0)
+	liveLabel.Position = UDim2.new(0, 96, 0, 0)
 	liveLabel.BackgroundTransparency = 1
 	liveLabel.Text = "MATCHDAY LIVE"
 	liveLabel.TextColor3 = C("FF3B60")
 	liveLabel.FontFace = Font.new("rbxasset://fonts/families/BuilderSans.json", Enum.FontWeight.ExtraBold)
-	liveLabel.TextSize = 22
+	liveLabel.TextSize = 44
 	liveLabel.TextXAlignment = Enum.TextXAlignment.Left
 	liveLabel.Parent = jHeader
 
 	local cupTitle = Instance.new("TextLabel")
-	cupTitle.Size = UDim2.new(1, -340, 1, 0)
-	cupTitle.Position = UDim2.new(0, 220, 0, 0)
+	cupTitle.Size = UDim2.new(1, -680, 1, 0)
+	cupTitle.Position = UDim2.new(0, 440, 0, 0)
 	cupTitle.BackgroundTransparency = 1
 	cupTitle.Text = "★ SOCCERPOLY CONTINENTAL CUP • OFFICIAL MATCH ARENA ★"
 	cupTitle.TextColor3 = C("F4E2B8")
 	cupTitle.FontFace = Font.new("rbxasset://fonts/families/BuilderSans.json", Enum.FontWeight.ExtraBold)
-	cupTitle.TextSize = 24
+	cupTitle.TextSize = 48
 	cupTitle.TextXAlignment = Enum.TextXAlignment.Center
 	cupTitle.Parent = jHeader
 
 	local jCentre = Instance.new("Frame")
 	jCentre.Name = "Centre"
-	jCentre.Size = UDim2.new(1, -32, 0, 312)
-	jCentre.Position = UDim2.new(0, 16, 0, 62)
+	jCentre.Size = UDim2.new(1, -64, 0, 624)
+	jCentre.Position = UDim2.new(0, 32, 0, 124)
 	jCentre.BackgroundColor3 = C("0D141E")
 	jCentre.BorderSizePixel = 0
 	jCentre.Parent = jumbotronRoot
 	local centreCorner = Instance.new("UICorner")
-	centreCorner.CornerRadius = UDim.new(0, 12)
+	centreCorner.CornerRadius = UDim.new(0, 24)
 	centreCorner.Parent = jCentre
 	local centreBorder = Instance.new("UIStroke")
-	centreBorder.Color = C("C8A25D")
-	centreBorder.Thickness = 2
-	centreBorder.Transparency = 0.40
+	centreBorder.Color = C("D4AF37")
+	centreBorder.Thickness = 4
+	centreBorder.Transparency = 0.35
 	centreBorder.Parent = jCentre
 
 	local phaseLabel = Instance.new("TextLabel")
 	phaseLabel.Name = "PhaseLabel"
-	phaseLabel.Size = UDim2.new(1, -40, 0, 120)
-	phaseLabel.Position = UDim2.new(0, 20, 0, 18)
+	phaseLabel.Size = UDim2.new(1, -80, 0, 240)
+	phaseLabel.Position = UDim2.new(0, 40, 0, 36)
 	phaseLabel.BackgroundTransparency = 1
 	phaseLabel.Text = "READY FOR KICKOFF"
 	phaseLabel.TextColor3 = Art.mint
 	phaseLabel.FontFace = Font.new("rbxasset://fonts/families/BuilderSans.json", Enum.FontWeight.ExtraBold)
-	phaseLabel.TextSize = 84
+	phaseLabel.TextSize = 168
 	phaseLabel.TextScaled = true
 	phaseLabel.Parent = jCentre
 
 	local subLabel = Instance.new("TextLabel")
 	subLabel.Name = "SubLabel"
-	subLabel.Size = UDim2.new(1, -40, 0, 68)
-	subLabel.Position = UDim2.new(0, 20, 0, 146)
+	subLabel.Size = UDim2.new(1, -80, 0, 136)
+	subLabel.Position = UDim2.new(0, 40, 0, 292)
 	subLabel.BackgroundTransparency = 1
 	subLabel.Text = "CHOOSE YOUR FIGURE & ENTER THE ARENA"
 	subLabel.TextColor3 = C("FFFFFF")
 	subLabel.FontFace = Font.new("rbxasset://fonts/families/BuilderSans.json", Enum.FontWeight.Bold)
-	subLabel.TextSize = 36
+	subLabel.TextSize = 72
 	subLabel.TextScaled = true
 	subLabel.Parent = jCentre
 
 	local leaderStat = Instance.new("TextLabel")
 	leaderStat.Name = "LeaderStat"
-	leaderStat.Size = UDim2.new(1, -40, 0, 62)
-	leaderStat.Position = UDim2.new(0, 20, 0, 226)
+	leaderStat.Size = UDim2.new(1, -80, 0, 124)
+	leaderStat.Position = UDim2.new(0, 40, 0, 452)
 	leaderStat.BackgroundTransparency = 1
 	leaderStat.Text = "TABLE STAKES: 1,500 CR · 8 LEAGUE STADIUMS"
 	leaderStat.TextColor3 = Art.gold
 	leaderStat.FontFace = Font.new("rbxasset://fonts/families/BuilderSans.json", Enum.FontWeight.Bold)
-	leaderStat.TextSize = 30
+	leaderStat.TextSize = 60
 	leaderStat.TextScaled = true
 	leaderStat.Parent = jCentre
 
 	local jFooter = Instance.new("Frame")
 	jFooter.Name = "Footer"
-	jFooter.Size = UDim2.new(1, 0, 0, 50)
-	jFooter.Position = UDim2.new(0, 0, 1, -50)
+	jFooter.Size = UDim2.new(1, 0, 0, 100)
+	jFooter.Position = UDim2.new(0, 0, 1, -100)
 	jFooter.BackgroundColor3 = C("0A1017")
 	jFooter.BorderSizePixel = 0
 	jFooter.Parent = jumbotronRoot
@@ -427,7 +427,7 @@ local function surroundings(stage: Folder)
 	ticker.Text = "★ SOCCERPOLY MATCHDAY ★ UPGRADE TO MEGASTADIUM FOR MAXIMUM RENT ★ DOUBLE ROLL GIVES EXTRA TURN ★"
 	ticker.TextColor3 = C("D8E8F5")
 	ticker.FontFace = Font.new("rbxasset://fonts/families/BuilderSans.json", Enum.FontWeight.Bold)
-	ticker.TextSize = 24
+	ticker.TextSize = 48
 	ticker.Parent = jFooter
 	ribbon(scene, "Live stadium ribbon", CFrame.new(22.2, 5.12, -64.6), 34)
 	ribbon(scene, "Front stadium ribbon", CFrame.new(0, -1.70, 72.25), 36)

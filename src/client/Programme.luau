@@ -42,6 +42,7 @@ return function(parent: Instance, tile, detail: boolean?): Frame
 			local badgeArt = badges[key]
 			if badgeArt then
 				local badge = ink(rail, "Embroidered kit", badgeArt)
+				badge.ZIndex = 2
 				badge.AnchorPoint, badge.Position = Vector2.new(.5,.5), UDim2.fromScale(.32,.5)
 				badge.SizeConstraint, badge.Size = Enum.SizeConstraint.RelativeYY, UDim2.fromScale(.78,.78)
 			end
