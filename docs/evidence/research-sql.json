@@ -1,9 +1,9 @@
 {
-  "query_sha256": "b0332c0b74d838de01404c15260b1be50729532945081ed925712506eef66921",
-  "query_id": "01f1e51d-7e32-12f9-95c5-f4a8336faacb",
+  "query_sha256": "d308a4a008f9b0a78932803fe2c28337cc871f40983c52d8702b3f0f800b34f6",
+  "query_id": "01f1e51f-06a5-11f6-9d5d-62290adf29f9",
   "status": "FINISHED",
-  "duration": 547,
+  "duration": 4791,
   "rows_produced": 4,
-  "query_start_time_ms": 1795205025928,
-  "query_end_time_ms": 1795205026475
+  "query_start_time_ms": 1795205684348,
+  "query_end_time_ms": 1795205689139
 }
