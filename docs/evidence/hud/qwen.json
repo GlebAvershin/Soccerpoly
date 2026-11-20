@@ -1,0 +1,57 @@
+{
+  "project": "Soccerpoly",
+  "model": "qwen",
+  "weights_sha256": "74a4da8c9fdbcd15bd1f6d01d621410d31c6fc00986f5eb687824e7b93d7a9db",
+  "expected": {
+    "headline": "clock",
+    "stage": "pitch",
+    "action": "dice"
+  },
+  "cases_sha256": "4e5525a110e3ccaea67a49ec661d7461eb2fd7dc606727c4233f8874b15c8f6d",
+  "rows": [
+    {
+      "instructions": {
+        "headline": "How much time has elapsed?",
+        "stage": "Where are the managers standing on the board?",
+        "action": "Throw to start a new turn."
+      },
+      "baseline": {
+        "headline": "clock",
+        "stage": "pitch",
+        "action": "dice"
+      },
+      "model": {
+        "headline": "clock",
+        "stage": "pitch",
+        "action": "clock"
+      },
+      "baseline_correct": 3,
+      "model_correct": 2,
+      "baseline_us": 129,
+      "model_ms": 1572,
+      "tokens": 418
+    },
+    {
+      "instructions": {
+        "headline": "Show match time before anything else.",
+        "stage": "Devote most of the handoff to the playing surface.",
+        "action": "Keep the dice throw accessible."
+      },
+      "baseline": {
+        "headline": "clock",
+        "stage": "dice",
+        "action": "pitch"
+      },
+      "model": {
+        "headline": "clock",
+        "stage": "pitch",
+        "action": "clock"
+      },
+      "baseline_correct": 1,
+      "model_correct": 2,
+      "baseline_us": 97,
+      "model_ms": 1530,
+      "tokens": 421
+    }
+  ]
+}

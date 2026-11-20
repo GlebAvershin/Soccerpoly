@@ -1,5 +1,7 @@
 # Soccerpoly для портфолио Playrix
 
+Актуальная сверка Platform и Cross-product включает облачный интерфейсный агент, слепую проверку трёх модельных маршрутов, контракты провайдеров и исходные измерения. [Технологии и протоколы](TECHNOLOGIES.md)
+
 ### Continental Cup · event authoring
 
 The designer chooses the trade-off between a guaranteed payout and taking a shot. Codex helped draft the bilingual event and implement its checks. A Python MCP server supplies the catalogue and validates proposed edits against the same rules as the build. A C++17 command-line tool independently recomputes the odds. The Continental Cup update reached Roblox place version 10. [Design workflow](AI_WORKFLOW.md) · [Event tooling](../scripts/event_context_mcp.py) · [Release](RELEASE.md)
@@ -21,7 +23,7 @@ The designer chooses the trade-off between a guaranteed payout and taking a shot
 | Агентные навыки, контекст, MCP | Локальный MCP отдаёт исходный каталог и запускает проверку черновика, не выполняя код модели. Проверен через официальный stdio-клиент. Навыки использованы по областям ответственности. [AI workflow](AI_WORKFLOW.md) |
 | Автоматизация проверок PR, GitHub | Git commits и Actions с компиляцией, типами, тестами, балансом, сборкой place и готовыми витринами. Локальный `make verify` выполняет те же проверки. Публичный агентный прогон и вердикты доступны в [разборе стека](TECHNOLOGIES.md) |
 | Мультимодельный Bedrock и Databricks AI Gateway | `scripts/draft_event.py` умеет работать с существующим Bedrock Converse или Databricks Serving endpoint, включая путь с сохранённым ответом. Локальный путь проверен. Удалённые модели и права на inference требуют рабочих endpoints, конфигурации аккаунта и бюджета |
-| C++14/17, STL, OpenGL | C++17 inspector читает тот же проверенный JSON через Python-обвязку. STL считает вероятность и ожидания, OpenGL 3.2 рисует внеэкранный график. Проверен рендер на Apple M4, числовой режим портируем |
+| C++17/20, STL, OpenGL | C++17 inspector читает тот же проверенный JSON через Python-обвязку. STL считает вероятность и ожидания, OpenGL 3.2 рисует внеэкранный график. Проверен рендер на Apple M4, числовой режим портируем |
 | Инструмент художника и интеграция с движком | В Blender собраны стадион, фигурки, реквизит и ключи для семи клипов. Python экспортирует геометрию и выборки поз. Luau кеширует меши и связывает анимацию удара, полёт мяча и звук с результатом Matchday. Можно показать исходники, рендер Cycles и контрольную сцену Studio. [Арена, анимация и звук](ART_DIRECTION.md) |
 | Собственный движок, мобильная игра, качество продакшена | Игровой клиент в Roblox Studio, чистая модель Luau, клиент и сервер с проверкой ревизии, тесты нескольких клиентов и мобильных раскладок. Публикация Continental Cup отражена в истории place v10. [Отчёт о выпуске](RELEASE.md) |
 | Sentry, Amplitude и внутренние интеграции | Структурированные события и показатели качества в Roblox Analytics и локальном ETL. Sentry SDK проверен на локальном транспорте. Формат Amplitude HTTP V2 проверен на синтетической выборке без загрузки в аккаунт. Доступа к внутреннему контуру Playrix нет |
