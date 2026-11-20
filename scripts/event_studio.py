@@ -87,6 +87,24 @@ def load(path=SOURCE):
     return data, validate(data)
 
 
+def recommend_cash(edition, target):
+    """Maximize the chance of covering a positive cash shortfall within one Cup decision."""
+    if type(target) is not int or target <= 0:
+        raise ValueError("Cash still required must be a positive whole number")
+    shots = edition["shots"]
+    total = sum(shot["weight"] for shot in shots)
+    qualifying = sum(shot["weight"] for shot in shots if shot["cash"] >= target)
+    guaranteed = total if edition["safe_cash"] >= target else 0
+    if guaranteed:
+        action = "take_guarantee"
+    elif qualifying:
+        action = "take_shot"
+    else:
+        action = "defer_purchase"
+    return {"action": action, "target": target, "total_weight": total,
+            "guaranteed_success_weight": guaranteed, "shot_success_weight": qualifying}
+
+
 def to_luau(value):
     if isinstance(value, str):
         return json.dumps(value.strip(), ensure_ascii=False)
@@ -111,11 +129,15 @@ def compile_catalog(edition):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("command", choices=("validate", "compile", "check", "prompt"))
+    parser.add_argument("command", choices=("validate", "compile", "check", "prompt", "recommend"))
     parser.add_argument("--input", type=Path, default=SOURCE)
+    parser.add_argument("--target", type=int, help="Additional cash needed in one Cup decision")
     opts = parser.parse_args()
     try:
         edition, stats = load(opts.input)
+        if opts.command == "recommend":
+            print(json.dumps(recommend_cash(edition, opts.target)))
+            return
         if opts.command == "prompt":
             print("Draft an original EN/RU football event as JSON matching this example. Do not use real names. "
                   "Preserve the schema and audit fairness: safe cash is at least expected shot cash and at most expected "

@@ -9,7 +9,7 @@ import json
 
 from mcp.server.fastmcp import FastMCP
 
-from event_studio import SOURCE, load, validate
+from event_studio import SOURCE, load, recommend_cash, validate
 
 server = FastMCP("Soccerpoly Event Studio")
 
@@ -25,6 +25,13 @@ def event_balance() -> dict:
     """Return current catalogue metrics and allowed outcomes."""
     edition, stats = load()
     return {"edition": edition["id"], "safe_cash": edition["safe_cash"], **stats}
+
+
+@server.tool(structured_output=True)
+def recommend_cup_action(target: int) -> dict[str, int | str]:
+    """Select the Cup action most likely to cover the additional cash needed in one turn."""
+    edition, _ = load()
+    return recommend_cash(edition, target)
 
 
 @server.tool()

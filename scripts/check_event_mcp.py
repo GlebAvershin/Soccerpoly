@@ -20,7 +20,13 @@ async def main():
         async with ClientSession(read, write) as session:
             await session.initialize()
             tools = {tool.name for tool in (await session.list_tools()).tools}
-            assert tools == {"event_balance", "review_event_json"}
+            assert tools == {"event_balance", "review_event_json", "recommend_cup_action"}
+            for target, action in [(1, "take_guarantee"), (75, "take_guarantee"), (76, "take_shot"),
+                                   (140, "take_shot"), (141, "defer_purchase")]:
+                reply = await session.call_tool("recommend_cup_action", {"target": target})
+                assert not reply.isError and reply.structuredContent["action"] == action
+            invalid = await session.call_tool("recommend_cup_action", {"target": 0})
+            assert invalid.isError
             resource = await session.read_resource(AnyUrl("worlddraft://event/continental-cup"))
             draft = resource.contents[0].text
             response = await session.call_tool("review_event_json", {"draft": draft})

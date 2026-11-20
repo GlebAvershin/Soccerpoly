@@ -1,0 +1,42 @@
+{
+  "tested_targets": [
+    1,
+    141
+  ],
+  "passed": 141,
+  "by_action": {
+    "take_guarantee": 75,
+    "take_shot": 65,
+    "defer_purchase": 1
+  },
+  "boundary_examples": {
+    "75": {
+      "action": "take_guarantee",
+      "target": 75,
+      "total_weight": 6,
+      "guaranteed_success_weight": 6,
+      "shot_success_weight": 3
+    },
+    "76": {
+      "action": "take_shot",
+      "target": 76,
+      "total_weight": 6,
+      "guaranteed_success_weight": 0,
+      "shot_success_weight": 3
+    },
+    "140": {
+      "action": "take_shot",
+      "target": 140,
+      "total_weight": 6,
+      "guaranteed_success_weight": 0,
+      "shot_success_weight": 3
+    },
+    "141": {
+      "action": "defer_purchase",
+      "target": 141,
+      "total_weight": 6,
+      "guaranteed_success_weight": 0,
+      "shot_success_weight": 0
+    }
+  }
+}

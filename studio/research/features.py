@@ -1,3 +1,4 @@
 def facts(m):
-    return {"cash_still_missing_after_guarantee": max(0,m["target"]-m["safe_cash"]),
-            "shot_success_percent": m["probability_bp"]/100}
+    total = m["total_weight"]
+    return {"guarantee_success_fraction": f"{m['guaranteed_success_weight']}/{total}",
+            "shot_success_fraction": f"{m['shot_success_weight']}/{total}"}

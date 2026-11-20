@@ -4,9 +4,10 @@ import json
 SOURCE = ["content/continental-cup.json"]
 COLUMNS = "scenario,target,safe_cash,payout,weight"
 OPTIONS = ["take_guarantee", "take_shot", "defer_purchase"]
-QUESTION = ("Meet the cash target with the highest possible probability. Prefer the guarantee "
-            "when it covers the target. If neither action can reach it, defer the purchase. "
-            "probability_bp is the shot success probability in basis points.")
+QUESTION = ("Compare guaranteed_success_weight and shot_success_weight, counts over the same total. "
+            "Zero for both means defer_purchase. A positive guaranteed_success_weight is always optimal "
+            "(take_guarantee). A positive shot_success_weight with zero guaranteed_success_weight means "
+            "take_shot. Output the exact action ID on a single line, without an explanation.")
 CONTROL = "above_best_shot"
 
 
@@ -21,6 +22,6 @@ def samples(root):
 
 
 def decision(metrics):
-    if metrics["safe_cash"] >= metrics["target"]:
+    if metrics["guaranteed_success_weight"]:
         return OPTIONS[0]
-    return OPTIONS[1] if metrics["probability_bp"] else OPTIONS[2]
+    return OPTIONS[1] if metrics["shot_success_weight"] else OPTIONS[2]
