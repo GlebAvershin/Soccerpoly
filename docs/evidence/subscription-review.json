@@ -1,0 +1,44 @@
+[
+  {
+    "game": "soccer",
+    "provider": "codex",
+    "requested_model": "gpt-6.2-sol",
+    "cli_version": "codex-cli 0.171.0-alpha.13",
+    "game_revision": "e212abce01c8396c55d5e58ad9f3f8b220f1bb74",
+    "brief_sha256": "6b40715f30846338baf6a2ade718f91ab9c89ed7d762632062e18bd8798b5d00",
+    "cli_elapsed_ms": 6049,
+    "answer": {
+      "choice": "offer_84",
+      "reason": "84 limits currency issuance as the smallest listed payout between the mean shot cash of 71.667 and the mean total value of 111.667."
+    },
+    "verdict": {
+      "accepted": true,
+      "payout": 84,
+      "reason": "Choose the lowest economy-valid alternative",
+      "cards": 11,
+      "shot_expected_cash": 71.667,
+      "shot_expected_value": 111.667
+    }
+  },
+  {
+    "game": "soccer",
+    "provider": "gemini",
+    "requested_model": "gemini-3.8-flash-low",
+    "cli_version": "1.5.13",
+    "game_revision": "e212abce01c8396c55d5e58ad9f3f8b220f1bb74",
+    "brief_sha256": "6b40715f30846338baf6a2ade718f91ab9c89ed7d762632062e18bd8798b5d00",
+    "cli_elapsed_ms": 41200,
+    "answer": {
+      "choice": "offer_84",
+      "reason": "Offer 84 is the smallest qualifying guaranteed payout strictly between the mean shot cash of 71.667 and the mean total value of 111.667."
+    },
+    "verdict": {
+      "accepted": true,
+      "payout": 84,
+      "reason": "Choose the lowest economy-valid alternative",
+      "cards": 11,
+      "shot_expected_cash": 71.667,
+      "shot_expected_value": 111.667
+    }
+  }
+]
