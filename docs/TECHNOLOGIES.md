@@ -8,6 +8,10 @@
 
 Расчёт выполнил инструмент `aws___run_script` управляемого MCP-сервера AWS через Agent Toolkit for AWS в Codex. На момент запуска действовал план AWS Free. Сервис вернул успешный результат с нулём обращений к API ресурсов. [Результат и контрольные суммы](evidence/aws-toolkit.json) · [Расчёт и проверка](../studio/research/aws_audit.py) · [Как повторить](https://github.com/GlebAvershin/lantern-atlas/blob/main/studio/research/README.md#aws-agent-toolkit-replay)
 
+## Сверка результатов через облачные MCP-серверы
+
+Через Amplitude MCP посчитали события `game.study_evaluated` с фильтром по игре за 20 ноября 2026 года (UTC). Получено 8 событий исследовательских прогонов, включая повторные запуски. В Sentry MCP по идентификатору события из протокола нашли **PYTHON-7** и сверили сценарий `above_best_shot` и решение `defer_purchase`. Затем Codex выполнил SQL исследования через Databricks MCP (`system.ai.dbsql`). Все строки результата (4) по значениям совпали с локальным SQLite. [Параметры запроса, событие и результаты SQL](evidence/service-mcp.json) · [SQL исследования](../studio/research/metrics.sql)
+
 ## Проверка воспроизводимости
 
 Luau-тесты прошли для правил матча, тура и баланса. Независимый расчёт C++ дал 50% вероятности гола, 71,667 кредита за удар в среднем и 75 кредитов за гарантированный выбор.

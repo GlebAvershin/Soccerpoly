@@ -1,0 +1,85 @@
+{
+  "game": "Soccerpoly",
+  "client": "Codex app-server",
+  "amplitude": {
+    "tool": "query_amplitude_data",
+    "chart": {
+      "kind": "segmentation",
+      "events": [
+        {
+          "event": "game.study_evaluated",
+          "where": [
+            {
+              "property": "game",
+              "op": "is",
+              "values": [
+                "Soccerpoly"
+              ],
+              "scope": "event"
+            }
+          ]
+        }
+      ],
+      "measured_as": {
+        "as": "event_totals"
+      },
+      "date_range": {
+        "start": 1795132800,
+        "end": 1795219199,
+        "timezone": "UTC"
+      }
+    },
+    "event_total": 8,
+    "request_id": "req_1795211864594_c8bwktg9d"
+  },
+  "sentry": {
+    "tool": "get_issue_details",
+    "event_id": "23128afdb7a656b38954f539b9f29d64",
+    "issue": "PYTHON-7",
+    "title": "Soccerpoly research check: above_best_shot / defer_purchase",
+    "matches_research_receipt": true
+  },
+  "databricks": {
+    "service": "system.ai.dbsql",
+    "tool": "execute_sql",
+    "statement_id": "01f1e52d-c06a-135f-bc6d-ab56bfbbd76a",
+    "columns": [
+      "scenario",
+      "target",
+      "total_weight",
+      "guaranteed_success_weight",
+      "shot_success_weight"
+    ],
+    "rows": [
+      [
+        "above_best_shot",
+        "141",
+        "6",
+        "0",
+        "0"
+      ],
+      [
+        "above_guarantee",
+        "76",
+        "6",
+        "0",
+        "3"
+      ],
+      [
+        "at_best_shot",
+        "140",
+        "6",
+        "0",
+        "3"
+      ],
+      [
+        "at_guarantee",
+        "75",
+        "6",
+        "6",
+        "3"
+      ]
+    ],
+    "sqlite_match": true
+  }
+}
