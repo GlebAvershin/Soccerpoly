@@ -296,7 +296,7 @@ local function action(s: Rules.Match, verb: string, player: Player?, index: numb
 			if s.last.kind == "auctionLeague" then Telemetry.event(winner, "LeagueCompleted_v1", 1, mode, variant) end
 		end
 	end
-	if s.phase == "final" then
+	if s.phase == "final" and previousPhase ~= "final" then
 		local winnerId = s.winner or (s.standings and s.standings[1] and s.standings[1].id)
 		for _, attendee in s.seats do
 			local p = if attendee.bot then nil else Players:GetPlayerByUserId(attendee.id)
@@ -307,7 +307,7 @@ local function action(s: Rules.Match, verb: string, player: Player?, index: numb
 				Telemetry.event(p, "SeasonFinished_v1", math.floor(os.clock() - startedAt), mode, variant, Board.id)
 				local isWinner = attendee.id == winnerId
 				local userCash = attendee.cash or 0
-				CareerStore.recordMatchResult(p.UserId, isWinner, userCash)
+				CareerStore.recordMatchResult(p.UserId, isWinner, userCash, serial)
 				CareerStore.addQuestProgress(p.UserId, "match", 1)
 			end
 		end

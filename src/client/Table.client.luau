@@ -188,6 +188,24 @@ local function propertySummary(tile: Board.Tile, gate: number, level: number): s
 	return t("Price %d  /  Fee %d", tile.price, gate)
 end
 
+local function sponsorCard(parent: Instance)
+	local vip = Player:GetAttribute("CareerIsVip") == true
+	if not vip and ((Player:GetAttribute("CareerMatches") or 0) < 1 or Player:GetAttribute("CareerVipVerified") ~= true) then return end
+	local card = UI.box(parent, "VipCard", colors.surface, 10)
+	card.Size, card.AutomaticSize = UDim2.new(1, 0, 0, 0), Enum.AutomaticSize.Y
+	UI.pad(card, 12, 10)
+	UI.stroke(card, if vip then colors.mint else GOLD)
+	UI.stack(card, 4)
+	UI.label(card, t(if vip then "VIP Active · +25% XP Bonus" else "VIP Sponsor Pass"), 15, {font = BLACK, color = GOLD})
+	UI.label(card, t("Unlock Obsidian Gold dice, Champion's Halo aura and +25% XP bonus!"), 13, {color = colors.text})
+	if not vip then
+		local buy = UI.button(card, "BuyVipBtn", t("View price in Robux"), 36, function()
+			game:GetService("MarketplaceService"):PromptGamePassPurchase(Player, require(shared.SponsorPass))
+		end, GOLD, colors.ink)
+		buy.Size = UDim2.new(1, 0, 0, 36)
+	end
+end
+
 local function drawDialog()
 	local s = snapshot and snapshot.match
 	local inTrade = opened == "trade" or opened == "tradeClubs"
@@ -419,27 +437,7 @@ local function drawDialog()
 		end, if canSpin then GOLD else colors.surface, if canSpin then colors.ink else colors.muted)
 		spinBanner.Size = UDim2.new(1, 0, 0, 38)
 
-		local isVip = Player:GetAttribute("CareerIsVip") == true
-		local vipCard = UI.box(dialogBody, "VipCard", if isVip then Color3.fromHex("182820") else Color3.fromHex("221A2E"), 10)
-		vipCard.Size, vipCard.AutomaticSize = UDim2.new(1, 0, 0, 0), Enum.AutomaticSize.Y
-		UI.pad(vipCard, 12, 10)
-		UI.stroke(vipCard, if isVip then colors.mint else GOLD)
-		UI.stack(vipCard, 4)
-		UI.label(vipCard, if isVip then t("VIP Active · +25% XP Bonus") else t("VIP SPONSOR PASS"), 15,
-			{font = BLACK, color = if isVip then colors.mint else GOLD})
-		UI.label(vipCard, t("Unlock Obsidian Gold dice, Champion's Halo aura and +25% XP bonus!"), 12,
-			{color = colors.text})
-		if not isVip then
-			local buyBtn = UI.button(vipCard, "BuyVipBtn", t("Get VIP Pass"), 32, function()
-				local channel = ReplicatedStorage:WaitForChild("WorldDraft"):FindFirstChild("CareerAction")
-				if channel and channel:IsA("RemoteEvent") then
-					channel:FireServer("buy_vip")
-					audio.play("upgrade")
-				end
-				drawDialog()
-			end, GOLD, colors.ink)
-			buyBtn.Size = UDim2.new(1, 0, 0, 32)
-		end
+		sponsorCard(dialogBody)
 
 		UI.label(dialogBody, t("DICE SKINS"), 15, {font = BOLD, color = colors.mint})
 		local diceItems = {
@@ -1167,6 +1165,9 @@ local function finishPanel(s: any)
 	cupAward(body, t(if sharedTitle then "League champions" else "Season champion"),
 		t(if sharedTitle then "Same team value: shared title" else "Season value"), panel.Visible and lastAwardSerial ~= snapshot.serial and not reduced())
 	if panel.Visible then lastAwardSerial = snapshot.serial end
+	if Player:GetAttribute("FirstCompletedMatch") == snapshot.serial and Player:GetAttribute("CareerIsVip") ~= true then
+		sponsorCard(body)
+	end
 	local pair: Frame? = nil
 	for index, record in s.standings do
 		local seat = nil
@@ -1262,6 +1263,12 @@ render = function()
 	cameraView.Visible = not shot and s ~= nil and s.phase ~= "final" and screen.X < screen.Y * .86 and not panel.Visible
 	cameraView.Text = t(if followTurn then "Full board" else "Follow turn")
 	if opened ~= "inspect" then drawDialog() else dialogShade.Visible = false end
+end
+
+for _, attribute in {"CareerMatches", "FirstCompletedMatch", "CareerIsVip", "CareerVipVerified", "CareerUnlocked"} do
+	Player:GetAttributeChangedSignal(attribute):Connect(function()
+		if opened == "career" or (snapshot and snapshot.match and snapshot.match.phase == "final") then render() end
+	end)
 end
 
 root:GetAttributeChangedSignal("ShotPlaying"):Connect(function() render() end)

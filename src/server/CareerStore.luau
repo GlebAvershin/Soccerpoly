@@ -5,7 +5,7 @@ local MarketplaceService = game:GetService("MarketplaceService")
 local HttpService = game:GetService("HttpService")
 local RunService = game:GetService("RunService")
 
-local VIP_GAMEPASS_ID = 0
+local VIP_GAMEPASS_ID = require(game:GetService("ReplicatedStorage").League.SponsorPass)
 
 export type Quest = {
 	id: string,
@@ -78,6 +78,7 @@ local store = if game.GameId > 0 and not RunService:IsStudio()
 local cache: {[number]: CareerProfile} = {}
 local pendingSaves: {[number]: boolean} = {}
 local isSaving: {[number]: boolean} = {}
+local queuedProfiles: {[number]: CareerProfile} = {}
 
 local function managerLevelFromXp(xp: number): (number, number, number)
 	-- Level = floor(sqrt(xp / 120)) + 1
@@ -136,20 +137,30 @@ local function checkUnlocksForLevel(profile: CareerProfile)
 	if level >= 6 and not profile.unlockedCosmetics["gold_championship"] then
 		profile.unlockedCosmetics["gold_championship"] = true
 	end
-	if profile.isVip then
-		profile.unlockedCosmetics["obsidian_gold"] = true
-		profile.unlockedCosmetics["champions_halo"] = true
+end
+
+local function setOwnership(profile: CareerProfile, owned: boolean)
+	profile.isVip = owned
+	profile.unlockedCosmetics.obsidian_gold = if owned then true else nil
+	profile.unlockedCosmetics.champions_halo = if owned then true else nil
+	if not owned then
+		for _, key in {"obsidian_gold", "champions_halo"} do
+			if profile.equippedDice == key then profile.equippedDice = "ivory_classic" end
+			if profile.equippedAura == key then profile.equippedAura = "mint_classic" end
+		end
 	end
 end
 
 local function saveProfile(userId: number)
-	if isSaving[userId] or not store then return end
+	if not store or not cache[userId] then return end
+	queuedProfiles[userId] = cache[userId]
+	if isSaving[userId] then return end
 	isSaving[userId] = true
 	task.spawn(function()
 		while pendingSaves[userId] do
 			task.wait(1.5)
 			pendingSaves[userId] = nil
-			local current = cache[userId]
+			local current = queuedProfiles[userId]
 			if not current then break end
 			current.savedAt = DateTime.now().UnixTimestampMillis
 			local ok, err = pcall(function()
@@ -165,6 +176,7 @@ local function saveProfile(userId: number)
 				task.wait(4)
 			end
 		end
+		queuedProfiles[userId] = nil
 		isSaving[userId] = nil
 	end)
 end
@@ -176,7 +188,12 @@ local function loadProfile(player: Player)
 		local ok, saved = pcall(function()
 			return store:GetAsync(tostring(userId))
 		end)
-		if ok and typeof(saved) == "table" then
+		if not ok then
+			warn("Could not load career for", userId)
+			if player.Parent == Players then player:Kick("Career could not be loaded. Please rejoin.") end
+			return
+		end
+		if typeof(saved) == "table" then
 			profile = {
 				matchesPlayed = saved.matchesPlayed or 0,
 				matchesWon = saved.matchesWon or 0,
@@ -189,7 +206,7 @@ local function loadProfile(player: Player)
 				loginStreak = saved.loginStreak or 1,
 				lastLoginTimestamp = saved.lastLoginTimestamp or 0,
 				lastDailySpin = saved.lastDailySpin or 0,
-				isVip = saved.isVip or false,
+				isVip = false,
 				quests = saved.quests or defaultQuests(),
 				questsDay = saved.questsDay or 0,
 				savedAt = saved.savedAt or 0,
@@ -203,15 +220,23 @@ local function loadProfile(player: Player)
 
 	refreshDailyQuests(profile)
 
-	-- Check gamepass ownership if configured
-	if VIP_GAMEPASS_ID > 0 then
-		local ok, owns = pcall(function()
-			return MarketplaceService:UserOwnsGamePassAsync(player.UserId, VIP_GAMEPASS_ID)
+	-- New players must never share the default cosmetics table.
+	profile.unlockedCosmetics = table.clone(profile.unlockedCosmetics)
+	local owns = false
+	local verified = false
+	for attempt = 1, 3 do
+		local ok, result = pcall(function()
+			return MarketplaceService:UserOwnsGamePassAsync(userId, VIP_GAMEPASS_ID)
 		end)
-		if ok and owns then
-			profile.isVip = true
+		if ok then
+			owns, verified = result == true, true
+			break
 		end
+		if attempt < 3 then task.wait(attempt) end
 	end
+	if player.Parent ~= Players then return end
+	setOwnership(profile, owns)
+	player:SetAttribute("CareerVipVerified", verified)
 
 	-- Daily streak logic
 	local now = os.time()
@@ -240,7 +265,7 @@ function CareerStore.get(userId: number): CareerProfile?
 	return cache[userId]
 end
 
-function CareerStore.recordMatchResult(userId: number, won: boolean, cashGained: number)
+function CareerStore.recordMatchResult(userId: number, won: boolean, cashGained: number, matchSerial: number)
 	local profile = cache[userId]
 	if not profile then return end
 	profile.matchesPlayed += 1
@@ -259,6 +284,7 @@ function CareerStore.recordMatchResult(userId: number, won: boolean, cashGained:
 	checkUnlocksForLevel(profile)
 	local player = Players:GetPlayerByUserId(userId)
 	if player then
+		if profile.matchesPlayed == 1 then player:SetAttribute("FirstCompletedMatch", matchSerial) end
 		applyAttributes(player, profile)
 	end
 	pendingSaves[userId] = true
@@ -370,22 +396,16 @@ function CareerStore.init(network: Folder)
 			CareerStore.equip(player, category, itemId)
 		elseif action == "claim_quest" and type(category) == "string" then
 			CareerStore.claimQuest(player, category)
-		elseif action == "buy_vip" then
-			if VIP_GAMEPASS_ID > 0 then
-				pcall(function()
-					MarketplaceService:PromptGamePassPurchase(player, VIP_GAMEPASS_ID)
-				end)
-			else
-				local profile = cache[player.UserId]
-				if profile then
-					profile.isVip = true
-					checkUnlocksForLevel(profile)
-					applyAttributes(player, profile)
-					pendingSaves[player.UserId] = true
-					saveProfile(player.UserId)
-				end
-			end
 		end
+	end)
+
+	MarketplaceService.PromptGamePassPurchaseFinished:Connect(function(player, passId, purchased)
+		if passId ~= VIP_GAMEPASS_ID or not purchased then return end
+		local profile = cache[player.UserId]
+		if not profile or player.Parent ~= Players then return end
+		setOwnership(profile, true)
+		player:SetAttribute("CareerVipVerified", true)
+		applyAttributes(player, profile)
 	end)
 
 	Players.PlayerAdded:Connect(loadProfile)
@@ -407,7 +427,7 @@ function CareerStore.init(network: Folder)
 			for userId in pendingSaves do
 				saveProfile(userId)
 			end
-			while next(pendingSaves) and os.clock() < deadline do
+			while next(isSaving) and os.clock() < deadline do
 				task.wait(0.2)
 			end
 		end)

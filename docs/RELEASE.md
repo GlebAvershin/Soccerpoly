@@ -2,7 +2,9 @@
 
 ## Опубликованная игра
 
-Обновление Continental Cup опубликовано как версия place **10**. [Актуальная сборка](../dist/Soccerpoly.rbxl)
+Версия place **11** от 21 ноября 2026 года подключает VIP Sponsor Pass к Continental Cup. Базовая цена — 149 Robux. Карточка пропуска появляется в итогах первой завершённой партии, а окно Roblox открывается по нажатию игрока. В двух игровых сессиях Studio подтверждены VIP владельца и доступность обоих предметов. Серверная обработка отмены и повторного входа проверена автоматическим тестом с имитацией ответа MarketplaceService. [VIP Sponsor Pass](https://www.roblox.com/game-pass/2094556894/VIP-Sponsor-Pass)
+
+Версия place **10** впервые выпустила Continental Cup. [Актуальная сборка](../dist/Soccerpoly.rbxl)
 
 Рабочий experience принадлежит `vicusiuss`. Universe ID — `10777507892`, стартовый Place ID — `114770772027261`. У v0.24.2 четыре места на сервере, аудитория при выпуске — 16+. [Soccerpoly в Roblox](https://www.roblox.com/games/114770772027261/Soccerpoly) · [Creator Hub](https://create.roblox.com/dashboard/creations/experiences/10777507892/overview) · [Релиз и сборка](https://github.com/GlebAvershin/Soccerpoly/releases/tag/v0.24.2)
 

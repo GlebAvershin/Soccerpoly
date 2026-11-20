@@ -13,6 +13,7 @@ test:
 	"$(LUAU)" tests/match.test.luau
 	"$(LUAU)" tests/balance.test.luau
 	"$(PYTHON)" tests/analytics_test.py
+	LUAU="$(LUAU)" "$(PYTHON)" tests/sponsor_pass_test.py
 
 build:
 	mkdir -p dist
