@@ -1,0 +1,26 @@
+{
+  "mcp": {
+    "game": "Soccerpoly",
+    "revision": "0ba07eda27c876ea92ce712561d048a8f240619a",
+    "brief_sha256": "6ce54c5afa2115c461460550825a7e6a753d5347ba5c6c8cdd78f1f747c2f5d8",
+    "accepted_regions": 3,
+    "rejected_control_regions": 3,
+    "source": "developer_qa"
+  },
+  "receipts": [
+    {
+      "service": "sentry",
+      "phase": "ingestion_acknowledged",
+      "http_status": 200,
+      "event_id": "0ac7846bdb395e7186322c46f481260a",
+      "timestamp_utc": "2026-11-20T19:41:50.373677+00:00"
+    },
+    {
+      "service": "amplitude",
+      "phase": "ingestion_acknowledged",
+      "http_status": 200,
+      "event_id": "57a70b9d5fb157af8c8ac5d4848922ef",
+      "timestamp_utc": "2026-11-20T19:42:42.197810+00:00"
+    }
+  ]
+}

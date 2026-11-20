@@ -1,0 +1,52 @@
+{
+  "project": "Soccerpoly",
+  "screen": "Matchday",
+  "route": "bedrock-mantle",
+  "requested_model": "qwen.qwen3-coder-30b-a3b-instruct",
+  "game_revision": "0ba07eda27c876ea92ce712561d048a8f240619a",
+  "brief_sha256": "6ce54c5afa2115c461460550825a7e6a753d5347ba5c6c8cdd78f1f747c2f5d8",
+  "bindings": {
+    "headline": "clock",
+    "stage": "pitch",
+    "action": "dice"
+  },
+  "negative_control": {
+    "headline": "pitch",
+    "stage": "dice",
+    "action": "clock"
+  },
+  "rejected_control_regions": [
+    "headline",
+    "stage",
+    "action"
+  ],
+  "trace": [
+    {
+      "region": "headline",
+      "component": "clock",
+      "origin": "inference",
+      "tokens": 127,
+      "accepted": true
+    },
+    {
+      "region": "stage",
+      "component": "pitch",
+      "origin": "inference",
+      "tokens": 118,
+      "accepted": true
+    },
+    {
+      "region": "action",
+      "component": "dice",
+      "origin": "elimination",
+      "tokens": 0,
+      "accepted": true
+    }
+  ],
+  "model_calls": 2,
+  "inference_tokens": 245,
+  "authoring_ms": 1527,
+  "region": "eu-north-1",
+  "account_plan_at_run": "FREE",
+  "account_plan_status": "ACTIVE"
+}
