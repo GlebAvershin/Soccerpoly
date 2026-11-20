@@ -1,0 +1,29 @@
+{
+  "threshold": 4.5,
+  "computed_css": {
+    "heading": [
+      "rgb(250, 246, 234)",
+      "rgb(17, 60, 52)"
+    ],
+    "accent": [
+      "rgb(229, 188, 105)",
+      "rgb(17, 60, 52)"
+    ],
+    "instruction": [
+      "rgb(250, 246, 234)",
+      "rgb(17, 60, 52)"
+    ],
+    "action": [
+      "rgb(23, 35, 38)",
+      "rgb(229, 188, 105)"
+    ]
+  },
+  "ratios": {
+    "heading": 11.3011,
+    "accent": 6.82,
+    "instruction": 11.3011,
+    "action": 8.9888
+  },
+  "negative_control_ratio": 1.0142,
+  "negative_control_rejected": true
+}
