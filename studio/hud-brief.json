@@ -1,0 +1,42 @@
+{
+  "project": "Soccerpoly",
+  "screen": "Matchday",
+  "colors": [
+    "113c34",
+    "e5bc69"
+  ],
+  "art": "art/stadium-preview.png",
+  "design": {
+    "headline": "Lead with the current fixture time.",
+    "stage": "Keep the board and player positions in the largest region.",
+    "action": "Put the primary turn action within thumb reach."
+  },
+  "components": [
+    {
+      "id": "clock",
+      "title": "Match clock",
+      "description": "Read the current fixture time.",
+      "source": "src/client/Table.client.luau",
+      "symbol": "MatchClock"
+    },
+    {
+      "id": "dice",
+      "title": "Roll dice",
+      "description": "Take the next turn.",
+      "source": "src/client/Table.client.luau",
+      "symbol": "RollDice"
+    },
+    {
+      "id": "pitch",
+      "title": "Match table",
+      "description": "Inspect the board and player positions.",
+      "source": "src/client/Table.client.luau",
+      "symbol": "Arena.new"
+    }
+  ],
+  "acceptance": {
+    "headline": "clock",
+    "stage": "pitch",
+    "action": "dice"
+  }
+}
