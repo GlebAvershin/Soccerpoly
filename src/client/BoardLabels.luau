@@ -31,58 +31,41 @@ local function intersects(a: Rect, b: Rect): boolean
 	return a.Min.X < b.Max.X and a.Max.X > b.Min.X and a.Min.Y < b.Max.Y and a.Max.Y > b.Min.Y
 end
 
--- Reserve a visible panorama on shallow side cards. Deeper end cards can
--- use the extra space for artwork after both lines reach their target height.
--- Uniform balanced proportions across all board cells for consistent visual harmony.
+-- Shallow tickets give the illustration and price their own columns, with
+-- the club name underneath. Tall tickets read like a printed match programme.
 local function setLayout(entry, compact: boolean)
-	local sy = entry.part.Size.Y
-	local name = entry.name
-	local nameHeight: number, priceHeight: number, priceY: number, artHeight: number
-
-	local shallow = sy < 14 -- vertical side cells have sy ~ 11.76, horizontal end cells have sy ~ 16.90
-	if entry.buyable then
-		if shallow then
-			artHeight = if compact then .28 else .30
-			nameHeight = if compact then .28 else .30
-			priceHeight = if compact then .16 else .18
-			priceY = 1.0 - priceHeight - .025
-		else
-			artHeight = if compact then .36 else .38
-			nameHeight = if compact then .26 else .28
-			priceHeight = if compact then .16 else .18
-			priceY = 1.0 - priceHeight - .025
-		end
-	else
-		if shallow then
-			artHeight = if compact then .40 else .42
-			nameHeight = if compact then .38 else .40
-			priceHeight = 0
-			priceY = 1.0
-		else
-			artHeight = if compact then .46 else .48
-			nameHeight = if compact then .36 else .38
-			priceHeight = 0
-			priceY = 1.0
-		end
+	local function place(node: GuiObject, x: number, y: number, width: number, height: number)
+		node.Position, node.Size = UDim2.fromScale(x,y), UDim2.fromScale(width,height)
 	end
-
-	local inset = if compact then .024 else .028
-	local titleY = artHeight + .045
-	entry.poster.Size = UDim2.fromScale(1, artHeight)
-	if entry.rule then
-		entry.rule.Position = UDim2.fromScale(0.03, artHeight + .012)
+	local nameY, nameH = .57,.43
+	local posterW, posterH = 1,nameY
+	local valueX,valueY,valueW,valueH = 0,1,1,0
+	local sideBySide = entry.buyable and entry.part.Size.X > entry.part.Size.Y * 1.13
+	if sideBySide then
+		nameY, nameH = .59,.41
+		posterW,posterH = .51,nameY
+		valueX,valueY,valueW,valueH = posterW,0,1-posterW,nameY
+	elseif entry.buyable then
+		valueH = if compact then math.min(.502,6.35/entry.part.Size.Y) else .27
+		nameH = if compact then math.min(.38,5.4/entry.part.Size.Y) else .27
+		posterH = 1-valueH-nameH
+		nameY,valueY = posterH,1-valueH
 	end
-	entry.title.Position, entry.title.Size = UDim2.fromScale(inset, titleY), UDim2.fromScale(1 - 2 * inset, nameHeight - .015)
-	entry.cost.Position, entry.cost.Size = UDim2.fromScale(inset, priceY), UDim2.fromScale(1 - 2 * inset, priceHeight)
-	entry.owner.Position, entry.owner.Size = UDim2.fromScale(0, artHeight), UDim2.fromScale(.026, 1 - artHeight)
-	entry.title.Text, entry.nativeTitle.Text = name, name
-	for _, rule in entry.rules do rule.Visible = not compact end
+	place(entry.poster,0,0,posterW,posterH)
+	place(entry.nameBand,0,nameY,1,nameH)
+	place(entry.valueBand,valueX,valueY,valueW,valueH)
+	local inset = if compact then 0 else .02
+	place(entry.title,inset,nameY,1-inset*2,nameH)
+	place(entry.cost,valueX,valueY,valueW,valueH)
+	-- An owned asset carries its manager’s colour at the edge of its value band.
+	place(entry.owner,valueX,valueY,valueW*.07,valueH)
+	entry.title.Text, entry.nativeTitle.Text = entry.name, entry.name
 	entry.compact = compact
 end
 
 -- The board camera's right axis stays parallel to the touchlines. Intersect the
 -- top and bottom edges of each projected strip to inscribe a pixel-aligned rect.
-local function projectBand(camera: Camera, part: BasePart, original: GuiObject): Rect
+local function projectBand(camera: Camera, part: BasePart, original: GuiObject): Rect?
 	local offset, size = original.Position, original.Size
 	local x0 = part.Size.X * (offset.X.Scale - .5)
 	local x1 = x0 + part.Size.X * size.X.Scale
@@ -94,16 +77,11 @@ local function projectBand(camera: Camera, part: BasePart, original: GuiObject):
 	end
 	local tl, tr = point(x0, y0), point(x1, y0)
 	local bl, br = point(x0, y1), point(x1, y1)
-	local left = math.ceil(math.max(tl.X, bl.X))
-	local right = math.floor(math.min(tr.X, br.X))
-	-- Strict mathematical inscribe: guarantees adjacent vertical bands never overlap
-	local top = math.ceil(math.max(tl.Y, tr.Y))
-	local bottom = math.floor(math.min(bl.Y, br.Y))
-	if top >= bottom then
-		top = math.min(tl.Y, tr.Y)
-		bottom = math.max(bl.Y, br.Y)
-	end
-	return Rect.new(left, math.floor(top), math.max(left + 1, right), math.max(math.floor(top) + 1, math.ceil(bottom)))
+	if math.min(tl.Z,tr.Z,bl.Z,br.Z) <= 0 then return nil end
+	local left, right = math.ceil(math.max(tl.X,bl.X)), math.floor(math.min(tr.X,br.X))
+	local top, bottom = math.ceil(math.max(tl.Y,tr.Y)), math.floor(math.min(bl.Y,br.Y))
+	if right <= left or bottom <= top then return nil end
+	return Rect.new(left,top,right,bottom)
 end
 
 return function(root: Frame, translate: (string)->string)
@@ -168,43 +146,23 @@ return function(root: Frame, translate: (string)->string)
 		sheet.Face, sheet.Adornee, sheet.Name = Enum.NormalId.Back, part, "Cell"..i
 		sheet.AutoLocalize, sheet.Active, sheet.AlwaysOnTop, sheet.LightInfluence = false, false, false, 0
 		sheet.SizingMode = Enum.SurfaceGuiSizingMode.FixedSize
-		-- Ultra-sharp 100 pixels per stud high-definition canvas size (crystal clear Retina sharpness)
-		sheet.CanvasSize = Vector2.new(math.round(part.Size.X * 100), math.round(part.Size.Y * 100))
+		-- SurfaceGui caps scaled type at 100 px. This density keeps the physical
+		-- caption within that range when a player or free orbit hides the overlay.
+		sheet.CanvasSize = Vector2.new(math.round(part.Size.X*28),math.round(part.Size.Y*28))
 		sheet.MaxDistance, sheet.Enabled, sheet.Parent = 12000, visible, group
 		local card = UI.box(sheet, "Printed programme", style.ink(tile))
 		card.Size, card.ClipsDescendants = UDim2.fromScale(1,1), true
-		local shallow = part.Size.Y < 14
-		local initArt = if buyable then (if shallow then .30 else .38) else (if shallow then .42 else .48)
-		local initNameH = if buyable then (if shallow then .30 else .28) else (if shallow then .40 else .38)
-		local initPriceH = if buyable then .18 else 0
-		local initPriceY = if buyable then (1.0 - initPriceH - .025) else 1.0
-		local initTitleY = initArt + .045
-
-		local poster = illustrate(card,tile)
-		poster.Size = UDim2.fromScale(1, initArt)
-		poster.ZIndex = 1
-		local goldRule = UI.box(card, "Programme rule", Art.gold)
-		goldRule.Position, goldRule.Size = UDim2.fromScale(0.03, initArt + .012), UDim2.fromScale(0.94, 0.005)
-		goldRule.BackgroundTransparency = 0.55
-		goldRule.ZIndex = 2
-		local color = style.title
-		local title = band(card, "Club name", initTitleY, initNameH - .015, style.clubFace, color)
-		title.ZIndex = 5
-		local cost = band(card, "Club cost", initPriceY, initPriceH, style.amountFace, style.price)
-		cost.ZIndex = 5
+		local poster = UI.box(card,"Art window")
+		poster.ClipsDescendants = true
+		local print = illustrate(poster,tile,false,i)
+		print.Name = "Lithograph mount"
+		local nameBand = UI.box(card,"Name stock",Color3.fromHex("F2E8C9"))
+		local valueBand = UI.box(card,"Value stock",style.ink(tile))
+		valueBand.Visible = buyable
+		local title = band(card,"Club name",0,1,style.clubFace,Color3.fromHex("182C32"))
+		local cost = band(card,"Club cost",0,1,style.amountFace,Color3.fromHex("FFE2A3"))
 		cost.Visible = buyable
-		local rules = {}
-		if buyable then
-			for _, x in {.105,.685} do
-				local rule = UI.box(card, "Price rule", style.price)
-				rule.Position, rule.Size = UDim2.fromScale(x,.88), UDim2.fromScale(.21,.015)
-				rule.BackgroundTransparency = .62
-				rule.ZIndex = 3
-				table.insert(rules,rule)
-			end
-		end
-		local mark = UI.box(card, "Owner", Art.gold)
-		mark.Position, mark.Size = UDim2.fromScale(0, initArt), UDim2.fromScale(.026, 1 - initArt)
+		local mark = UI.box(card,"Owner",Art.gold)
 		mark.ZIndex = 4
 		local frame = UI.box(overlay, sheet.Name)
 		frame.Size, frame.Interactable = UDim2.fromScale(1,1), false
@@ -213,16 +171,14 @@ return function(root: Frame, translate: (string)->string)
 			copy.Visible, copy.Parent = false, frame
 			return copy
 		end
-		local nativePoster = display(poster)
-		nativePoster.ZIndex = 1
-		local nativeTitle = display(title)
-		nativeTitle.ZIndex = 5
-		local nativeCost = display(cost)
-		nativeCost.ZIndex = 5
-		local layers = {{print=poster, native=nativePoster}, {print=title, native=nativeTitle}}
-		if buyable then table.insert(layers, {print=cost, native=nativeCost}) end
-		local entry = {part=part, surface=sheet, title=title, cost=cost, nativeTitle=nativeTitle,
-			nativeCost=nativeCost, owner=mark, layers=layers, poster=poster, rule=goldRule, rules=rules, buyable=buyable, compact=nil, name=nil}
+		local nativeArt = UI.box(frame,"Art window")
+		nativeArt.ClipsDescendants, nativeArt.Visible = true, false
+		local nativeTitle, nativeCost = display(title), display(cost)
+		local layers = {{print=title,native=nativeTitle}}
+		if buyable then table.insert(layers,{print=cost,native=nativeCost}) end
+		local entry = {part=part,surface=sheet,title=title,cost=cost,nativeTitle=nativeTitle,
+			nativeCost=nativeCost,owner=mark,layers=layers,poster=poster,nameBand=nameBand,valueBand=valueBand,
+			print=print,nativeArt=nativeArt,buyable=buyable,compact=nil,name=nil}
 		sheets[i] = entry
 		setCopy(i, entry)
 	end
@@ -238,14 +194,37 @@ return function(root: Frame, translate: (string)->string)
 		end,
 		translate=refresh,
 		layout=function(camera: Camera, masks: {Rect}, compact: boolean)
+			local aligned = camera.CFrame.RightVector:Dot(Vector3.xAxis) > .99999
 			for _, entry in sheets do
-				if entry.compact ~= compact then
-					setLayout(entry,compact)
+				if entry.compact ~= compact then setLayout(entry,compact) end
+				-- Move the single illustration between the paper and a device-pixel window.
+				-- No second skyline or kit can bleed across a cell edge during camera movement.
+				local artBox = if aligned then projectBand(camera,entry.part,entry.poster) else nil
+				if artBox then
+					for _, mask in masks do
+						if intersects(artBox,mask) then artBox = nil; break end
+					end
 				end
+				local window = entry.nativeArt
+				if artBox then
+					window.Position, window.Size = UDim2.fromOffset(artBox.Min.X,artBox.Min.Y), UDim2.fromOffset(artBox.Width,artBox.Height)
+				end
+				local mount = if artBox then window else entry.poster
+				if entry.print.Parent ~= mount then entry.print.Parent = mount end
+				window.Visible = artBox ~= nil
 				for _, layer in entry.layers do
-					-- Keep 3D SurfaceGui always cleanly visible with true 3D perspective and zero overlap
-					layer.print.Visible = true
-					layer.native.Visible = false
+					local glyph = layer.native
+					local box = if aligned then projectBand(camera,entry.part,layer.print) else nil
+					local exposed = false
+					if box then
+						glyph.Position, glyph.Size = UDim2.fromOffset(box.Min.X,box.Min.Y), UDim2.fromOffset(box.Width,box.Height)
+						exposed = true
+						for _, mask in masks do
+							if intersects(box,mask) then exposed = false break end
+						end
+					end
+					-- A turned board and obscured tiles retain the perspective of their paper surface.
+					glyph.Visible, layer.print.Visible = exposed, not exposed
 				end
 			end
 		end,

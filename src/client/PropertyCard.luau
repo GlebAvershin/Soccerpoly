@@ -34,7 +34,7 @@ local function illustration(parent: Instance, index: number, height: number)
 	local tile = Board.tiles[index]
 	local backing = UI.box(parent, "Illustration", style.ink(tile))
 	backing.Position, backing.Size = UDim2.fromOffset(0, 37), UDim2.new(1, 0, 0, height + 2)
-	illustrate(backing, tile, true)
+	illustrate(backing, tile, true, index)
 end
 
 export type Details = {

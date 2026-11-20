@@ -159,14 +159,22 @@ local function routeAt(route: {Vector3}, progress: number): Vector3
 		+ p2 * (-2 * cube + 3 * square) + m2 * (cube - square)
 end
 
-function Arena.new(myId: number, root: Frame, translate: (string) -> string, playSound: (string) -> ())
+function Arena.new(myId: number, root: Frame, translate: (string, ...any) -> string, playSound: (string) -> ())
 	local localPlayer = game:GetService("Players").LocalPlayer
 	local labels = BoardLabels(root, translate)
 	local ribbonText: TextLabel? = nil
 	local ribbonVersion = 0
+	local displaySnapshot: any = nil
+	local updateDisplay: ((any)->())? = nil
 	task.defer(function()
 		local stage = workspace:WaitForChild("WorldDraftArena", 12)
 		if not stage then return end
+		local screen = stage:FindFirstChild("JumbotronDisplay", true)
+		if screen and screen:IsA("SurfaceGui") then
+			local mounted = require(script.Parent.StadiumDisplay)(screen, translate)
+			updateDisplay = mounted
+			mounted(displaySnapshot)
+		end
 		Meshes.decorate(stage)
 		require(script.Parent.PitchSurface)(stage:WaitForChild("Continental Cup stadium"))
 		require(script.Parent.StadiumDistrict)(stage:WaitForChild("Arena surroundings"):WaitForChild("Stadium district"))
@@ -351,7 +359,7 @@ function Arena.new(myId: number, root: Frame, translate: (string) -> string, pla
 		local tangent = math.tan(math.rad(fov) * .5)
 		portraitCamera = aspect < .86
 		shortLandscape = aspect > 1 and root.AbsoluteSize.Y < 430
-		local angle = math.rad(if portraitCamera then 50 elseif shortLandscape then 42 else 40)
+		local angle = math.rad(if portraitCamera then 63 elseif shortLandscape then 42 else 40)
 		local orbit = Vector3.zAxis * math.cos(angle) + Vector3.yAxis * math.sin(angle)
 		local span = Geometry.width
 		local width = .85
@@ -372,19 +380,33 @@ function Arena.new(myId: number, root: Frame, translate: (string) -> string, pla
 			if shortLandscape then
 				verticalOffset = (size.Y*.5-origin.Y)/focalLength
 			end
-			-- On portrait phones, frame the playing track directly so the board is close, large and legible
-			local extent = if portraitCamera then (span - 16.0) else Art.plinthWidth
-			local trackWidth = if shortLandscape then span elseif portraitCamera then (span - 18.0) else extent
-			local padding = if portraitCamera then (extent * .18 * math.cos(angle)) else (extent * .5 * math.cos(angle))
+			local extent = Art.plinthWidth
+			local trackWidth = if shortLandscape then span else extent
 			distance = math.max(trackWidth*focalLength/widthPixels,extent*math.sin(angle)*focalLength/heightPixels)
-				+ padding + Art.tileTop*math.sin(angle)
+				+ extent*.5*math.cos(angle) + Art.tileTop*math.sin(angle)
+		end
+		if not portraitCamera and not shortLandscape then
+			-- Reserve the score strip above the north touchline and the roll control below.
+			local sample = camera.CFrame * Vector3.new(0,0,-100)
+			camera.FieldOfView = fov
+			local origin = camera:WorldToViewportPoint(sample)
+			local edge = camera:WorldToViewportPoint(sample + camera.CFrame.RightVector*10)
+			local focal = (edge.X-origin.X)*10
+			local topInset = origin.Y-camera:WorldToScreenPoint(sample).Y
+			local boardTop = topInset + (if root.AbsoluteSize.X >= 1040 then 8 else 41) + 58 + 9
+			local boardBottom = size.Y-65
+			local usableHeight = math.max(1,boardBottom-boardTop)
+			local usableWidth = math.max(1,root.AbsoluteSize.X-116)
+			distance = math.max(span*focal/usableWidth,span*math.sin(angle)*focal/usableHeight)
+				+ span*.5*math.cos(angle) + Art.tileTop*math.sin(angle)
+			verticalOffset = ((boardTop+boardBottom)*.5-origin.Y)/focal
 		end
 		local base = CFrame.lookAt(orbit * distance, Vector3.zero)
 		local half = Geometry.width * .5
 		local near = base:PointToObjectSpace(Vector3.new(half, Art.tileTop, half))
 		local far = base:PointToObjectSpace(Vector3.new(-half, Art.tileTop, -half))
 		local centerY = (near.Y / -near.Z + far.Y / -far.Z) * .5
-		local targetY = if shortLandscape then 0 elseif portraitCamera then -.010 else -.071
+		local targetY = if shortLandscape then 0 elseif portraitCamera then -.010 else 0
 		overview = base * CFrame.new(0, (centerY + verticalOffset - targetY * tangent) * distance, 0)
 		local followAngle = math.rad(34)
 		focusOrbit = Vector3.zAxis * math.cos(followAngle) + Vector3.yAxis * math.sin(followAngle)
@@ -523,6 +545,7 @@ function Arena.new(myId: number, root: Frame, translate: (string) -> string, pla
 		end
 		for _, seat in s.seats do table.insert(bits, seat.id .. "/" .. seat.figure .. "/" .. seat.trophies) end
 		table.insert(bits, tostring(s.festival or 0))
+		if s.phase == "final" then table.insert(bits,"final") end
 		local key = table.concat(bits, "|")
 		if key == signature then return end
 		signature = key
@@ -545,8 +568,7 @@ function Arena.new(myId: number, root: Frame, translate: (string) -> string, pla
 			prevLevels[i] = tag
 			if club.owner ~= 0 then
 				local p, color = Geometry.cells[i], colors[club.owner]
-				part(markers, "Club ownership", Vector3.new(11.6, .12, .42),
-					Vector3.new(p.X, Art.tileTop + .020, p.Z + 4.67), color)
+
 				if Board.tiles[i].league > 0 then clubStadium(markers, p, club.level, color, i, changed and not reduced) end
 				if s.festival == i then trophy(markers, Vector3.new(p.X, Art.tileTop, p.Z) + Art.boardRight * 2.8, color) end
 				if club.shield then
@@ -560,80 +582,11 @@ function Arena.new(myId: number, root: Frame, translate: (string) -> string, pla
 			trophy(markers, Vector3.new(2.2, Art.tileTop, 1.4), Art.gold)
 		end
 
-		-- Live Stadium Jumbotron Synchronization
-		local arenaStage = workspace:FindFirstChild("WorldDraftArena")
-		local jumbotronGui = if arenaStage then arenaStage:FindFirstChild("JumbotronDisplay", true) :: SurfaceGui? else nil
-		if jumbotronGui then
-			local displayRoot = jumbotronGui:FindFirstChild("DisplayRoot")
-			if displayRoot then
-				local centre = displayRoot:FindFirstChild("Centre")
-				if centre then
-					local phaseLabel = centre:FindFirstChild("PhaseLabel", true) :: TextLabel?
-					local subLabel = centre:FindFirstChild("SubLabel", true) :: TextLabel?
-					local leaderStat = centre:FindFirstChild("LeaderStat", true) :: TextLabel?
-					local arenaStat = centre:FindFirstChild("ArenaStat", true) :: TextLabel?
-					if phaseLabel and subLabel and leaderStat then
-						if s.phase == "final" then
-							local winnerIdx = s.winner or 1
-							local winnerSeat = s.seats[winnerIdx] or s.seats[1]
-							local winnerFigure = Board.figures[winnerSeat.figure]
-							phaseLabel.Text = "★ CONTINENTAL CHAMPION ★"
-							phaseLabel.TextColor3 = Art.gold
-							subLabel.Text = string.format("CONGRATULATIONS %s!", winnerFigure.name:upper())
-							subLabel.TextColor3 = Art.seatColors[winnerIdx] or Art.gold
-							leaderStat.Text = string.format("CHAMPION'S REVENUE: %d CR · TROPHIES: %d", winnerSeat.cash, winnerSeat.trophies or 1)
-							if arenaStat then
-								arenaStat.Text = "TOURNAMENT COMPLETE · TROPHY AWARDED"
-							end
-						else
-							local activeSeat = s.seats[s.active]
-							local activeFigure = if activeSeat then Board.figures[activeSeat.figure] else nil
-							local phaseTitle = if s.phase == "roll" then "ROLL THE DICE"
-								elseif s.phase == "buy" then "CLUB SIGNING"
-								elseif s.phase == "offer" then "CLUB OFFER"
-								elseif s.phase == "upgrade" then "STADIUM UPGRADE"
-								elseif s.phase == "auction" then "TRANSFER AUCTION"
-								elseif s.phase == "shot" then "PENALTY SHOOTOUT"
-								elseif s.phase == "bench" then "ON THE BENCH"
-								elseif s.phase == "tour" then "AWAY TOUR"
-								elseif s.phase == "move" then "DRIBBLE ON PITCH"
-								else s.phase:upper()
-							phaseLabel.Text = phaseTitle
-							phaseLabel.TextColor3 = if s.phase == "buy" then Art.gold
-								elseif s.phase == "upgrade" then Color3.fromHex("00D2FF")
-								elseif s.phase == "shot" then Color3.fromHex("FF3B60")
-								elseif s.phase == "roll" or s.phase == "move" then Color3.fromHex("00FF87")
-								else Art.mint
-							if activeFigure then
-								subLabel.Text = if s.phase == "move" then string.format("%s ADVANCING ACROSS ARENA", activeFigure.name:upper())
-									elseif s.phase == "roll" then string.format("MANAGER READY: %s · ROLL TO MOVE", activeFigure.name:upper())
-									elseif s.phase == "buy" then string.format("CLUB AVAILABLE FOR CONTRACT SIGNING")
-									elseif s.phase == "upgrade" then string.format("UPGRADE STADIUM CAPACITY & MATCH REVENUE")
-									else string.format("MANAGER ON PITCH: %s", activeFigure.name:upper())
-								subLabel.TextColor3 = Art.seatColors[s.active] or Art.mint
-							end
-
-							local leaderSeat = s.seats[1]
-							for _, seat in s.seats do
-								if seat.cash > leaderSeat.cash then leaderSeat = seat end
-							end
-							local leaderFigure = Board.figures[leaderSeat.figure]
-							local ownedCount = 0
-							for _, c in s.clubs do if c.owner == leaderSeat.id then ownedCount += 1 end end
-							leaderStat.Text = string.format("TABLE LEADER: %s · %d CR · %d CLUBS", leaderFigure.name:upper(), leaderSeat.cash, ownedCount)
-							if arenaStat then
-								local totalClubs = 0
-								for _, c in s.clubs do if c.owner ~= 0 then totalClubs += 1 end end
-								arenaStat.Text = string.format("SIGNED: %d/32 CLUBS · STADIUMS IN PLAY", totalClubs)
-							end
-						end
-					end
-				end
-			end
-		end
 	end
 
 	local function sync(snapshot: any)
+		displaySnapshot = snapshot
+		if updateDisplay then updateDisplay(snapshot) end
 		local s = snapshot.match
 		lastMatchState = s
 		labels.update(snapshot)
@@ -798,11 +751,6 @@ function Arena.new(myId: number, root: Frame, translate: (string) -> string, pla
 			turnAuraRing.Position = Vector3.new(0, -50, 0)
 		end
 
-		local arenaStage = workspace:FindFirstChild("WorldDraftArena")
-		local jLiveDot = if arenaStage then arenaStage:FindFirstChild("LiveDot", true) :: Frame? else nil
-		if jLiveDot then
-			jLiveDot.BackgroundTransparency = 0.15 + 0.35 * (0.5 + 0.5 * math.sin(clock * 5))
-		end
 		if replaying ~= (frame ~= nil) then
 			replaying = frame ~= nil
 			root:SetAttribute("ShotPlaying",replaying)
@@ -1054,6 +1002,7 @@ function Arena.new(myId: number, root: Frame, translate: (string) -> string, pla
 		end,
 		relocalize = function()
 			ribbonVersion += 1
+			if updateDisplay then updateDisplay(displaySnapshot) end
 			if ribbonText then ribbonText.Text, ribbonText.TextColor3 = "SOCCERPOLY", Art.mint end
 			labels.translate()
 		end,

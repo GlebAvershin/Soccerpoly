@@ -11,10 +11,10 @@
     <path id="kit" d="M99 44 Q109 57 128 58 Q147 58 157 44 L186 54 Q193 56 200 67 L226 104 L201 124 L181 106 Q177 136 180 165 L184 201 Q160 214 128 214 Q96 214 72 201 L76 165 Q79 137 75 106 L55 124 L30 104 L56 67 Q63 56 70 54Z"/>
     <clipPath id="cut"><use href="#kit"/></clipPath>
   </defs>
-  <ellipse cx="128" cy="139" rx="111" ry="110" fill="#142435" opacity=".28"/>
-  <circle cx="128" cy="128" r="111" fill="url(#enamel)" stroke="#463e32" stroke-width="2"/>
-  <circle cx="128" cy="128" r="105" fill="#263747"/>
-  <circle cx="128" cy="128" r="98" fill="none" stroke="#a48e6c" stroke-width="1.5"/>
+  <path d="M125 12L224 45Q237 48 235 65L222 169Q212 209 130 247Q117 248 99 236Q40 209 30 168L21 69Q18 51 34 45Z" fill="#182D33" opacity=".42"/>
+  <path d="M126 8L222 40Q235 44 232 59L221 159Q212 202 127 240Q47 207 34 163L22 63Q20 48 34 42Z" fill="#F8E8B3" stroke="#233D43" stroke-width="4"/>
+  <path d="M127 18L221 49L211 157Q201 192 127 227Q58 196 44 158L34 54Z" fill="#2D4345"/>
+  <path d="M40 89L113 24L134 24L42 108Z" fill="#3E5453"/>
   <g transform="rotate(-6 128 128)">
     <use href="#kit" transform="translate(1 4)" fill="#121e2a" opacity=".65"/>
     <use href="#kit" fill="PRIMARY"/>

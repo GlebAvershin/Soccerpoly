@@ -92,9 +92,9 @@ def head(name, topology):
     # the skull at grazing angles in the overhead camera.
     scalp = BVHTree.FromPolygons(coords, faces)
     count, sweep, wave, relief = {
-        "messi": (23, .48, .06, .026), "ronaldo": (20, -.64, .04, .030),
-        "mbappe": (28, .14, .035, .009), "yamal": (29, .22, .20, .037),
-        "vinicius": (26, -.18, .16, .031), "haaland": (22, .76, .025, .020),
+        "messi": (25, .55, .085, .043), "ronaldo": (22, -.71, .055, .043),
+        "mbappe": (27, .15, .055, .015), "yamal": (29, .29, .22, .061),
+        "vinicius": (28, -.24, .19, .047), "haaland": (23, .85, .031, .032),
     }[name]
     center = Vector((0,.11,.18))
     for lock in range(count):
@@ -121,9 +121,10 @@ def head(name, topology):
             if len(path)<3: break
             t=seg/(len(path)-1)
             taper=sin(pi*t)**.75
-            width=(.002+.036*taper)*(1 if name!="mbappe" else .58)
+            width=(.002+.046*taper)*(1 if name!="mbappe" else .60)
             ring=[]
-            for offset, rise in ((-1,-.003),(0,relief*taper),(1,-.003)):
+            for offset, height in ((-1,-.10),(-.42,.70),(.10,1),(.64,.52),(1,-.10)):
+                rise = relief*taper*height
                 co=hit+lateral*width*offset+normal*rise
                 u=origin+co.x/scale
                 v=chin-(co.z+.64)/scale
@@ -134,7 +135,7 @@ def head(name, topology):
                 clamped_v = max(0.01, min(0.98, v))
                 ring.append(vertex(co,(panel+.49*clamped_u,1-clamped_v)))
             if previous:
-                for edge in (0,1):
+                for edge in range(len(ring)-1):
                     faces.append((previous[edge],previous[edge+1],ring[edge+1],ring[edge]))
             previous=ring
 

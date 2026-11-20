@@ -1,0 +1,71 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 256">
+  <defs>
+    <!-- A small set of cut-paper architectural elevations for the Continental Cup. -->
+    <g id="shell" stroke-linejoin="round">
+      <path fill="BODY" d="M12 131Q142 41 382 82Q432 96 435 125L404 185Q194 221 32 171Z"/>
+      <path fill="LIGHT" d="M12 131Q169 28 382 82Q432 96 435 125Q208 80 12 139Z"/>
+      <path fill="DARK" d="M30 131Q228 82 421 122Q240 95 38 139Z"/>
+      <g fill="none" stroke="LIGHT" stroke-width="3"><path d="M19 144Q228 99 433 133M23 151Q231 108 429 140M26 159Q235 119 424 148M30 167Q239 130 418 157"/></g>
+      <path fill="DARK" d="M34 172Q220 145 410 168L400 186Q202 210 39 184Z"/>
+    </g>
+    <g id="brick">
+      <path fill="DARK" d="M17 131L96 102L287 83L437 116L412 185L46 186Z"/>
+      <path fill="BODY" d="M30 136L133 119L290 105L417 128L408 179L44 186Z"/>
+      <path fill="LIGHT" d="M6 131L87 98L281 72L448 111L433 124L286 94L109 115L24 144Z"/>
+      <path fill="DARK" d="M34 148L139 130L296 116L418 136L415 143L295 125L140 137L36 155Z"/>
+      <path fill="none" stroke="DARK" stroke-width="4" d="M67 121L68 72L188 89L189 51L330 88L330 64L398 107M69 74L106 109L187 54L244 94L328 65L358 103"/>
+      <g fill="DARK"><path d="M64 160h15v17H64zM89 156h14v17H89zM114 153h15v17h-15zM143 149h15v18h-15zM172 146h15v19h-15zM202 143h15v20h-15zM234 141h15v20h-15zM266 138h15v21h-15zM306 141h15v21h-15zM338 145h15v18h-15zM368 149h15v16h-15z"/></g>
+    </g>
+    <g id="towers">
+      <path fill="BODY" d="M35 118L231 86L415 111L407 178L215 192L49 165Z"/>
+      <path fill="DARK" d="M46 133L224 112L409 129L405 139L219 122L48 144ZM49 154L218 138L407 148L404 157L217 149L51 162Z"/>
+      <path fill="LIGHT" d="M8 101L218 61L439 87L412 107L221 86L30 119Z"/>
+      <path fill="DARK" d="M8 101L30 119L220 87L410 107L438 88L432 101L413 118L221 99L24 134Z"/>
+      <g fill="LIGHT" stroke="DARK" stroke-width="3">
+        <path d="M39 72l14-2v101l-14 3zM114 59l14-2v127l-14 1zM326 58l14 2v123l-14 2zM389 69l13 3v99l-13 2z"/>
+      </g>
+      <path stroke="DARK" fill="none" stroke-width="4" d="M40 145l13-8m-13-5l13-8m-13-6l13-7m63 47l12-7m-12-8l12-6m-12-6l12-7m199 30l11-6m-11-8l11-6m-11-8l11-6m52 21l12-7m-12-8l12-6"/>
+    </g>
+    <g id="quilt">
+      <path fill="BODY" d="M13 137C15 88 109 60 225 61C341 58 420 78 439 123Q446 167 386 182Q214 211 49 180Q18 170 13 137Z"/>
+      <ellipse fill="LIGHT" cx="224" cy="96" rx="152" ry="28" transform="rotate(-2 224 96)"/>
+      <ellipse fill="DARK" cx="227" cy="97" rx="114" ry="15" transform="rotate(-2 227 97)"/>
+      <path fill="none" stroke="LIGHT" stroke-width="3" d="M15 134Q216 182 438 121M17 148Q211 199 436 136M26 165Q218 212 421 155M26 128l42 35l48-20l47 31l55-25l48 25l53-27l47 16l53-36M57 150l43 33l55-20l50 25l57-23l47 14l53-26l42 10"/>
+    </g>
+    <g id="canopy">
+      <path fill="DARK" d="M23 128Q90 134 160 94Q223 53 307 79Q372 103 434 98L411 167Q275 219 57 177Z"/>
+      <path fill="BODY" d="M27 136Q97 143 160 108Q229 69 306 94Q369 115 427 108L412 159Q277 199 55 166Z"/>
+      <path fill="LIGHT" d="M8 122Q86 139 157 85Q219 39 299 65Q374 98 449 79L438 102Q369 118 301 89Q228 64 166 106Q98 154 27 144Z"/>
+      <path fill="none" stroke="LIGHT" stroke-width="4" d="M76 145v22m33-26v31m38-47v49m39-65v65m42-76v74m43-78v76m42-67v61m39-53v46m35-43v35"/>
+      <path fill="DARK" d="M50 168Q222 197 414 156L409 176Q230 214 56 180Z"/>
+    </g>
+    <g id="whistle" fill="LIGHT" stroke="DARK" stroke-width="3" stroke-linejoin="round">
+      <path d="M64 106l48-9l43-29l8 23l-43 36c-2 29-38 44-57 25c-14-14-14-33 1-46z"/>
+      <circle cx="85" cy="131" r="15" fill="BODY"/><path d="M112 97l10 16l37-27" fill="none"/>
+      <path d="M66 87l-11-15m28 10l-3-19m19 15l6-18" fill="none" stroke="LIGHT" stroke-width="5"/>
+    </g>
+    <g id="cards" stroke="DARK" stroke-width="4" stroke-linejoin="round">
+      <path fill="BODY" d="M50 87l64-23l27 83l-63 20z"/><path fill="LIGHT" d="M83 63l65 8l-10 87l-65-8z"/>
+      <path fill="BODY" stroke="none" d="M116 79l3 21l20 4l-18 10l-5 22l-5-22l-18-10l19-4z"/>
+    </g>
+    <g id="turnstile" stroke="DARK" stroke-width="4" stroke-linejoin="round">
+      <path fill="BODY" d="M39 99l97-36l17 14l-4 42l-95 39l-16-12z"/>
+      <path fill="LIGHT" d="M48 102l91-33l11 9l-1 9q-13 4-7 15l6-1l-1 14l-91 36l-13-10l1-12q14-4 8-15l-7 1z"/>
+      <path fill="none" d="M110 87l-6 40m-42-10l31-12m-31 23l26-10"/>
+      <path fill="BODY" d="M121 99l8-5l5 4l-2 8l-8 4l-5-5z"/>
+    </g>
+    <g id="tour" fill="LIGHT" stroke="DARK" stroke-width="3" stroke-linejoin="round">
+      <path fill="BODY" d="M38 134l32-18l30-47l11-5l-8 45l38-15l14 3l-4 8l-47 24l-14 28l-10 3l3-24l-28 9z"/>
+      <path d="M30 129l36-15l29-45l11-6l-6 44l38-15q13-5 17 0q3 5-5 11l-48 24l-19 30l-8 2l5-24l-28 8z"/>
+    </g>
+    <g id="bench" stroke="DARK" stroke-width="4" stroke-linejoin="round">
+      <path d="M37 142v-38q2-21 28-29l82-12l11 8v36l-12 2v-31l-76 12q-16 3-18 15v32z" fill="LIGHT"/>
+      <path d="M56 126l76-13l23 10l-80 18z" fill="LIGHT"/><path d="M64 139v13m74-24v14M64 115l66-12" fill="none" stroke="LIGHT" stroke-width="7"/>
+    </g>
+    <g id="trophy" stroke="DARK" stroke-width="4" stroke-linejoin="round">
+      <path d="M75 78H54q0 44 39 44m31-44h22q0 45-39 45" fill="none" stroke="LIGHT" stroke-width="9"/>
+      <path fill="LIGHT" d="M69 66h63q-1 41-19 55l-11 7l1 14l19 7v7H78v-7l17-7l1-15Q71 117 69 66z"/>
+      <path d="M80 76q0 25 13 36" fill="none" stroke="BODY" stroke-width="5"/>
+    </g>
+  </defs>
+</svg>

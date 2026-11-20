@@ -1,9 +1,11 @@
 """Light the exact figures exported by a Roblox Studio QA session.
 
-Use a captured FIGURE_EXPORT log with:
+Run scripts/export-player-lineup.luau on a built place using Studio --task RunScript.
+Pass the resulting --outputFile to Blender:
     blender -b -t 6 --python scripts/render-player-lineup.py -- path/to/studio.log
 """
 import math
+import re
 import sys
 from pathlib import Path
 
@@ -16,7 +18,8 @@ from blender_export import portrait_shader
 
 root = Path(__file__).resolve().parents[1]
 rows = Path(sys.argv[sys.argv.index("--") + 1]).read_text().splitlines()
-rows = [line.split("FIGURE_EXPORT\t", 1)[1].split("\t") for line in rows if "FIGURE_EXPORT\t" in line]
+rows = [match.group(1).split("\t") for line in rows
+        if (match := re.search(r"FIGURE_EXPORT\t([1-6]\t.*)$", line))]
 assert {int(row[0]) for row in rows} == set(range(1, 7))
 for i in range(1,7):
     parts = [row[1] for row in rows if int(row[0]) == i]
@@ -93,8 +96,8 @@ def material(rgb, metal=.12, rough=.36):
     bsdf.inputs["Roughness"].default_value = rough
     return mat
 
-turns = [-9, 13, -15, 11, -9, 12]
-spacing = 3.96
+turns = [-9, 16, -13, 5, -5, 16]
+spacing = 4.06
 for row in rows:
     n, name, shape, primitive_type = row[:4]
     figure = int(n) - 1
@@ -116,7 +119,9 @@ for row in rows:
         mesh.materials.append(portrait_shader())
     elif mesh.materials:
         for i, source_material in enumerate(mesh.materials):
-            mesh.materials[i] = material(tuple(source_material.diffuse_color[:3]), .04, .49)
+            mesh.materials[i] = material(tuple(source_material.diffuse_color[:3]),
+                                         .65 if shape == "medal_base" else .04,
+                                         .32 if shape == "medal_base" else .49)
     else:
         mesh.materials.append(swatch)
     spin = Matrix.Rotation(math.radians(turns[figure]), 3, "Z")
@@ -135,17 +140,17 @@ def text(name, content, xyz, size, swatch):
     obj.location, obj.rotation_euler = xyz, (math.radians(74), 0, 0)
     curve.materials.append(swatch)
 
-palette = material((.69, .82, .94), .12, .35)
+palette = material((.91, .74, .44), .17, .38)
 ivory = material((.91, .94, .93), .0, .3)
-floor_mat = material((.22, .22, .31), .16, .39)
+floor_mat = material((.095, .185, .17), .12, .43)
 bpy.ops.mesh.primitive_plane_add(size=200, location=(0, 0, -.012))
 floor = bpy.context.view_layer.objects.active
-floor.name = "Studio graphite floor"
+floor.name = "Deep green studio sweep"
 floor.data.materials.append(floor_mat)
 for i, (name, number) in enumerate(figures):
     x = (i - 2.5) * spacing
-    text(name.title() + " nameplate", name, (x, -2.55, .10), .253, ivory)
-    text(name.title() + " squad number", number, (x, -3.45, .045), .185, palette)
+    text(name.title() + " nameplate", name, (x, -3.46, .035), .29, ivory)
+    text(name.title() + " squad number", number, (x, -4.91, .025), .20, palette)
 
 def light(name, location, power, tint, size, target):
     data = bpy.data.lights.new(name, "AREA")
@@ -157,7 +162,8 @@ def light(name, location, power, tint, size, target):
 
 light("Large softbox", (-8, -12, 14), 4400, (1, .93, .82), 17, (0, 0, 2))
 light("Cool fill", (13, -7, 10), 2200, (.67, .78, 1), 13, (0, 0, 3))
-light("Violet rim", (0, 7, 11), 3900, (.65, .52, 1), 19, (0, 0, 2))
+light("Warm tunnel rim", (2, 8, 10), 4400, (.94, .76, .54), 16, (0, 0, 2))
+light("Touchline reflection", (-10, 5, 5), 850, (.46, .94, .85), 8, (-6, 0, 2))
 scene.world = bpy.data.worlds.new("Stadium dusk")
 scene.world.use_nodes = True
 scene.world.node_tree.nodes["Background"].inputs["Strength"].default_value = .30
@@ -165,17 +171,17 @@ scene.world.node_tree.nodes["Background"].inputs["Strength"].default_value = .30
 data = bpy.data.cameras.new("Roster camera")
 camera = bpy.data.objects.new("Roster camera", data)
 scene.collection.objects.link(camera)
-camera.location = (1.25, -31, 9.6)
-camera.rotation_euler = (Vector((0, 0, 2.92)) - camera.location).to_track_quat("-Z", "Y").to_euler()
-camera.data.type, camera.data.ortho_scale = "ORTHO", 25.2
+camera.location = (.45, -32, 10.2)
+camera.rotation_euler = (Vector((0, 0, 2.90)) - camera.location).to_track_quat("-Z", "Y").to_euler()
+camera.data.type, camera.data.ortho_scale = "ORTHO", 25.95
 scene.camera = camera
 scene.render.engine = "CYCLES"
-scene.cycles.samples = 24
+scene.cycles.samples = 28
 scene.cycles.use_denoising = True
-scene.render.resolution_x, scene.render.resolution_y = 1920, 700
+scene.render.resolution_x, scene.render.resolution_y = 2304, 852
 scene.render.resolution_percentage = 100
 scene.render.threads_mode, scene.render.threads = "FIXED", 6
-scene.render.filepath = "//blender-lineup-v0200.png"
+scene.render.filepath = "//matchday-roster.png"
 for screen in bpy.data.screens:
     for area in screen.areas:
         if area.type == "VIEW_3D":
@@ -184,5 +190,5 @@ for screen in bpy.data.screens:
             area.spaces.active.region_3d.view_perspective = "CAMERA"
 bpy.ops.object.select_all(action="DESELECT")
 bpy.context.preferences.filepaths.save_version = 0
-bpy.ops.wm.save_as_mainfile(filepath=str(root / "art" / "player-lineup-v0200.blend"), compress=True)
+bpy.ops.wm.save_as_mainfile(filepath=str(root / "art" / "matchday-roster.blend"), compress=True)
 bpy.ops.render.render(write_still=True)

@@ -6,6 +6,7 @@ pass -- --export. Running without that option regenerates the source scene.
 from itertools import product
 from math import atan2, cos, pi, radians, sin, tau
 from pathlib import Path
+import math
 import sys
 
 import bpy
@@ -18,7 +19,7 @@ NAMES = (
     "table", "enamel", "stand", "tunnel", "dugout", "goal", "lights",
     "cup", "ball", "academy", "arena", "curls", "sweep", "cap", "crest", "die", "chance", "champions",
     "tile_case", "tile_enamel", "fade", "arena_plinth", "night_stand", "pitch_mark", "braid", "quiff", "event_card",
-    "club_flag", "megastadium",
+    "club_flag", "megastadium", "gatehouse",
 )
 INK, NAVY, SLATE = "23334A", "254671", "3C6BA1"
 TEAL, MINT, GOLD = "2679BB", "76CFE2", "EAB561"
@@ -447,49 +448,65 @@ def octagonal_layer(half, cut, floor, ceiling, color):
 
 
 def arena_plinth():
-    octagonal_layer(70.2, 10.6, 0, .62, "141523")
-    octagonal_layer(72.0, 12.5, .62, 2.66, "23243E")
-    octagonal_layer(72.35, 12.8, 2.66, 3.04, "B8F76C")
-    octagonal_layer(71.85, 12.3, 3.04, 3.84, "3A3B5E")
-    octagonal_layer(70.9, 10.2, 3.84, 4.14, "16192B")
+    # Recessed walnut foot, lacquered apron and two fine brass binding strips.
+    octagonal_layer(70.4, 10.6, 0, .58, "342B29")
+    octagonal_layer(72.0, 12.4, .58, 1.16, "69503F")
+    octagonal_layer(72.3, 12.6, 1.16, 1.35, "E1BD82")
+    octagonal_layer(72.05, 12.4, 1.35, 3.39, "23413C")
+    octagonal_layer(72.26, 12.5, 3.39, 3.57, "E3C78D")
+    octagonal_layer(71.85, 12.1, 3.57, 4.14, "38554A")
 
 
 def night_stand():
-    # Double-deck European arena grandstand with VIP glass box tier & steel cantilevered roof.
-    block((0, .38, 0), (20.4, .76, 7.2), "1D1E34", .16, 2)
-    # Front concrete fascia with glowing accent stripe
-    block((0, .86, -3.32), (20.0, .44, .32), "35365A", .07)
-    block((0, .92, -3.50), (19.4, .11, .08), GOLD, .025)
-    # Lower seating deck (3 stepped rows)
+    # Three continuous bench rows read as a stepped bowl at board scale.
+    # The open central stair and umbrella canopy break the previously solid roof silhouette.
+    block((0, .32, 0), (20.2, .64, 7.0), "45504A", .11, 2)
     for row in range(3):
-        y, z = .92 + row * .52, -2.55 + row * 1.18
-        block((0, y * .5, z), (19.8, y, 1.24), "343458", .05)
-        for seat in range(-6, 7):
-            tint = "9483D4" if (seat - row * 2) % 5 == 0 else ("676296" if (seat + row) % 2 == 0 else "4D4A76")
-            block((seat * 1.44, y + .11, z), (1.16, .16, .68), tint, .05)
-            block((seat * 1.44, y + .30, z + .30), (1.16, .42, .16), tint, .045)
-    # Mid-tier VIP Glass Box Skybox band
-    block((0, 2.55, 1.35), (19.8, .92, 1.55), "242640", .08)
-    block((0, 2.58, .54), (19.0, .62, .16), GLASS, .03)
-    for mullion in range(-6, 7, 2):
-        block((mullion * 1.50, 2.58, .48), (.16, .68, .22), STEEL, .02)
-    # Upper seating deck (2 high rows)
-    for row in range(2):
-        y, z = 3.18 + row * .54, 1.32 + row * 1.16
-        block((0, y, z), (19.8, .38, 1.18), "3F3E68", .05)
-        for seat in range(-6, 7):
-            tint = "A595E4" if (seat + row) % 4 == 0 else "5E598C"
-            block((seat * 1.44, y + .24, z), (1.16, .24, .64), tint, .045)
-    # Structural roof columns & cantilevered rafters
-    for x in (-8.9, -3.0, 3.0, 8.9):
-        pipe((x, 1.95, 3.05), (x, 5.15, 3.05), .14, STEEL, 8)
-        pipe((x, 4.95, 3.05), (x, 4.72, -2.55), .10, "878DB0", 6)
-        pipe((x, 3.65, 3.05), (x, 4.82, .60), .08, "6D7396", 6)
-    # Sleek aerodynamic canopy roof + inner lime LED strip
-    canopy = block((0, 5.02, .28), (20.8, .34, 6.2), "282848", .15, 2)
-    canopy.rotation_euler.x = radians(6)
-    block((0, 5.18, .28), (19.8, .12, 4.8), "3C3C66", .06)
-    block((0, 4.58, -2.74), (19.8, .15, .16), LIME, .04)
+        y, z = .72 + .62 * row, -2.55 + 1.43 * row
+        block((0, y / 2, z), (19.8, y, 1.47), "CFBE9D", .04)
+        for side in (-1, 1):
+            x = side * 5.34
+            block((x, y+.13, z+.11), (8.35,.25,.79), "A14F3C", .07, 2)
+            block((x, y+.40, z+.43), (8.35,.50,.15), "B86349", .06, 2)
+        block((0, y+.04, z-.36), (1.74,.08,.34), "F1DAAD", .02)
+    # Two pairs of slender braces carry a folded patinated copper roof,
+    # deep at each end and raised at the middle over the entrance.
+    block((0, 1.46, 2.46), (19.9, 2.9, 1.60), "36564F", .09, 2)
+    for side in (-1, 1):
+        for x in (3.1, 8.9):
+            xx = side*x
+            pipe((xx,2.1,2.85),(xx,4.8,2.57),.09,"D2B782",8)
+            pipe((xx,3.29,2.70),(xx,4.59,-.66),.075,"C3AA7E",8)
+    profile = [(-10.3,4.30),(-7.8,4.45),(-3.3,4.90),(0,5.20),(3.3,4.90),(7.8,4.45),(10.3,4.30)]
+    for (xa,ya),(xb,yb) in zip(profile,profile[1:]):
+        def roof(z, thickness):
+            return [blender((xa,ya+thickness,z)),blender((xb,yb+thickness,z))]
+        points = roof(-.76,0) + roof(3.40,.38) + roof(-.76,.18) + roof(3.40,.56)
+        from_faces(points,[(0,2,3,1),(4,5,7,6),(0,1,5,4),(2,6,7,3),(0,4,6,2),(1,3,7,5)],"4D786D")
+        pipe((xa,ya+.06,-.78),(xb,yb+.06,-.78),.085,"E9CD8B",8)
+    for x,y in profile[1:-1]:
+        pipe((x,y+.19,-.72),(x,y+.57,3.35),.046,"839C7D",6)
+    block((0,.67,-3.29),(20.1,.32,.24),"25463E",.04)
+
+
+def gatehouse():
+    # Octagonal entrance kiosk with clerestory panes, stone cornice, ribbed cupola and finial.
+    loft(((0,2.62),(.22,2.70),(.42,2.47)), "C6B391", 8)
+    loft(((.42,2.26),(2.35,2.26),(2.48,2.40)), "AB654F", 8)
+    for i in range(8):
+        angle = tau*(i+.5)/8
+        x,z = math.sin(angle),math.cos(angle)
+        pane = block((x*2.105,1.45,z*2.105),(1.13,1.16,.10),"29463F",.08,2)
+        pane.rotation_euler.z=-angle
+        lintel=block((x*2.17,2.11,z*2.17),(1.33,.16,.18),"E6CE9E",.035)
+        lintel.rotation_euler.z=-angle
+    loft(((2.45,2.4),(2.62,2.57),(2.78,2.56)), "E8D3AB", 8)
+    loft(((2.78,2.52),(3.05,2.02),(3.60,1.48),(3.90,.62),(4.04,.29)), "436E64", 16)
+    for i in range(8):
+        a=tau*i/8
+        for (r,y),(s,h) in zip([(2.5,2.83),(2.00,3.1),(1.47,3.65)],[(2.00,3.1),(1.47,3.65),(.30,4.04)]):
+            pipe((r*cos(a),y,r*sin(a)),(s*cos(a),h,s*sin(a)),.045,"BAA977",6)
+    loft(((4,.29),(4.15,.27),(4.34,.08)), "D4B671", 12)
 
 
 def pitch_mark():
@@ -563,7 +580,7 @@ def build_scene():
         lambda: ticket_shell(.64, .71, .12, .024),
         lambda: ticket_shell(.37, .68, .065, .013),
         lambda: hair("fade"), arena_plinth, night_stand, pitch_mark, braided_hair, swept_quiff, event_card,
-        club_flag, megastadium,
+        club_flag, megastadium, gatehouse,
     )
     objects = []
     for name, build in zip(NAMES, builders):
@@ -613,7 +630,7 @@ export_shapes(models, "src/client/StadiumMeshData.luau")
 if export_fbx:
     fbx_dir = ROOT / "art/fbx"
     fbx_dir.mkdir(parents=True, exist_ok=True)
-    fbx_targets = ("club_flag", "academy", "arena", "megastadium", "night_stand", "lights", "arena_plinth", "cup", "ball")
+    fbx_targets = ("club_flag", "academy", "arena", "megastadium", "night_stand", "lights", "arena_plinth", "cup", "ball", "gatehouse")
     for obj in models:
         if obj.name not in fbx_targets:
             continue

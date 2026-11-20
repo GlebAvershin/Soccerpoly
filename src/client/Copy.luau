@@ -1,5 +1,13 @@
 --!strict
 local ru: {[string]: string} = {
+	["Starting balance · %d CR"] = "Стартовый баланс · %d CR",
+	["%d properties"] = "Объектов на поле · %d",
+	["Properties signed · %d/%d"] = "Куплено объектов · %d/%d",
+	["Cash lead · %s · %d CR"] = "Лидер по средствам · %s · %d CR",
+	["Shared cash lead · %d CR"] = "Общее лидерство по средствам · %d CR",
+	["Club contract"] = "Контракт с клубом",
+	["Stadium upgrade"] = "Улучшение стадиона",
+	["Match"] = "Матч",
 	["Atlas"]="Атлас", ["Nova"]="Нова", ["Vega"]="Вега",
 	["Game language · English"] = "Язык игры · Русский",
 	["Atlético Madrid"] = "Атлетико Мадрид",

@@ -1,7 +1,8 @@
 .DS_Store
 .tools/
-dist/
+/dist/*
 *.rbxl
+!/dist/Soccerpoly.rbxl
 *.rbxlx
 *.rbxl.lock
 *.log

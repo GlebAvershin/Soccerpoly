@@ -27,10 +27,20 @@ def kit_paint(name):
         "vinicius": ((x+y)%83<7) | ((x-y)%83<7),
     }[name]
     cloth = np.where(mask[:,:,None], color(alt), color(main)).astype(float)
+    # A contrast shoulder yoke, vent panels and knit hem frame the squad number.
+    # Keep large colour fields readable from the elevated board camera.
+    shoulder = y < 56 + 36*np.abs(side)
+    flank = np.abs(side) > .935 + .034*np.sin(y/95)
+    cloth[shoulder] = .72*color(alt) + .28*color(ink)
+    cloth[flank] = .66*color(alt) + .34*color(ink)
+    seam = np.abs(y-(56+36*np.abs(side)))<3
+    cloth[seam] = .72*color(main)+.28*color(ink)
+    cloth[y>477] = .68*color(main)+.32*color(alt)
     if name=="haaland": cloth[(side>-.74)&(side<-.69)]=[178,46,59]
     if name=="mbappe": cloth[(y>174+57*abs(side)) & (y<183+57*abs(side))]=[178,69,81]
-    weave = 2*np.sin(x*2.4)*np.cos(y*2.7) + 1.1*np.sin(x*.28+y*.90)
-    cloth += weave[:,:,None]
+    knit = 1.5*np.sin(x*.76+y*.57)*np.cos(y*1.47) + 1.4*np.sin(x*.14+y*.47)
+    ribs = np.cos(y*.65)*np.where(shoulder | flank, 3, .5)
+    cloth += (knit+ribs)[:,:,None]
     image=Image.fromarray(np.clip(cloth,0,255).astype("uint8"))
     draw=ImageDraw.Draw(image)
     font_path=Path("/System/Library/Fonts/Supplemental/DIN Condensed Bold.ttf")
@@ -44,7 +54,11 @@ def kit_paint(name):
     rim, field = "#"+ink, "#"+alt
     draw.polygon([(285,113),(334,113),(331,148),(310,162),(289,147)],fill=rim)
     draw.polygon([(290,118),(329,118),(326,145),(310,155),(294,145)],fill=field)
-    draw.text((309,124),country,font=bold(19),anchor="mt",fill=rim)
+    # Three folded chevrons read as a sewn badge even on a small pawn.
+    for offset in (0,9,18):
+        draw.line([(297,124+offset),(310,130+offset),(322,124+offset)],fill=rim,width=3)
+    draw.text((197,119),country,font=bold(24),anchor="mt",fill=rim)
+    draw.line((181,148,213,148),fill=rim,width=3)
     for x0 in (114,398,625,910):
         sign = 1 if x0 in (114,625) else -1
         for step in range(28):

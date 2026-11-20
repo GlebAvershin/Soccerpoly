@@ -8,6 +8,7 @@ local texture = require(script.Parent.IndexedImage)
 type Paint = {width: number, height: number, palette: string, pixels: string}
 local PawnData = require(script.Parent.PawnMeshData)
 local StadiumData = require(script.Parent.StadiumMeshData)
+local CupData = require(script.Parent.CupMeshData)
 local ReplayData = require(script.Parent.ReplayMeshData)
 
 type Shape = {
@@ -116,11 +117,12 @@ local function loadPending()
 	while #waiting > 0 do
 		local name = table.remove(waiting, 1) :: string
 		local shape = (PawnData :: {[string]: Shape})[name] or (StadiumData :: {[string]: Shape})[name]
-			or (ReplayData :: {[string]: Shape})[name] or (Portraits :: {[string]: Shape})[name]
+			or (CupData :: {[string]: Shape})[name] or (ReplayData :: {[string]: Shape})[name] or (Portraits :: {[string]: Shape})[name]
 		local success, template = pcall(loadTemplate, shape, (HeadPaint :: {[string]: Paint})[name])
 		local pending = requests[name]
 		requests[name] = nil
 		if success and template then
+			template:SetAttribute("BlenderSource", name)
 			templates[name] = template
 			for _, request in pending do replace(request, template) end
 		else

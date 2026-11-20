@@ -19,6 +19,14 @@
 
 ---
 
+## Поле и фигурки Continental Cup · версия Roblox 10
+
+![Шесть игровых фигурок в форме сборных](art/matchday-roster.png)
+
+У каждого футболиста свой силуэт и цикл бега. Исходники фигурок, формы и поз собраны в [сцене Blender](art/matchday-roster.blend). У 32 клеток доски отдельные иллюстрации, подписи и цены. В открытом досье клуба используется рисунок большего размера. По краям поля стоят крытые трибуны и четыре угловых павильона.
+
+[Видеообзор двух игр](art/design-reel/Game-Editions.mp4) · [Поле на телефоне](art/programme/board-print-phone.png) · [Доска в Roblox Studio](art/programme/board-print-studio.png) · [Досье клуба крупным планом](art/programme/club-print-studio.png) · [Трибуны и павильоны в Blender](art/stadium-kit.blend)
+
 ## 🌟 Ключевые инженерные решения и инновации
 
 <table align="center">

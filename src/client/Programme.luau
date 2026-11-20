@@ -1,8 +1,6 @@
 --!strict
 local loadImage = require(script.Parent.PrintTexture)
-local style = require(script.Parent.ProgrammeStyle)
 local paint = require(script.Parent.ProgrammePaint)
-local leagues = {"spain", "england", "germany", "italy", "france"}
 local thumbnails: {[string]: EditableImage} = {}
 local badges: {[string]: EditableImage} = {}
 local lastDetail: {key: string, background: EditableImage?}? = nil
@@ -15,25 +13,27 @@ local function ink(parent: Frame, name: string, image: EditableImage): ImageLabe
 	return picture
 end
 
-return function(parent: Instance, tile, detail: boolean?): Frame
-	local key = if tile.league > 0 then tile.code else tile.kind
+return function(parent: Instance, tile, detail: boolean?, index: number?): Frame
+	local key = if tile.price > 0 then tile.code else tile.kind
+	if tile.kind == "chance" then
+		key = if index == 13 then "chanceWest" elseif index == 21 then "chanceEast" else "chance"
+	end
 	local rail = Instance.new("Frame")
 	rail.Name, rail.Size = "Programme illustration", UDim2.fromScale(1, 1)
 	rail.BackgroundColor3 = Color3.fromHex("334958")
 	rail.ClipsDescendants, rail.BorderSizePixel, rail.Parent = true, 0, parent
 
-	local region = leagues[tile.league] or key
 	local image: EditableImage?
 	if detail then
-		-- Reuse one HD panorama for clubs in the same league.
-		if not lastDetail or lastDetail.key ~= region then
-			lastDetail = {key = region, background = loadImage(paint.stadium[region])}
+		-- The open dossier holds one high-resolution illustration.
+		if not lastDetail or lastDetail.key ~= key then
+			lastDetail = {key = key, background = loadImage(paint.stadium[key])}
 		end
 		image = lastDetail and lastDetail.background
 	end
 	if not image then
-		if not thumbnails[region] then thumbnails[region] = loadImage(paint.board[region]) end
-		image = thumbnails[region]
+		if not thumbnails[key] then thumbnails[key] = loadImage(paint.board[key]) end
+		image = thumbnails[key]
 	end
 	if image then
 		ink(rail, "Lithograph", image).ScaleType = Enum.ScaleType.Crop
@@ -43,8 +43,16 @@ return function(parent: Instance, tile, detail: boolean?): Frame
 			if badgeArt then
 				local badge = ink(rail, "Embroidered kit", badgeArt)
 				badge.ZIndex = 2
-				badge.AnchorPoint, badge.Position = Vector2.new(.5,.5), UDim2.fromScale(.26,.5)
-				badge.SizeConstraint, badge.Size = Enum.SizeConstraint.RelativeYY, UDim2.fromScale(.72,.72)
+				badge.AnchorPoint, badge.SizeConstraint = Vector2.new(.5,.5), Enum.SizeConstraint.RelativeYY
+				local function fitBadge()
+					local size = rail.AbsoluteSize
+					if size.X <= 0 or size.Y <= 0 then return end
+					local side = math.min(size.Y*.92,size.X*.77)
+					local x = if size.X < size.Y*1.8 then .5 else math.max(.24,(side*.5+1)/size.X)
+					badge.Position, badge.Size = UDim2.fromScale(x,.5), UDim2.fromScale(side/size.Y,side/size.Y)
+				end
+				rail:GetPropertyChangedSignal("AbsoluteSize"):Connect(fitBadge)
+				fitBadge()
 			end
 		end
 	else
@@ -60,11 +68,5 @@ return function(parent: Instance, tile, detail: boolean?): Frame
 		local corner = Instance.new("UICorner")
 		corner.CornerRadius, corner.Parent = UDim.new(.5, 0), circle
 	end
-	local fade = Instance.new("Frame")
-	fade.Name, fade.BorderSizePixel, fade.BackgroundColor3 = "Ink wash", 0, style.ink(tile)
-	fade.Position, fade.Size = UDim2.fromScale(0,.66), UDim2.fromScale(1,.34)
-	fade.ZIndex, fade.Parent = 1, rail
-	local wash = Instance.new("UIGradient")
-	wash.Rotation, wash.Transparency, wash.Parent = 90, NumberSequence.new(1,0), fade
 	return rail
 end

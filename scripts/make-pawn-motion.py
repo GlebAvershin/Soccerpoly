@@ -1,5 +1,5 @@
 """Create editable keyframed figure motion and sample it for the Luau rig."""
-from math import radians
+from math import cos, radians, sin, tau
 from pathlib import Path
 import sys
 
@@ -105,6 +105,7 @@ for index, name in enumerate(CELEBRATIONS):
     start = 225 + index * 32
     RANGES[name] = (start, start + 24)
     RANGES[name+"_idle"] = (start+192, start+216)
+    RANGES[name+"_stride"] = (start+384, start+408)
 
 
 
@@ -234,6 +235,31 @@ def figure_rig():
             turns[1] = (pitch-2*lift, yaw+3*lift, roll)
             HINGES[clip][t] = (stance[6]-2*lift, stance[7]+2*lift, 7, 9, -4, -5)
             record(rig, clip, t, turns, .025*lift)
+    # Chest pitch, arm drive, elbow tuck, shoulder twist and compression differ
+    # between a compact dribble, upright sprint and rolling wing run.
+    styles = {
+        "messi": (12, 30, 64, 9, .058),
+        "ronaldo": (5, 50, 51, 15, .075),
+        "mbappe": (15, 55, 70, 12, .084),
+        "yamal": (9, 35, 59, 17, .069),
+        "haaland": (8, 48, 45, 7, .097),
+        "vinicius": (11, 42, 62, 21, .081),
+    }
+    for name, (lean, drive, tuck, twist, compression) in styles.items():
+        clip = name + "_stride"
+        HINGES[clip] = {}
+        for sample in range(9):
+            t = sample / 8
+            c, swing = cos(tau*t), sin(tau*t)
+            drop = sin(tau*t)**2
+            turns = [(lean+3*drop, -twist*c, -3*swing),
+                     (-lean*.42-2*drop, twist*.74*c, 2*swing),
+                     (drive*c, 3*swing, -9-3*c), (-drive*c, -3*swing, 9-3*c),
+                     (-39*c, 0, 4+2*swing), (39*c, 0, -4+2*swing)]
+            HINGES[clip][t] = (-tuck-14*c, -tuck+14*c,
+                               25+19*(1-c)+11*swing, 25+19*(1+c)-11*swing,
+                               -14-7*swing, -14+7*swing)
+            record(rig, clip, t, turns, -compression*drop)
     for screen in bpy.data.screens:
         for area in screen.areas:
             if area.type == "VIEW_3D":

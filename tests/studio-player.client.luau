@@ -72,27 +72,33 @@ local ok, err = pcall(function()
 				and hud.Viewport.MatchPanel.Phase.Text==(if lang=="ru" then "ВЫБОР ФИГУРКИ" else "SELECT A FIGURE")
 		end,"explicit language on board and HUD")
 	end
+	local function nonoverlapping(a,b)
+		local ax,ay,aw,ah = a.Position.X.Scale,a.Position.Y.Scale,a.Size.X.Scale,a.Size.Y.Scale
+		local bx,by,bw,bh = b.Position.X.Scale,b.Position.Y.Scale,b.Size.X.Scale,b.Size.Y.Scale
+		return ax+aw <= bx+.0001 or bx+bw <= ax+.0001 or ay+ah <= by+.0001 or by+bh <= ay+.0001
+	end
 	local function verifyPrint()
 		for index,tile in board.tiles do
 			local cell=printLayer["Cell"..index]
 			assert(cell.Adornee:GetAttribute("BoardIndex")==index and not cell.AlwaysOnTop and not cell.AutoLocalize)
 			local paper=cell["Printed programme"]
-			local poster,title,cost=paper["Programme illustration"],paper["Club name"],paper["Club cost"]
-			assert(poster:FindFirstChild("Lithograph"), "Missing illustrated print "..tile.name)
+			local poster,title,cost=paper["Art window"],paper["Club name"],paper["Club cost"]
+			local nativeWindow = player.PlayerGui["Programme typography"][cell.Name]["Art window"]
+			local mount = poster:FindFirstChild("Lithograph mount") or nativeWindow:FindFirstChild("Lithograph mount")
+			assert(mount and mount:FindFirstChild("Lithograph"), "Missing illustrated print "..tile.name)
+			assert((#nativeWindow:GetChildren() + #poster:GetChildren()) == 1,"Duplicate or missing illustration on "..cell.Name)
+			assert(nativeWindow.Visible == (mount.Parent==nativeWindow),"Visible window has the wrong illustration "..cell.Name)
 			assert(title:IsA("TextLabel") and title.Text ~= "" and title.TextFits, "Clipped title "..title.Text)
 			assert(cell.CanvasSize.X >= cell.Adornee.Size.X*22-1)
 			assert(title.FontFace.Family:find("RobotoCondensed") and cost.FontFace.Family:find("/Roboto.json",1,true))
-			assert(poster.Size.Y.Scale >= .10 and poster.Size.Y.Scale<=title.Position.Y.Scale and title.Position.Y.Scale+title.Size.Y.Scale<=1 and not title.Text:find("\n"))
+			assert(poster.Size.Y.Scale >= .10 and poster.Size.Y.Scale<=title.Position.Y.Scale and title.Position.Y.Scale+title.Size.Y.Scale<=1.00001 and not title.Text:find("\n"))
 			local display=player.PlayerGui["Programme typography"]
 			assert(display.DisplayOrder<hud.DisplayOrder and display.ScreenInsets==Enum.ScreenInsets.DeviceSafeInsets)
 			local ink=display[cell.Name]["Club name"]
-			local artLayer=display[cell.Name]["Programme illustration"]
-			assert(artLayer["Ink wash"].BackgroundColor3==paper.BackgroundColor3)
-			assert(artLayer.Lithograph.ImageContent==poster.Lithograph.ImageContent)
-			assert(artLayer.Visible~=poster.Visible,"Double or missing illustration on "..cell.Name)
+			assert(nonoverlapping(poster,title), "Art overlaps club name on "..cell.Name)
 			assert(ink.Text==title.Text and ink.TextScaled)
 			if tile.league>0 then
-				local badge=artLayer["Embroidered kit"]
+				local badge=mount["Embroidered kit"]
 				assert(badge.ImageContent.Object.Size==Vector2.new(256,256) and badge.SizeConstraint==Enum.SizeConstraint.RelativeYY)
 			end
 			if ink.Visible then
@@ -105,8 +111,9 @@ local ok, err = pcall(function()
 			end
 
 			if tile.price>0 then
-				assert(title.Position.Y.Scale+title.Size.Y.Scale<=cost.Position.Y.Scale and cost.TextFits and cost.Text~="")
-				assert(cost.Position.Y.Scale+cost.Size.Y.Scale<=1)
+				assert(nonoverlapping(title,cost) and nonoverlapping(poster,cost) and cost.TextFits and cost.Text~="",
+					"Price overlaps a different print region on "..cell.Name)
+				assert(cost.Position.Y.Scale+cost.Size.Y.Scale<=1.00001,"Price outside card "..cell.Name)
 			end
 		end
 	end
@@ -135,6 +142,13 @@ local ok, err = pcall(function()
 				if not (head and head:IsA("MeshPart") and head:GetAttribute("PaintedAtlas")
 					and jersey and jersey:IsA("MeshPart") and jersey:GetAttribute("PaintedAtlas")
 					and figure:FindFirstChild("Ribbed sock",true):IsA("MeshPart")) then return false end
+				for _, side in {"Left elbow", "Right elbow"} do
+					local elbow = figure:FindFirstChild(side)
+					local palm = elbow and elbow:FindFirstChild("Palm")
+					local forearm = elbow and elbow:FindFirstChild("Bent forearm")
+					if not (palm and palm:IsA("MeshPart") and forearm and forearm:IsA("MeshPart")) then return false end
+					if (forearm.Position - palm.Position).Magnitude < forearm.Size.Y * .50 then return false end
+				end
 			end
 			return true
 		end, "six portrait sculpts and six match kits")
@@ -166,7 +180,7 @@ local ok, err = pcall(function()
 			local sole = hud:FindFirstChild("Molded outsole", true)
 			local plinth = stage.Board:FindFirstChild("Octagonal arena plinth")
 			local seal = stage:FindFirstChild("Cup seal", true)
-			local deck = printLayer.Cell5:FindFirstChild("Lithograph", true)
+			local deck = printLayer.Cell5:FindFirstChild("Lithograph",true) or player.PlayerGui["Programme typography"].Cell5:FindFirstChild("Lithograph",true)
 			return deck and deck:IsA("ImageLabel") and enamel and enamel:IsA("MeshPart") and sole and sole:IsA("MeshPart")
 				and plinth and plinth:IsA("MeshPart") and seal and seal:IsA("BasePart")
 		end, "Blender arena, tile and outsole")
@@ -425,7 +439,7 @@ local ok, err = pcall(function()
 		if open and s.seats[s.active].id == player.UserId and (s.phase == "offer" or s.phase == "upgrade" or s.phase == "rebuy") then
 			cardSeen = true
 			local picture=hud.Viewport.PropertyBackdrop:FindFirstChild("Lithograph",true)
-			assert(picture and picture.ImageContent.Object.Size==Vector2.new(768,256),"Missing high-resolution dossier")
+			assert(picture and picture.ImageContent.Object.Size==Vector2.new(768,307),"Missing high-resolution dossier")
 			local index = s.seats[s.active].position
 			if board.tiles[index].league > 0 and not captured.club then
 				captured.club = true
@@ -485,7 +499,7 @@ local ok, err = pcall(function()
 						captured.card = true
 						cardSeen = true
 			local picture=hud.Viewport.PropertyBackdrop:FindFirstChild("Lithograph",true)
-			assert(picture and picture.ImageContent.Object.Size==Vector2.new(768,256),"Missing high-resolution dossier")
+			assert(picture and picture.ImageContent.Object.Size==Vector2.new(768,307),"Missing high-resolution dossier")
 						task.wait(.36)
 						capture("property")
 						task.wait(.20)

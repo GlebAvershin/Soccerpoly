@@ -2,6 +2,8 @@
 
 ## Опубликованная игра
 
+Обновление Continental Cup опубликовано как версия place **10**. [Актуальная сборка](../dist/Soccerpoly.rbxl)
+
 Рабочий experience принадлежит `vicusiuss`. Universe ID — `10777507892`, стартовый Place ID — `114770772027261`. У v0.24.2 четыре места на сервере, аудитория при выпуске — 16+. [Soccerpoly в Roblox](https://www.roblox.com/games/114770772027261/Soccerpoly) · [Creator Hub](https://create.roblox.com/dashboard/creations/experiences/10777507892/overview) · [Релиз и сборка](https://github.com/GlebAvershin/Soccerpoly/releases/tag/v0.24.2)
 
 Для следующего релиза соберите выбранный тег, проверьте игру в отдельном тестовом experience и приложите проверенный файл к GitHub Release. Разработчик с правом публикации открывает этот же файл в Studio и через **File → Publish As** выбирает существующий Soccerpoly и его стартовый place. Перед подтверждением сверьте оба ID. После публикации проверьте версию в истории place и запустите игру обычным клиентом. Правки документации можно отправлять в `main` отдельно от выпуска игры.

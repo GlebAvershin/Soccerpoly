@@ -3,9 +3,9 @@ local TweenService = game:GetService("TweenService")
 local UI = {}
 local function c(hex: string): Color3 return Color3.fromHex(hex) end
 UI.color = table.freeze({
-	background = c("131420"), panel = c("191B2C"), surface = c("2D304B"), outline = c("626487"),
-	text = c("F6F6ED"), muted = c("C3C4DB"), mint = c("C4F568"), blue = c("A6DCFA"),
-	ink = c("141522"), gold = c("FFD085"), pink = c("FFAACB"), paper = c("F6F6E9"),
+	background = c("0B1D22"), panel = c("142E33"), surface = c("254249"), outline = c("527076"),
+	text = c("F8F5E9"), muted = c("BFD0CA"), mint = c("C4F568"), blue = c("A6DCFA"),
+	ink = c("0C2025"), gold = c("FFD085"), pink = c("FFAACB"), paper = c("EFE9D6"),
 })
 local colors = UI.color
 
@@ -83,9 +83,11 @@ function UI.button(parent: Instance, name: string, text: string, height: number,
 	b.AutoButtonColor = false
 	b.Active = callback ~= nil
 	b.Selectable = callback ~= nil
-	UI.round(b, 10)
+	UI.round(b, 5)
 	if callback then
-		local stroke = UI.stroke(b, normalColor:Lerp(colors.ink, .34))
+		local stroke = UI.stroke(b, normalColor:Lerp(colors.muted, .24))
+		b.SelectionGained:Connect(function() stroke.Color, stroke.Thickness = colors.gold, 2 end)
+		b.SelectionLost:Connect(function() stroke.Color, stroke.Thickness = normalColor:Lerp(colors.muted, .24), 1 end)
 		b.Activated:Connect(callback)
 		b.MouseEnter:Connect(function()
 			TweenService:Create(b, TweenInfo.new(0.12, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),

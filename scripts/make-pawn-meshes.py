@@ -36,8 +36,12 @@ PROFILES = {
         (-.17, .53, .52, .00), (.14, .525, .50, -.028), (.40, .47, .44, -.018),
         (.51, .37, .36, -.006),
     ),
+    "quad": (
+        (-.52,.20,.23,.08),(-.45,.32,.34,.07),(-.28,.38,.42,.06),(-.04,.47,.51,.03),
+        (.19,.50,.50,-.015),(.39,.44,.45,-.045),(.52,.30,.32,-.055),
+    ),
     "forearm": (
-        (-.53, .24, .25, .10), (-.45, .39, .40, .11), (-.28, .43, .43, .11),
+        (-.53, .18, .22, .10), (-.45, .28, .32, .11), (-.28, .345, .382, .11),
         (-.10, .48, .48, .045), (.16, .53, .51, -.02), (.36, .49, .46, -.075), (.52, .25, .28, -.10),
     ),
     "sock": (
@@ -69,7 +73,7 @@ PROFILES = {
 }
 
 COLORS = {
-    "waistband": (.064, .13, .12, 1), "head": (.41, .24, .14, 1), "jersey": (.12, .53, .30, 1),
+    "quad": (.41,.24,.14,1), "waistband": (.064, .13, .12, 1), "head": (.41, .24, .14, 1), "jersey": (.12, .53, .30, 1),
     "forearm": (.41, .24, .14, 1), "sock": (.25, .64, .46, 1), "glove": (.79, .83, .72, 1),
     "shorts": (.064, .13, .12, 1), "sleeve": (.15, .52, .72, 1), "boot": (.05, .08, .076, 1), "ear": (.41, .24, .14, 1), "outsole": (.12, .13, .16, 1),
 }
@@ -101,6 +105,16 @@ def build(name, profile):
                 z += .058 * math.exp(-((height - .18) / .27) ** 2) * math.cos(angle)
                 z -= .045 * math.exp(-((x / .12) ** 2) - (((height - .22) / .24) ** 2))
                 x *= .91 + .12 * math.exp(-((height - .30) / .24) ** 2)
+            if name == "shorts":
+                # Overlapping front panels and a turned hem break up the old domed silhouette.
+                x *= 1.03 - .075*math.exp(-((height-.30)/.18)**2)
+                z += .033 * math.sin(angle*7+height*4) * math.exp(-((height+.20)/.30)**2)
+            if name == "quad":
+                z += .06 * math.cos(angle)**2 * math.exp(-((height+.08)/.28)**2)
+                x *= 1 + .10 * math.sin(angle*2+height*1.8)
+            if name == "sleeve":
+                # Lower ring forms the cut cuff, with pinched folds rising toward the armpit.
+                z += .034 * math.cos(angle*6+height*9) * math.exp(-((height+.23)/.28)**2)
             if name == "glove" and math.cos(angle) > 0:
                 z += .07 * math.exp(-((height + .21) / .18) ** 2) * math.cos(x * 24) ** 2
                 z += .09 * math.exp(-((x + .39) / .14) ** 2 - ((height + .04) / .24) ** 2)
@@ -188,15 +202,19 @@ def sculpt_hand(side):
         piece.rotation_euler = Euler((angles[0], angles[1] * side, angles[2] * side))
         pieces.append(piece)
 
-    # Wrist blends into the forearm. Four knuckles wrap around a relaxed palm.
-    volume(0, .275, -.005, (.258, .318, .230))
-    volume(.025, -.015, .025, (.369, .351, .272))
-    for i, length in enumerate((.161, .198, .190, .144)):
-        x = -.205 + i * .164
-        volume(x, -.268 + abs(i - 1.5) * .040, .101, (.128, length, .151), (-.26, 0, 0))
-        volume(x, -.127, .210, (.115, .114, .161), (-.33, 0, 0))
-    volume(-.292, .063, .077, (.165, .245, .175), (-.19, -.31, -.22))
-    volume(-.330, -.101, .207, (.132, .165, .153), (.26, -.40, -.24))
+    # Taper the wrist before the metacarpals. Staggered fingertips curl
+    # toward the palm, leaving a separate, readable thumb in silhouette.
+    volume(0, .35, -.035, (.188, .26, .18))
+    volume(.02, .03, .012, (.32, .345, .183))
+    for i, length in enumerate((.325, .375, .345, .255)):
+        x = -.207 + i * .148
+        y = -.26 + .032*abs(i-1)
+        fan = (i - 1.40)*.028
+        volume(x+fan, y, .042, (.085, length, .093), (-.18, 0, -fan))
+        volume(x+fan, y-length*.71, .104, (.077, length*.40, .089), (-.45, 0, -fan))
+    volume(-.275, .08, .03, (.135, .222, .13), (-.25, -.25, -.27))
+    volume(-.397, -.069, .067, (.104, .188, .105), (-.14, -.18, -.49))
+    volume(-.452, -.179, .120, (.088, .139, .094), (-.47, -.19, -.21))
     bpy.ops.object.select_all(action="DESELECT")
     for piece in pieces:
         piece.select_set(True)
@@ -206,13 +224,13 @@ def sculpt_hand(side):
     bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
     model.name = name
     remesh = model.modifiers.new("Sculpt union", "REMESH")
-    remesh.mode, remesh.voxel_size, remesh.use_smooth_shade = "VOXEL", .037, True
+    remesh.mode, remesh.voxel_size, remesh.use_smooth_shade = "VOXEL", .028, True
     bpy.ops.object.modifier_apply(modifier=remesh.name)
     smooth = model.modifiers.new("Soft knuckle contours", "SMOOTH")
-    smooth.factor, smooth.iterations = .42, 3
+    smooth.factor, smooth.iterations = .35, 2
     bpy.ops.object.modifier_apply(modifier=smooth.name)
     simplify = model.modifiers.new("Game mesh", "DECIMATE")
-    simplify.ratio = min(1, 1020 / (len(model.data.polygons) * 2))
+    simplify.ratio = min(1, 1340 / (len(model.data.polygons) * 2))
     bpy.ops.object.modifier_apply(modifier=simplify.name)
     for face in model.data.polygons:
         face.use_smooth = True

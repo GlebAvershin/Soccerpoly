@@ -22,7 +22,9 @@ jobs:
           chmod +x luau/luau luau/luau-compile luau/luau-analyze rojo/rojo
           realpath luau rojo >> "$GITHUB_PATH"
       - name: Verify and build
-        run: make verify
+        run: |
+          make verify
+          git diff --exit-code -- dist/Soccerpoly.rbxl
       - name: Write content and analytics review
         run: |
           {

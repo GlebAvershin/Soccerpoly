@@ -63,11 +63,17 @@ function Pawn.make(figure: number, parent: Instance, onPitch: boolean?, uniform:
 	local root = piece("Root", .08, .08, .08, 0, 0, 0, rubber)
 	root.Transparency, root.CastShadow, model.PrimaryPart = 1, false, root
 	if not onPitch then
+		local backing = {}
 		for i, ring in {{.18, 3.16, .10}, {.08, 3.22, .23}, {.15, 3.00, .337}, {.025, 2.79, .424}} do
 			local color = if i == 1 then rubber elseif i == 2 then kit elseif i == 3 then trim else trim:Lerp(kit, .42)
 			local base = piece("Turntable " .. i, ring[1], ring[2], ring[2], 0, ring[3], 0, color, Enum.PartType.Cylinder, math.pi * .5)
 			if i == 1 then base.Material = Enum.Material.Metal end
+			if i <= 2 then table.insert(backing, base) end
 		end
+		local medal = piece("Fluted medal base", 3.22, .275, 3.22, 0, .139, 0, Color3.new(1,1,1))
+		medal.Material, medal.Transparency = Enum.Material.Metal, 1
+		medal:SetAttribute("MeshPlaceholder", true)
+		Meshes.apply("medal_base", medal, backing)
 	end
 
 	local thighs: {Joint}, arms: {Joint}, knees: {Joint}, elbows: {Joint}, boots: {Joint} = {}, {}, {}, {}, {}
@@ -76,7 +82,7 @@ function Pawn.make(figure: number, parent: Instance, onPitch: boolean?, uniform:
 		local prefix = if side < 0 then "Left " else "Right "
 		local thigh = joint(prefix .. "leg", x, 2.14, 0)
 		Meshes.apply("shorts", soft("Tailored short", .805, .57, .81, x, 2.00, .005, trim, side * .044))
-		soft("Quadriceps", .57, .67, .63, x * 1.045, 1.70, .017, skin)
+		Meshes.apply("quad", soft("Quadriceps", .615, .70, .64, x * 1.045, 1.69, .021, skin))
 		soft("Short side piping", .044, .28, .14, x + side * .346, 2.05, .16, accent, side * .06).CastShadow = false
 		thigh.model.WorldPivot = thigh.rest
 		thighs[i] = thigh
@@ -117,21 +123,23 @@ function Pawn.make(figure: number, parent: Instance, onPitch: boolean?, uniform:
 		local prefix = if side < 0 then "Left " else "Right "
 		local arm = joint(prefix .. "arm", side * .96, 3.45, 0)
 		local glove = keeper
-		soft("Shoulder cap", .58, .58, .58, side * .96, 3.43, 0, sleeveColor).Material = Enum.Material.SmoothPlastic
-		Meshes.apply("sleeve", soft("Sleeve", .71, .79, .73, side * 1.10, 3.30, .005, sleeveColor, side * .27))
-		soft("Contrast piping", .60, .053, .64, side * 1.24, 3.11, .02, accent, side * .27)
-		soft("Sleeve cuff", .60, .105, .64, side * 1.25, 3.035, .010, trim, side * .28)
+		-- The fitted sleeve crosses the shoulder pivot so the kit stays joined during a shot.
+		Meshes.apply("sleeve", soft("Sleeve", .84, .86, .81, side * 1.065, 3.31, .005, sleeveColor, side * .27))
+		soft("Contrast piping", .64, .052, .65, side * 1.18, 3.08, .02, accent, side * .27)
+		soft("Sleeve cuff", .63, .10, .65, side * 1.20, 3.01, .010, trim, side * .28)
 		if (figure == 1 or figure == 2) and side == -1 and not keeper then
-			soft("Captain armband", .65, .13, .65, -1.15, 3.29, .008, accent, -.27)
+			soft("Captain armband", .77, .145, .77, -1.085, 3.29, .008, accent, -.27)
 		end
 		arm.model.WorldPivot = arm.rest
 		arms[i] = arm
 		local elbow = joint(prefix .. "elbow", side * 1.239, 3.00, .08, 2 + i)
-		Meshes.apply("forearm", soft("Bent forearm", .46, .82, .53, side * 1.30, 2.73, .13, skin, side * .23))
-		local hand = soft("Palm", if glove then .71 else .40, .49, if glove then .60 else .39, side * 1.37, 2.42, .23, if glove then ivory else skin)
+		Meshes.apply("forearm", soft("Bent forearm", .48, .85, .54, side * 1.28, 2.73, .13, skin, side * .23))
+		local hand = soft("Palm", if glove then .71 else .49, if glove then .49 else .58,
+			if glove then .60 else .38, side * 1.37, if glove then 2.42 else 2.19,
+			if glove then .23 else .275, if glove then ivory else skin, side * .12)
 		Meshes.apply(if glove then "glove" elseif side < 0 then "hand_left" else "hand_right", hand)
 		if figure == 3 then
-			soft("Wrist tape", .43, .104, .50, side * 1.347, 2.58, .188, accent, side * .23)
+			soft("Wrist tape", .43, .104, .50, side * 1.347, 2.39, .227, accent, side * .23)
 		end
 		if glove then
 			Meshes.apply("glovepad", soft("Keeper palm shield", .38, .34, .072, side * 1.35, 2.425, .516, trim))
@@ -145,7 +153,7 @@ function Pawn.make(figure: number, parent: Instance, onPitch: boolean?, uniform:
 	local head = joint("Head", 0, 3.97, 0)
 	local w, h, d = table.unpack(profile.size)
 	local x, y, z = table.unpack(profile.center)
-	local face = soft("Face", w * 1.12, h * .95, d * 1.07, x * 1.12, 4.55 + y * .95, z * 1.07, skin)
+	local face = soft("Face", w * 1.04, h * .93, d * 1.05, x * 1.04, 4.49 + y * .93, z * 1.05, skin)
 	face.CastShadow = true
 	face:SetAttribute("MeshPlaceholder", true)
 	face.Transparency = 1
@@ -219,7 +227,8 @@ end
 local function resolveClip(model: Model, name: string): ({{CFrame}}, boolean)
 	local def = Board.figures[profiles[model]]
 	local reflected = name == "kick" and def.leftFoot
-	local clip = if name == "cheer" then clips[def.model] elseif name == "idle" then clips[def.model .. "_idle"] else clips[name]
+	local clip = if name == "cheer" then clips[def.model]
+		elseif name == "idle" or name == "stride" then clips[def.model .. "_" .. name] else clips[name]
 	return clip, reflected
 end
 
@@ -258,10 +267,17 @@ function Pawn.pose(model: Model, phase: number, running: number, celebration: nu
 	end
 end
 
+-- Fraction of a step spent on the turf, forward reach, and swing-foot height.
+local gait = {
+	messi = {.61, .72, .45}, ronaldo = {.53, .90, .65}, mbappe = {.49, .91, .66},
+	yamal = {.57, .76, .55}, haaland = {.55, 1.01, .61}, vinicius = {.52, .82, .70},
+}
+
 function Pawn.run(model: Model, cycle: number, strength: number)
 	local rig = rigs[model]
 	if not rig then return end
 	local phase = cycle % 1
+	local contact, reachDistance, footLift = table.unpack(gait[Board.figures[profiles[model]].model])
 	Pawn.animate(model, "stride", phase, strength)
 	local at, scale = model:GetPivot(), model:GetScale()
 	for i = 1, 2 do
@@ -270,10 +286,10 @@ function Pawn.run(model: Model, cycle: number, strength: number)
 		local rest = ankle.rest.Position
 		local step = (phase + (i - 1) * .5) % 1
 		-- During contact the foot moves backward at a constant rate relative to the body.
-		local swing = math.clamp((step - .57) / .43, 0, 1)
-		local forward = if step <= .57 then 1 - 2 * step / .57 else -1 + 2 * swing * swing * (3 - 2 * swing)
+		local swing = math.clamp((step - contact) / (1 - contact), 0, 1)
+		local forward = if step <= contact then 1 - 2 * step / contact else -1 + 2 * swing * swing * (3 - 2 * swing)
 		local lift = math.sin(math.pi * swing) ^ 1.2
-		local target = rest + Vector3.new(0, (.11 + .55 * lift) * strength, forward * .82 * strength)
+		local target = rest + Vector3.new(0, (.095 + footLift * lift) * strength, forward * reachDistance * strength)
 		local offset = target - hip
 		local upper = (knee.rest.Position - hip).Magnitude
 		local lower = (rest - knee.rest.Position).Magnitude
@@ -297,7 +313,9 @@ function Pawn.run(model: Model, cycle: number, strength: number)
 		end
 		thigh.model:PivotTo(orient(hip, bent))
 		knee.model:PivotTo(orient(bent, foot))
-		ankle.model:PivotTo(at * CFrame.new(foot * scale) * CFrame.Angles(.21 * math.sin(swing * math.pi) * strength, 0, 0))
+		local heel = if step <= contact then .24 * math.clamp((step / contact - .72) / .28, 0, 1)
+			else .24 * (1 - swing) - .18 * math.sin(swing * math.pi)
+		ankle.model:PivotTo(at * CFrame.new(foot * scale) * CFrame.Angles(heel * strength, 0, 0))
 	end
 end
 

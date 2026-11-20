@@ -327,7 +327,12 @@ def jersey(name):
     sculpt.colors.clear()
     for rgb in (base, panel, trim):
         sculpt.color(rgb)
-    steps = 56
+    # Ease and shoulder cut vary by figure, from the winger's narrow fit to a striker's broad yoke.
+    ease, shoulder = {
+        "messi": (.94,.97), "ronaldo": (.90,1.06), "mbappe": (.97,1.07),
+        "yamal": (1.02,.94), "haaland": (.96,1.09), "vinicius": (.93,.99),
+    }[name]
+    steps = 72
     rows = []
     for y, width, depth, offset in JERSEY_RINGS:
         points = []
@@ -337,7 +342,13 @@ def jersey(name):
             crease = exp(-((y + .38 - x * .34) / .22) ** 2) * (.013 * sin(10 * x + 28 * y))
             crease += .016 * exp(-((y - .15 + abs(x) * .17) / .42) ** 2) * sin(8 * x + 8 * y)
             yy = y - .062 * max(0, front) ** 4 * max(0, y * 2) ** 4
-            points.append((width * x, yy, offset + (depth + crease) * front))
+            chest = exp(-((y-.20)/.27)**2)
+            waist = exp(-((y+.20)/.21)**2)
+            tuck = .023 * cos(12*x+3*front) * exp(-((y+.42)/.13)**2)
+            side_fold = .032 * sin(6*theta + 9*y) * waist * abs(x)**2
+            yy += tuck
+            points.append(((width*(1+(shoulder-1)*chest+(ease-1)*waist)+side_fold)*x,
+                           yy, offset+(depth+.026*chest+crease+side_fold)*front))
         rows.append(points)
     sculpt.band(rows, 0)
     model = sculpt.bake()
@@ -396,6 +407,42 @@ def football_sock():
     return obj
 
 
+def medal_base():
+    """Turned medal edge with recessed flutes and a pair of flush brass beads."""
+    profile = [
+        (0,.90,0,0), (.065,.974,0,0), (.15,.997,0,1), (.25,1,0,1),
+        (.32,.983,0,0), (.37,.984,.026,2), (.68,.984,.026,2),
+        (.73,.983,0,0), (.80,1,0,1), (.89,.991,0,1), (1,.91,0,0),
+    ]
+    count = 128
+    verts, faces, slots = [], [], []
+    for ring,(y,radius,flute,slot) in enumerate(profile):
+        for k in range(count):
+            angle=tau*k/count
+            r=radius-flute*(1+cos(angle*32))*.5
+            verts.append(blender((r*sin(angle),.17*y,r*cos(angle))))
+            if ring:
+                k0=(ring-1)*count+k
+                k1=(ring-1)*count+(k+1)%count
+                faces.append((k0,k1,k1+count,k0+count))
+                slots.append(slot)
+    faces.extend((tuple(reversed(range(count))),tuple(range(len(verts)-count,len(verts)))))
+    slots.extend([0,0])
+    mesh=bpy.data.meshes.new("Fluted medal with turned edge")
+    mesh.from_pydata(verts,[],faces)
+    mesh.update()
+    for name, rgb in (("Dark enamel",0x182824),("Satin brass",0xD1B078),("Brushed bronze",0x856842)):
+        material=bpy.data.materials.new(name)
+        material.diffuse_color=(*[((rgb>>shift)&255)/255 for shift in (16,8,0)],1)
+        mesh.materials.append(material)
+    for poly, slot in zip(mesh.polygons,slots):
+        poly.material_index=slot
+        poly.use_smooth=len(poly.vertices)==4
+    obj=bpy.data.objects.new("medal_base",mesh)
+    bpy.context.collection.objects.link(obj)
+    return obj
+
+
 def build():
     bpy.ops.wm.read_factory_settings(use_empty=True)
     from painted_heads import head
@@ -416,6 +463,9 @@ def build():
     sock = football_sock()
     sock.location=(-1.5,0,-2.95)
     models.append(sock)
+    medal = medal_base()
+    medal.location = (3.0,0,-2.95)
+    models.append(medal)
     from mathutils import Euler
     for screen in bpy.data.screens:
         for area in screen.areas:
@@ -430,6 +480,6 @@ def build():
     return models
 
 
-names = [*PLAYERS, *(name + "_jersey" for name in PLAYERS), "goalkeeper", "match_boot", "match_sock"]
+names = [*PLAYERS, *(name + "_jersey" for name in PLAYERS), "goalkeeper", "match_boot", "match_sock", "medal_base"]
 models = [bpy.context.scene.objects[name] for name in names] if "--export" in sys.argv else build()
 export_shapes(models, "src/client/PlayerSculptData.luau", include_bounds=True)
