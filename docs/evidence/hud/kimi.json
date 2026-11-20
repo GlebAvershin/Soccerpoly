@@ -1,0 +1,118 @@
+{
+  "run": "https://github.com/GlebAvershin/lantern-atlas/actions/runs/44799346971",
+  "server_slots": 2,
+  "games_submitted_concurrently": 4,
+  "benchmark": {
+    "project": "Soccerpoly",
+    "model": "Kimi-VL-A3B-Instruct.Q3_K_S",
+    "weights_sha256": "ac24c61aa01cee11cb0cfab8b497bd0f14276ec9b16601022a7b581ca8c4516a",
+    "expected": {
+      "headline": "clock",
+      "stage": "pitch",
+      "action": "dice"
+    },
+    "cases_sha256": "4e5525a110e3ccaea67a49ec661d7461eb2fd7dc606727c4233f8874b15c8f6d",
+    "rows": [
+      {
+        "instructions": {
+          "headline": "How much time has elapsed?",
+          "stage": "Where are the managers standing on the board?",
+          "action": "Throw to start a new turn."
+        },
+        "baseline": {
+          "headline": "clock",
+          "stage": "pitch",
+          "action": "dice"
+        },
+        "model": {
+          "headline": "clock",
+          "stage": "pitch",
+          "action": "dice"
+        },
+        "baseline_correct": 3,
+        "model_correct": 3,
+        "baseline_us": 170,
+        "model_ms": 34724,
+        "tokens": 386
+      },
+      {
+        "instructions": {
+          "headline": "Show match time before anything else.",
+          "stage": "Devote most of the handoff to the playing surface.",
+          "action": "Keep the dice throw accessible."
+        },
+        "baseline": {
+          "headline": "clock",
+          "stage": "dice",
+          "action": "pitch"
+        },
+        "model": {
+          "headline": "clock",
+          "stage": "pitch",
+          "action": "dice"
+        },
+        "baseline_correct": 1,
+        "model_correct": 3,
+        "baseline_us": 152,
+        "model_ms": 35136,
+        "tokens": 389
+      }
+    ]
+  },
+  "handoff": {
+    "project": "Soccerpoly",
+    "screen": "Matchday",
+    "route": "llama",
+    "requested_model": "Kimi-VL-A3B-Instruct.Q3_K_S",
+    "game_revision": "3e3e9104561f4c6109b2d59ca6c505687d775765",
+    "brief_sha256": "6ce54c5afa2115c461460550825a7e6a753d5347ba5c6c8cdd78f1f747c2f5d8",
+    "bindings": {
+      "headline": "clock",
+      "stage": "pitch",
+      "action": "dice"
+    },
+    "negative_control": {
+      "headline": "pitch",
+      "stage": "dice",
+      "action": "clock"
+    },
+    "rejected_control_regions": [
+      "headline",
+      "stage",
+      "action"
+    ],
+    "trace": [
+      {
+        "region": "headline",
+        "component": "clock",
+        "origin": "inference",
+        "tokens": 138,
+        "accepted": true
+      },
+      {
+        "region": "stage",
+        "component": "dice",
+        "origin": "inference",
+        "tokens": 129,
+        "accepted": false
+      },
+      {
+        "region": "stage",
+        "component": "pitch",
+        "origin": "elimination",
+        "tokens": 0,
+        "accepted": true
+      },
+      {
+        "region": "action",
+        "component": "dice",
+        "origin": "elimination",
+        "tokens": 0,
+        "accepted": true
+      }
+    ],
+    "model_calls": 2,
+    "inference_tokens": 267,
+    "authoring_ms": 22368
+  }
+}

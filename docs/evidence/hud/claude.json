@@ -1,0 +1,44 @@
+{
+  "client": "Google Antigravity CLI",
+  "client_version": "1.5.13",
+  "additional_credits_enabled": false,
+  "requested_model": "claude-opus-4-6-thinking",
+  "origin": "account_inference",
+  "brief_sha256": "05f3a1de69934f0ea7bf48a1e19a4169857fe02ec41b3cebfbea9bb5523f2ff9",
+  "elapsed_ms": 41835,
+  "answer": {
+    "choice": "clock-pitch-dice",
+    "reason": "headline=clock matches \"Lead with the current fixture time,\" action=dice matches \"Put the primary turn action within thumb reach,\" and stage=pitch matches \"Keep the board and player positions in the largest region.\""
+  },
+  "bindings": {
+    "headline": "clock",
+    "stage": "pitch",
+    "action": "dice"
+  },
+  "mcp_acceptance": {
+    "headline": true,
+    "stage": true,
+    "action": true
+  },
+  "attempts": [
+    {
+      "origin": "account_inference",
+      "brief_sha256": "05f3a1de69934f0ea7bf48a1e19a4169857fe02ec41b3cebfbea9bb5523f2ff9",
+      "elapsed_ms": 41835,
+      "answer": {
+        "choice": "clock-pitch-dice",
+        "reason": "headline=clock matches \"Lead with the current fixture time,\" action=dice matches \"Put the primary turn action within thumb reach,\" and stage=pitch matches \"Keep the board and player positions in the largest region.\""
+      },
+      "bindings": {
+        "headline": "clock",
+        "stage": "pitch",
+        "action": "dice"
+      },
+      "mcp_acceptance": {
+        "headline": true,
+        "stage": true,
+        "action": true
+      }
+    }
+  ]
+}

@@ -1,6 +1,6 @@
 # Soccerpoly для портфолио Playrix
 
-Актуальная сверка Platform и Cross-product включает облачный интерфейсный агент, слепую проверку трёх модельных маршрутов, контракты провайдеров и исходные измерения. [Технологии и протоколы](TECHNOLOGIES.md)
+Актуальная сверка Platform и Cross-product включает облачный интерфейсный агент, сравнение Qwen, DeepSeek Distill, Kimi и EmbeddingGemma, контракты провайдеров и исходные измерения. [Технологии и протоколы](TECHNOLOGIES.md)
 
 ### Continental Cup · event authoring
 
