@@ -8,9 +8,9 @@ import nbformat
 from nbclient import NotebookClient
 
 root = Path(__file__).resolve().parents[1]
-path = root / "analytics/playrix-case.ipynb"
+path = root / "analytics/continental-cup.ipynb"
 notebook = nbformat.read(path, as_version=4)
 NotebookClient(notebook, timeout=30, resources={"metadata": {"path": str(root)}}).execute()
-destination = root / "dist/analytics/playrix-case-executed.ipynb"
+destination = root / "dist/analytics/continental-cup-executed.ipynb"
 nbformat.write(notebook, destination)
 print(f"Executed {sum(c['cell_type'] == 'code' for c in notebook.cells)} notebook cells: {destination}")

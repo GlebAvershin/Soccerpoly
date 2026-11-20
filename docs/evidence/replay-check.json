@@ -1,0 +1,20 @@
+{
+  "game": "Soccerpoly",
+  "query_sha256": "d308a4a008f9b0a78932803fe2c28337cc871f40983c52d8702b3f0f800b34f6",
+  "research_cases": 4,
+  "research_receipts": 5,
+  "provider_bindings": {
+    "bedrock-mantle": {
+      "model": "qwen.qwen3-coder-30b-a3b-instruct",
+      "trace_sha256": "ee74e6ea41245ec65ee8702ae414502fe6fa93a4d7f8c114eb52708c10e5ff86",
+      "accepted_regions": 3,
+      "rejected_control_regions": 3
+    },
+    "databricks": {
+      "model": "databricks-qwen3-next-80b-a3b-instruct",
+      "trace_sha256": "562af55986f6f86ca806b59892ba6077884ba6e3886c5fcfc46f9878ef08fd6a",
+      "accepted_regions": 3,
+      "rejected_control_regions": 3
+    }
+  }
+}
