@@ -1,4 +1,5 @@
 """Review alternative Continental Cup offers against the actual economy contract."""
+from typing import Any
 from mcp.server.fastmcp import FastMCP
 from event_studio import load, validate
 
@@ -18,8 +19,13 @@ def brief() -> dict:
     }
 
 
+@server.resource("studio://review/negative-control")
+def negative_control() -> str:
+    return "offer_65"
+
+
 @server.tool(structured_output=True)
-def verify_choice(choice: str) -> dict:
+def verify_choice(choice: str) -> dict[str, Any]:
     edition, stats = load()
     if choice not in OFFERS:
         return {"accepted": False, "reason": "Unknown offer"}
