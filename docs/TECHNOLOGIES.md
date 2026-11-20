@@ -59,3 +59,7 @@ platform="../Lantern Atlas"
 "$platform/studio/.venv/bin/python" "$platform/studio/agents/subscription_review.py" --game soccer --game-root . --provider codex
 "$platform/studio/.venv/bin/python" "$platform/studio/agents/subscription_review.py" --game soccer --game-root . --provider gemini
 ```
+
+## Исследование работы дизайнера
+
+Парное упражнение проверяет, как быстро другой разработчик доводит правку экономики до принятого каталога. Техническая репетиция с Qwen выявила неверный выбор минимальной выплаты и привела к изменению обратной связи в инструменте. Для каждого будущего участника сохраняются оба времени, отклонённые отправки и замечание. Внешних участников пока не было. [Задания и ход исследования](CUP-TRIAL.md) · [Данные до и после изменения](evidence/cup-trial-smoke.json)

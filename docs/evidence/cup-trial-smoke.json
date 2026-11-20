@@ -1,0 +1,163 @@
+{
+  "source": "automated smoke test",
+  "model": "Qwen2.5-0.5B-Instruct Q4_K_M via llama.cpp b12578",
+  "purpose": "Exercise counterbalancing, rejection, acceptance and model-assisted editing. No human participants or productivity timings.",
+  "before_verifier_feedback": [
+    [
+      {
+        "task": "A",
+        "mode": "manual",
+        "submissions": [
+          {
+            "accepted": false,
+            "reason": "Check the requested goal reward and restore unrelated fields"
+          },
+          {
+            "accepted": true
+          }
+        ],
+        "suggestions": []
+      },
+      {
+        "task": "B",
+        "mode": "agent",
+        "submissions": [
+          {
+            "accepted": false,
+            "reason": "Choose the smallest qualifying payout from the task"
+          },
+          {
+            "accepted": true
+          }
+        ],
+        "suggestions": [
+          {
+            "payout": 100,
+            "tokens": 177
+          }
+        ]
+      }
+    ],
+    [
+      {
+        "task": "A",
+        "mode": "agent",
+        "submissions": [
+          {
+            "accepted": false,
+            "reason": "Choose the smallest qualifying payout from the task"
+          },
+          {
+            "accepted": true
+          }
+        ],
+        "suggestions": [
+          {
+            "payout": 85,
+            "tokens": 175
+          }
+        ]
+      },
+      {
+        "task": "B",
+        "mode": "manual",
+        "submissions": [
+          {
+            "accepted": false,
+            "reason": "Check the requested goal reward and restore unrelated fields"
+          },
+          {
+            "accepted": true
+          }
+        ],
+        "suggestions": []
+      }
+    ]
+  ],
+  "after_verifier_feedback": [
+    [
+      {
+        "task": "A",
+        "mode": "manual",
+        "submissions": [
+          {
+            "accepted": false,
+            "reason": "Check the requested goal reward and restore unrelated fields"
+          },
+          {
+            "accepted": true
+          }
+        ],
+        "suggestions": []
+      },
+      {
+        "task": "B",
+        "mode": "agent",
+        "submissions": [
+          {
+            "accepted": true
+          }
+        ],
+        "suggestions": [
+          {
+            "payout": 100,
+            "tokens": 201,
+            "review": "Choose the smallest qualifying payout from the task"
+          },
+          {
+            "payout": 75,
+            "tokens": 209,
+            "review": "Safe cash must sit between the shot's average cash and average portfolio value"
+          },
+          {
+            "payout": 90,
+            "tokens": 225,
+            "review": "accepted"
+          }
+        ]
+      }
+    ],
+    [
+      {
+        "task": "A",
+        "mode": "agent",
+        "submissions": [
+          {
+            "accepted": true
+          }
+        ],
+        "suggestions": [
+          {
+            "payout": 85,
+            "tokens": 198,
+            "review": "Choose the smallest qualifying payout from the task"
+          },
+          {
+            "payout": 55,
+            "tokens": 207,
+            "review": "Safe cash must sit between the shot's average cash and average portfolio value"
+          },
+          {
+            "payout": 70,
+            "tokens": 223,
+            "review": "accepted"
+          }
+        ]
+      },
+      {
+        "task": "B",
+        "mode": "manual",
+        "submissions": [
+          {
+            "accepted": false,
+            "reason": "Check the requested goal reward and restore unrelated fields"
+          },
+          {
+            "accepted": true
+          }
+        ],
+        "suggestions": []
+      }
+    ]
+  ]
+}

@@ -1,25 +1,14 @@
-# Soccerpoly (Мировой Драфт) • AAA Football Strategy for Roblox
+# Soccerpoly · Мировой Драфт
 
-[Технологии игры, AI-инструменты и результаты облачных проверок](docs/TECHNOLOGIES.md)
+Пошаговая футбольная стратегия для Roblox. Менеджеры покупают клубы, торгуются на аукционах и в событии Continental Cup выбирают между гарантированной выплатой и ударом по воротам.
 
-<div align="center">
+**[Открыть игру](https://www.roblox.com/games/114770772027261/Soccerpoly)** · [Скачать сборку для Roblox Studio](dist/Soccerpoly.rbxl) · [Технологии и исходники](docs/TECHNOLOGIES.md) · [Проверки на мобильных экранах](docs/QA.md)
 
-![Soccerpoly Banner](art/promo/game_banner.png)
+![Игровое поле Soccerpoly](art/promo/game_banner.png)
 
-[![Luau Strict](https://img.shields.io/badge/Luau-Strict%20Typechecked-00A2FF?style=for-the-badge&logo=roblox&logoColor=white)](src/)
-[![Tests Passing](https://img.shields.io/badge/Tests-57%20KLOC%20Passing-brightgreen?style=for-the-badge&logo=checkmarx&logoColor=white)](tests/)
-[![Blender 4.5 LTS](https://img.shields.io/badge/Blender-4.5%20LTS%20Pipeline-E87D0D?style=for-the-badge&logo=blender&logoColor=white)](art/)
-[![Rojo 7.7.1](https://img.shields.io/badge/Rojo-7.7.1%20Compliant-red?style=for-the-badge)](default.project.json)
-[![Roblox Studio](https://img.shields.io/badge/Roblox%20Studio-Verified%20QA-000000?style=for-the-badge&logo=roblox)](scripts/studio-qa.py)
+## Как AI использовался в разработке
 
-**Профессиональная пошаговая футбольная монополия-стратегия на платформе Roblox.**  
-*Коммерческая архитектура, математически выверенный баланс, процедурный 3D-пайплайн в Blender 4.5 LTS и мета-прогрессия тренера.*
-
-[🎮 Играть на Roblox](https://www.roblox.com/games/114770772027261/Soccerpoly) • [📦 Скачать релизный билд (.rbxl)](dist/Soccerpoly.rbxl) • [🛠 Инструкция разработчика](docs/DEVELOPMENT.md)
-
-</div>
-
----
+Codex помог подготовить двуязычное событие Continental Cup и его проверки. Python компилирует проверенный каталог в Luau, а отдельный инструмент на C++17 пересчитывает экономику. В опубликованном событии игрок может получить **75 кредитов** гарантированно. В более позднем эксперименте четыре модели оценили альтернативы и выбрали **84 кредита**. Эти два решения можно сверить по материалам выпуска и независимым вердиктам. [История разработки](docs/AI_WORKFLOW.md) · [Релиз v10](docs/RELEASE.md) · [Исходный каталог](content/continental-cup.json) · [Как протестировать инструмент дизайнера](docs/CUP-TRIAL.md)
 
 ## Поле и фигурки Continental Cup · версия Roblox 10
 
@@ -41,7 +30,7 @@
       <ul>
         <li><b>Авторитетный сервер и снапшот-репликация:</b> Вся игровая математика, генерация случайных чисел, аукционы и валидация ходов выполняются строго на сервере в иммутабельной функциональной модели. Клиенты получают компактные дельта-снапшоты и выполняют сглаженный предиктивный рендеринг.</li>
         <li><b>Zero-External-Asset Blender Pipeline:</b> 3D-модели стадионов 4 уровней (флаг, академия, арена, мегастадион), а также скульптированные головы и формы 6 мировых звезд футбола запечены в бинарные Luau-буферы. Игра полностью автономна и не зависит от модерации внешних мешей Roblox.</li>
-        <li><b>Ортонормированная кинематика пешек (IK & Bones):</b> Устранено сжатие и деформация сетки конечностей за счет применения строгого ортонормированного базиса <code>CFrame.fromMatrix</code>, анатомической фиксации плеч и шеи, а также 60 FPS процедурного дыхания.</li>
+        <li><b>Ортонормированная кинематика пешек (IK & Bones):</b> Устранено сжатие и деформация сетки конечностей за счет применения строгого ортонормированного базиса <code>CFrame.fromMatrix</code>, анатомической фиксации плеч и шеи, а также процедурного дыхания.</li>
       </ul>
     </td>
   </tr>
@@ -197,5 +186,3 @@ PATH="$PWD/.tools/bin:$PATH" rojo serve
 * GitHub: [@GlebAvershin](https://github.com/GlebAvershin)
 * Проект: [Soccerpoly Repository](https://github.com/GlebAvershin/Soccerpoly)
 * Плейс на Roblox: [Soccerpoly Experience](https://www.roblox.com/games/114770772027261/Soccerpoly)
-
-*Разработано с акцентом на чистую архитектуру, высокую производительность (60 FPS на мобильных устройствах) и эталонное качество визуального ряда.*
