@@ -1,0 +1,63 @@
+{
+  "model": "qwen.qwen3-coder-30b-a3b-instruct",
+  "baseline_sha256": "b7e074617f973a8f0014937f246ce7d1660b4b3264ee8fb0160a28bafdfbd358",
+  "features_sha256": "8247c7080bfea3adcc5219772d09e55581a5b51ad46197a5b21f78f5a3d96ef7",
+  "cases": [
+    {
+      "scenario": "above_best_shot",
+      "facts": {
+        "cash_still_missing_after_guarantee": 66,
+        "shot_success_percent": 0.0
+      },
+      "rule": "defer_purchase",
+      "model_answer": "take_guarantee",
+      "strict_before": false,
+      "strict_after": false,
+      "first_line_before": false,
+      "first_line_after": false,
+      "tokens": 111
+    },
+    {
+      "scenario": "above_guarantee",
+      "facts": {
+        "cash_still_missing_after_guarantee": 1,
+        "shot_success_percent": 50.0
+      },
+      "rule": "take_shot",
+      "model_answer": "take_guarantee",
+      "strict_before": false,
+      "strict_after": false,
+      "first_line_before": false,
+      "first_line_after": false,
+      "tokens": 111
+    },
+    {
+      "scenario": "at_best_shot",
+      "facts": {
+        "cash_still_missing_after_guarantee": 65,
+        "shot_success_percent": 50.0
+      },
+      "rule": "take_shot",
+      "model_answer": "take_guarantee",
+      "strict_before": false,
+      "strict_after": false,
+      "first_line_before": false,
+      "first_line_after": false,
+      "tokens": 112
+    },
+    {
+      "scenario": "at_guarantee",
+      "facts": {
+        "cash_still_missing_after_guarantee": 0,
+        "shot_success_percent": 50.0
+      },
+      "rule": "take_guarantee",
+      "model_answer": "take_guarantee",
+      "strict_before": false,
+      "strict_after": true,
+      "first_line_before": true,
+      "first_line_after": true,
+      "tokens": 111
+    }
+  ]
+}

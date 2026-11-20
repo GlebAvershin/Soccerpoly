@@ -1,0 +1,138 @@
+{
+  "game": "Soccerpoly",
+  "revision": "907f254f227fa1d8753a9807a9eeb6ea9903d7d2",
+  "source_sha256": {
+    "content/continental-cup.json": "835a317d97627f0062928383de73642179a143c62398d06eb1edfb191c22abc3",
+    "studio/research/study.py": "4fd56a85c366799e1725d38931e67a88c8d16d5a0614d1f759d94bf6755e86ff",
+    "studio/research/metrics.sql": "b94529c9508359acc6c53dd52720126f278e5ec612820cf9629402e8db32a8e4"
+  },
+  "query_sha256": "b0332c0b74d838de01404c15260b1be50729532945081ed925712506eef66921",
+  "input_rows": 12,
+  "cases": [
+    {
+      "scenario": "above_best_shot",
+      "metrics": {
+        "target": 141,
+        "safe_cash": 75,
+        "probability_bp": 0,
+        "worst_shot": -40,
+        "expected_cash_hundredths": 7167
+      },
+      "rule": "defer_purchase",
+      "model_answer": "take_guarantee\n\nThe target is 141 and we have safe_cash of 75. The guarantee would cover 75, which is less than the target of 141. However, since we're asked to prefer the guarantee when it covers the target, and the guarantee (75",
+      "agreement": false,
+      "tokens": 184,
+      "receipts": [
+        {
+          "service": "amplitude",
+          "phase": "ingestion_acknowledged",
+          "http_status": 200,
+          "event_id": "9db65a3f74b550959fb83da635d8e3d1",
+          "timestamp_utc": "2026-11-20T20:04:08.462176+00:00"
+        },
+        {
+          "service": "sentry",
+          "phase": "ingestion_acknowledged",
+          "http_status": 200,
+          "event_id": "8f94249e4c095d2896ffbf10ac1e5707",
+          "timestamp_utc": "2026-11-20T20:04:09.242798+00:00"
+        }
+      ]
+    },
+    {
+      "scenario": "above_guarantee",
+      "metrics": {
+        "target": 76,
+        "safe_cash": 75,
+        "probability_bp": 5000,
+        "worst_shot": -40,
+        "expected_cash_hundredths": 7167
+      },
+      "rule": "take_shot",
+      "model_answer": "take_guarantee\n\nThe safe cash amount (75) is less than the target (76), but taking the guarantee would cover the target with certainty. Since the guarantee covers the target and we want to meet the target with the highest possible probability, we should take the guarantee rather than risk the shot which has",
+      "agreement": false,
+      "tokens": 186,
+      "receipts": [
+        {
+          "service": "amplitude",
+          "phase": "ingestion_acknowledged",
+          "http_status": 200,
+          "event_id": "e820d9b9af85551487dac7d9661cb4f2",
+          "timestamp_utc": "2026-11-20T20:04:10.701912+00:00"
+        },
+        {
+          "service": "sentry",
+          "phase": "ingestion_acknowledged",
+          "http_status": 200,
+          "event_id": "9af2b5d5c61f552a997b2d4505d757de",
+          "timestamp_utc": "2026-11-20T20:04:10.929065+00:00"
+        }
+      ]
+    },
+    {
+      "scenario": "at_best_shot",
+      "metrics": {
+        "target": 140,
+        "safe_cash": 75,
+        "probability_bp": 5000,
+        "worst_shot": -40,
+        "expected_cash_hundredths": 7167
+      },
+      "rule": "take_shot",
+      "model_answer": "take_guarantee\n\nThe guarantee covers the target of 140, which is higher than the safe cash of 75. Since we can meet the target with certainty using the guarantee, we should prefer that over taking a shot with only a 50% success rate (5000 basis points",
+      "agreement": false,
+      "tokens": 187,
+      "receipts": [
+        {
+          "service": "amplitude",
+          "phase": "ingestion_acknowledged",
+          "http_status": 200,
+          "event_id": "7a1bb891fd6d561baacdfec0c57695d2",
+          "timestamp_utc": "2026-11-20T20:04:12.223321+00:00"
+        },
+        {
+          "service": "sentry",
+          "phase": "ingestion_acknowledged",
+          "http_status": 200,
+          "event_id": "e8bddb1476f7503cb24c611116f28c8a",
+          "timestamp_utc": "2026-11-20T20:04:12.511284+00:00"
+        }
+      ]
+    },
+    {
+      "scenario": "at_guarantee",
+      "metrics": {
+        "target": 75,
+        "safe_cash": 75,
+        "probability_bp": 5000,
+        "worst_shot": -40,
+        "expected_cash_hundredths": 7167
+      },
+      "rule": "take_guarantee",
+      "model_answer": "take_guarantee\n\nThe safe cash amount (75) already meets the target (75), so taking the guarantee ensures meeting the target with 100% probability. This is better than taking the shot which only has a 50% success rate (5000 basis points = 5",
+      "agreement": false,
+      "tokens": 186,
+      "receipts": [
+        {
+          "service": "amplitude",
+          "phase": "ingestion_acknowledged",
+          "http_status": 200,
+          "event_id": "0ab1b58c15895f35983f8eef5f77d03f",
+          "timestamp_utc": "2026-11-20T20:04:13.459351+00:00"
+        },
+        {
+          "service": "sentry",
+          "phase": "ingestion_acknowledged",
+          "http_status": 200,
+          "event_id": "4784867a949751fdb1f728d4285c14c6",
+          "timestamp_utc": "2026-11-20T20:04:13.759727+00:00"
+        }
+      ]
+    }
+  ],
+  "databricks": "SQL Statement Execution / SQLite parity",
+  "aws_plan": "FREE / ACTIVE",
+  "model": "qwen.qwen3-coder-30b-a3b-instruct",
+  "region": "eu-north-1",
+  "utc": "2026-11-20T20:04:06.523174+00:00"
+}
