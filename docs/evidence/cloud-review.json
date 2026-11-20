@@ -1,0 +1,757 @@
+{
+  "run": "https://github.com/GlebAvershin/Soccerpoly/actions/runs/44771393653",
+  "head_sha": "57257d82900e5fb70caa9c8981317cbfc8b62744",
+  "requests": {
+    "project": "soccer",
+    "unauthorized_status": 401,
+    "negative_control": {
+      "choice": "offer_65",
+      "verdict": {
+        "accepted": false,
+        "reason": "Safe cash must sit between the shot's average cash and average portfolio value"
+      }
+    },
+    "fresh": {
+      "cache": {
+        "miss": 2,
+        "hit": 6
+      },
+      "tokens": 472,
+      "model_calls": 2,
+      "p50_ms": 1233.605,
+      "p95_ms": 1664.33,
+      "responses": [
+        {
+          "result": {
+            "choice": "offer_84",
+            "history": [
+              {
+                "choice": "offer_84",
+                "verdict": {
+                  "accepted": true,
+                  "payout": 84,
+                  "reason": "Choose the lowest economy-valid alternative",
+                  "cards": 11,
+                  "shot_expected_cash": 71.667,
+                  "shot_expected_value": 111.667
+                }
+              }
+            ],
+            "tokens": 227
+          },
+          "cache": "miss",
+          "inference_tokens": 227,
+          "model": "qwen",
+          "worker": "game-review-5d68c4557b-2hcmv",
+          "client_ms": 1660.48
+        },
+        {
+          "result": {
+            "choice": "offer_84",
+            "tokens": 227,
+            "history": [
+              {
+                "choice": "offer_84",
+                "verdict": {
+                  "cards": 11,
+                  "payout": 84,
+                  "reason": "Choose the lowest economy-valid alternative",
+                  "accepted": true,
+                  "shot_expected_cash": 71.667,
+                  "shot_expected_value": 111.667
+                }
+              }
+            ]
+          },
+          "cache": "hit",
+          "inference_tokens": 0,
+          "model": "qwen",
+          "worker": "game-review-5d68c4557b-bgktj",
+          "client_ms": 1663.61
+        },
+        {
+          "result": {
+            "choice": "offer_84",
+            "tokens": 245,
+            "history": [
+              {
+                "choice": "offer_84",
+                "verdict": {
+                  "cards": 11,
+                  "payout": 84,
+                  "reason": "Choose the lowest economy-valid alternative",
+                  "accepted": true,
+                  "shot_expected_cash": 71.667,
+                  "shot_expected_value": 111.667
+                }
+              }
+            ]
+          },
+          "cache": "hit",
+          "inference_tokens": 0,
+          "model": "smol",
+          "worker": "game-review-5d68c4557b-2hcmv",
+          "client_ms": 806.73
+        },
+        {
+          "result": {
+            "choice": "offer_84",
+            "history": [
+              {
+                "choice": "offer_84",
+                "verdict": {
+                  "accepted": true,
+                  "payout": 84,
+                  "reason": "Choose the lowest economy-valid alternative",
+                  "cards": 11,
+                  "shot_expected_cash": 71.667,
+                  "shot_expected_value": 111.667
+                }
+              }
+            ],
+            "tokens": 245
+          },
+          "cache": "miss",
+          "inference_tokens": 245,
+          "model": "smol",
+          "worker": "game-review-5d68c4557b-bgktj",
+          "client_ms": 797.36
+        },
+        {
+          "result": {
+            "choice": "offer_84",
+            "tokens": 227,
+            "history": [
+              {
+                "choice": "offer_84",
+                "verdict": {
+                  "cards": 11,
+                  "payout": 84,
+                  "reason": "Choose the lowest economy-valid alternative",
+                  "accepted": true,
+                  "shot_expected_cash": 71.667,
+                  "shot_expected_value": 111.667
+                }
+              }
+            ]
+          },
+          "cache": "hit",
+          "inference_tokens": 0,
+          "model": "qwen",
+          "worker": "game-review-5d68c4557b-2hcmv",
+          "client_ms": 1664.33
+        },
+        {
+          "result": {
+            "choice": "offer_84",
+            "tokens": 227,
+            "history": [
+              {
+                "choice": "offer_84",
+                "verdict": {
+                  "cards": 11,
+                  "payout": 84,
+                  "reason": "Choose the lowest economy-valid alternative",
+                  "accepted": true,
+                  "shot_expected_cash": 71.667,
+                  "shot_expected_value": 111.667
+                }
+              }
+            ]
+          },
+          "cache": "hit",
+          "inference_tokens": 0,
+          "model": "qwen",
+          "worker": "game-review-5d68c4557b-bgktj",
+          "client_ms": 1663.53
+        },
+        {
+          "result": {
+            "choice": "offer_84",
+            "tokens": 245,
+            "history": [
+              {
+                "choice": "offer_84",
+                "verdict": {
+                  "cards": 11,
+                  "payout": 84,
+                  "reason": "Choose the lowest economy-valid alternative",
+                  "accepted": true,
+                  "shot_expected_cash": 71.667,
+                  "shot_expected_value": 111.667
+                }
+              }
+            ]
+          },
+          "cache": "hit",
+          "inference_tokens": 0,
+          "model": "smol",
+          "worker": "game-review-5d68c4557b-2hcmv",
+          "client_ms": 803.01
+        },
+        {
+          "result": {
+            "choice": "offer_84",
+            "tokens": 245,
+            "history": [
+              {
+                "choice": "offer_84",
+                "verdict": {
+                  "cards": 11,
+                  "payout": 84,
+                  "reason": "Choose the lowest economy-valid alternative",
+                  "accepted": true,
+                  "shot_expected_cash": 71.667,
+                  "shot_expected_value": 111.667
+                }
+              }
+            ]
+          },
+          "cache": "hit",
+          "inference_tokens": 0,
+          "model": "smol",
+          "worker": "game-review-5d68c4557b-bgktj",
+          "client_ms": 799.59
+        }
+      ]
+    },
+    "repeat": {
+      "cache": {
+        "hit": 8
+      },
+      "tokens": 0,
+      "model_calls": 0,
+      "p50_ms": 29.535,
+      "p95_ms": 34.06,
+      "responses": [
+        {
+          "result": {
+            "choice": "offer_84",
+            "tokens": 227,
+            "history": [
+              {
+                "choice": "offer_84",
+                "verdict": {
+                  "cards": 11,
+                  "payout": 84,
+                  "reason": "Choose the lowest economy-valid alternative",
+                  "accepted": true,
+                  "shot_expected_cash": 71.667,
+                  "shot_expected_value": 111.667
+                }
+              }
+            ]
+          },
+          "cache": "hit",
+          "inference_tokens": 0,
+          "model": "qwen",
+          "worker": "game-review-5d68c4557b-2hcmv",
+          "client_ms": 25.68
+        },
+        {
+          "result": {
+            "choice": "offer_84",
+            "tokens": 227,
+            "history": [
+              {
+                "choice": "offer_84",
+                "verdict": {
+                  "cards": 11,
+                  "payout": 84,
+                  "reason": "Choose the lowest economy-valid alternative",
+                  "accepted": true,
+                  "shot_expected_cash": 71.667,
+                  "shot_expected_value": 111.667
+                }
+              }
+            ]
+          },
+          "cache": "hit",
+          "inference_tokens": 0,
+          "model": "qwen",
+          "worker": "game-review-5d68c4557b-bgktj",
+          "client_ms": 26.09
+        },
+        {
+          "result": {
+            "choice": "offer_84",
+            "tokens": 245,
+            "history": [
+              {
+                "choice": "offer_84",
+                "verdict": {
+                  "cards": 11,
+                  "payout": 84,
+                  "reason": "Choose the lowest economy-valid alternative",
+                  "accepted": true,
+                  "shot_expected_cash": 71.667,
+                  "shot_expected_value": 111.667
+                }
+              }
+            ]
+          },
+          "cache": "hit",
+          "inference_tokens": 0,
+          "model": "smol",
+          "worker": "game-review-5d68c4557b-2hcmv",
+          "client_ms": 31.25
+        },
+        {
+          "result": {
+            "choice": "offer_84",
+            "tokens": 245,
+            "history": [
+              {
+                "choice": "offer_84",
+                "verdict": {
+                  "cards": 11,
+                  "payout": 84,
+                  "reason": "Choose the lowest economy-valid alternative",
+                  "accepted": true,
+                  "shot_expected_cash": 71.667,
+                  "shot_expected_value": 111.667
+                }
+              }
+            ]
+          },
+          "cache": "hit",
+          "inference_tokens": 0,
+          "model": "smol",
+          "worker": "game-review-5d68c4557b-bgktj",
+          "client_ms": 28.57
+        },
+        {
+          "result": {
+            "choice": "offer_84",
+            "tokens": 227,
+            "history": [
+              {
+                "choice": "offer_84",
+                "verdict": {
+                  "cards": 11,
+                  "payout": 84,
+                  "reason": "Choose the lowest economy-valid alternative",
+                  "accepted": true,
+                  "shot_expected_cash": 71.667,
+                  "shot_expected_value": 111.667
+                }
+              }
+            ]
+          },
+          "cache": "hit",
+          "inference_tokens": 0,
+          "model": "qwen",
+          "worker": "game-review-5d68c4557b-2hcmv",
+          "client_ms": 27.65
+        },
+        {
+          "result": {
+            "choice": "offer_84",
+            "tokens": 227,
+            "history": [
+              {
+                "choice": "offer_84",
+                "verdict": {
+                  "cards": 11,
+                  "payout": 84,
+                  "reason": "Choose the lowest economy-valid alternative",
+                  "accepted": true,
+                  "shot_expected_cash": 71.667,
+                  "shot_expected_value": 111.667
+                }
+              }
+            ]
+          },
+          "cache": "hit",
+          "inference_tokens": 0,
+          "model": "qwen",
+          "worker": "game-review-5d68c4557b-bgktj",
+          "client_ms": 30.5
+        },
+        {
+          "result": {
+            "choice": "offer_84",
+            "tokens": 245,
+            "history": [
+              {
+                "choice": "offer_84",
+                "verdict": {
+                  "cards": 11,
+                  "payout": 84,
+                  "reason": "Choose the lowest economy-valid alternative",
+                  "accepted": true,
+                  "shot_expected_cash": 71.667,
+                  "shot_expected_value": 111.667
+                }
+              }
+            ]
+          },
+          "cache": "hit",
+          "inference_tokens": 0,
+          "model": "smol",
+          "worker": "game-review-5d68c4557b-2hcmv",
+          "client_ms": 32.12
+        },
+        {
+          "result": {
+            "choice": "offer_84",
+            "tokens": 245,
+            "history": [
+              {
+                "choice": "offer_84",
+                "verdict": {
+                  "cards": 11,
+                  "payout": 84,
+                  "reason": "Choose the lowest economy-valid alternative",
+                  "accepted": true,
+                  "shot_expected_cash": 71.667,
+                  "shot_expected_value": 111.667
+                }
+              }
+            ]
+          },
+          "cache": "hit",
+          "inference_tokens": 0,
+          "model": "smol",
+          "worker": "game-review-5d68c4557b-bgktj",
+          "client_ms": 34.06
+        }
+      ]
+    },
+    "other_team": {
+      "result": {
+        "choice": "offer_84",
+        "history": [
+          {
+            "choice": "offer_84",
+            "verdict": {
+              "accepted": true,
+              "payout": 84,
+              "reason": "Choose the lowest economy-valid alternative",
+              "cards": 11,
+              "shot_expected_cash": 71.667,
+              "shot_expected_value": 111.667
+            }
+          }
+        ],
+        "tokens": 227
+      },
+      "cache": "miss",
+      "inference_tokens": 227,
+      "model": "qwen",
+      "worker": "game-review-5d68c4557b-bgktj",
+      "client_ms": 358.81
+    }
+  },
+  "restored": {
+    "project": "soccer",
+    "unauthorized_status": 401,
+    "negative_control": {
+      "choice": "offer_65",
+      "verdict": {
+        "accepted": false,
+        "reason": "Safe cash must sit between the shot's average cash and average portfolio value"
+      }
+    },
+    "restored": {
+      "cache": {
+        "hit": 8
+      },
+      "tokens": 0,
+      "model_calls": 0,
+      "p50_ms": 38.510000000000005,
+      "p95_ms": 41.85,
+      "responses": [
+        {
+          "result": {
+            "choice": "offer_84",
+            "tokens": 227,
+            "history": [
+              {
+                "choice": "offer_84",
+                "verdict": {
+                  "cards": 11,
+                  "payout": 84,
+                  "reason": "Choose the lowest economy-valid alternative",
+                  "accepted": true,
+                  "shot_expected_cash": 71.667,
+                  "shot_expected_value": 111.667
+                }
+              }
+            ]
+          },
+          "cache": "hit",
+          "inference_tokens": 0,
+          "model": "qwen",
+          "worker": "game-review-ff6c96f5b-t7x8r",
+          "client_ms": 20.55
+        },
+        {
+          "result": {
+            "choice": "offer_84",
+            "tokens": 227,
+            "history": [
+              {
+                "choice": "offer_84",
+                "verdict": {
+                  "cards": 11,
+                  "payout": 84,
+                  "reason": "Choose the lowest economy-valid alternative",
+                  "accepted": true,
+                  "shot_expected_cash": 71.667,
+                  "shot_expected_value": 111.667
+                }
+              }
+            ]
+          },
+          "cache": "hit",
+          "inference_tokens": 0,
+          "model": "qwen",
+          "worker": "game-review-ff6c96f5b-xt9xb",
+          "client_ms": 34.47
+        },
+        {
+          "result": {
+            "choice": "offer_84",
+            "tokens": 245,
+            "history": [
+              {
+                "choice": "offer_84",
+                "verdict": {
+                  "cards": 11,
+                  "payout": 84,
+                  "reason": "Choose the lowest economy-valid alternative",
+                  "accepted": true,
+                  "shot_expected_cash": 71.667,
+                  "shot_expected_value": 111.667
+                }
+              }
+            ]
+          },
+          "cache": "hit",
+          "inference_tokens": 0,
+          "model": "smol",
+          "worker": "game-review-ff6c96f5b-t7x8r",
+          "client_ms": 37.1
+        },
+        {
+          "result": {
+            "choice": "offer_84",
+            "tokens": 245,
+            "history": [
+              {
+                "choice": "offer_84",
+                "verdict": {
+                  "cards": 11,
+                  "payout": 84,
+                  "reason": "Choose the lowest economy-valid alternative",
+                  "accepted": true,
+                  "shot_expected_cash": 71.667,
+                  "shot_expected_value": 111.667
+                }
+              }
+            ]
+          },
+          "cache": "hit",
+          "inference_tokens": 0,
+          "model": "smol",
+          "worker": "game-review-ff6c96f5b-xt9xb",
+          "client_ms": 41.85
+        },
+        {
+          "result": {
+            "choice": "offer_84",
+            "tokens": 227,
+            "history": [
+              {
+                "choice": "offer_84",
+                "verdict": {
+                  "cards": 11,
+                  "payout": 84,
+                  "reason": "Choose the lowest economy-valid alternative",
+                  "accepted": true,
+                  "shot_expected_cash": 71.667,
+                  "shot_expected_value": 111.667
+                }
+              }
+            ]
+          },
+          "cache": "hit",
+          "inference_tokens": 0,
+          "model": "qwen",
+          "worker": "game-review-ff6c96f5b-t7x8r",
+          "client_ms": 39.98
+        },
+        {
+          "result": {
+            "choice": "offer_84",
+            "tokens": 227,
+            "history": [
+              {
+                "choice": "offer_84",
+                "verdict": {
+                  "cards": 11,
+                  "payout": 84,
+                  "reason": "Choose the lowest economy-valid alternative",
+                  "accepted": true,
+                  "shot_expected_cash": 71.667,
+                  "shot_expected_value": 111.667
+                }
+              }
+            ]
+          },
+          "cache": "hit",
+          "inference_tokens": 0,
+          "model": "qwen",
+          "worker": "game-review-ff6c96f5b-xt9xb",
+          "client_ms": 39.92
+        },
+        {
+          "result": {
+            "choice": "offer_84",
+            "tokens": 245,
+            "history": [
+              {
+                "choice": "offer_84",
+                "verdict": {
+                  "cards": 11,
+                  "payout": 84,
+                  "reason": "Choose the lowest economy-valid alternative",
+                  "accepted": true,
+                  "shot_expected_cash": 71.667,
+                  "shot_expected_value": 111.667
+                }
+              }
+            ]
+          },
+          "cache": "hit",
+          "inference_tokens": 0,
+          "model": "smol",
+          "worker": "game-review-ff6c96f5b-t7x8r",
+          "client_ms": 40.33
+        },
+        {
+          "result": {
+            "choice": "offer_84",
+            "tokens": 245,
+            "history": [
+              {
+                "choice": "offer_84",
+                "verdict": {
+                  "cards": 11,
+                  "payout": 84,
+                  "reason": "Choose the lowest economy-valid alternative",
+                  "accepted": true,
+                  "shot_expected_cash": 71.667,
+                  "shot_expected_value": 111.667
+                }
+              }
+            ]
+          },
+          "cache": "hit",
+          "inference_tokens": 0,
+          "model": "smol",
+          "worker": "game-review-ff6c96f5b-xt9xb",
+          "client_ms": 33.48
+        }
+      ]
+    },
+    "other_team": {
+      "result": {
+        "choice": "offer_84",
+        "tokens": 227,
+        "history": [
+          {
+            "choice": "offer_84",
+            "verdict": {
+              "cards": 11,
+              "payout": 84,
+              "reason": "Choose the lowest economy-valid alternative",
+              "accepted": true,
+              "shot_expected_cash": 71.667,
+              "shot_expected_value": 111.667
+            }
+          }
+        ]
+      },
+      "cache": "hit",
+      "inference_tokens": 0,
+      "model": "qwen",
+      "worker": "game-review-ff6c96f5b-xt9xb",
+      "client_ms": 7.24
+    }
+  },
+  "sdk": {
+    "destination": "local SDK receiver",
+    "sentry_envelopes": [
+      {
+        "message": "soccer: verifier rejected offer_65",
+        "level": "info",
+        "release": "1e0699247c9e30ed8c8c5118fb5fea811eb4c1e4"
+      }
+    ],
+    "amplitude_events": [
+      {
+        "event": "game.review_accepted",
+        "properties": {
+          "choice": "offer_84",
+          "model": "qwen",
+          "project": "soccer",
+          "tokens": 227
+        }
+      },
+      {
+        "event": "game.review_accepted",
+        "properties": {
+          "choice": "offer_84",
+          "model": "smol",
+          "project": "soccer",
+          "tokens": 245
+        }
+      }
+    ]
+  },
+  "pr-review": {
+    "github": {
+      "commit": "1e0699247c9e30ed8c8c5118fb5fea811eb4c1e4",
+      "pull_request": "https://github.com/GlebAvershin/Soccerpoly/pull/1",
+      "head": "57257d82900e5fb70caa9c8981317cbfc8b62744",
+      "file": "scripts/agent_review.py",
+      "source": "\"\"\"Review alternative Continental Cup offers against the actual economy contract.\"\"\"\nfrom typing import Any\nfrom mcp.server.fastmcp import FastMCP\nfrom event_studio import load, validate\n\nserver = FastMCP(\"Continental Cup offer review\")\nOFFERS = {\"offer_65\": 65, \"offer_84\": 84, \"offer_95\": 95}\n\n\n@server.resource(\"studio://review/brief\")\ndef brief() -> dict:\n    edition, stats = load()\n    return {\n        \"instruction\": \"Pick an alternative guaranteed payout between mean shot cash and mean total value. \"\n                       \"Prefer the smallest qualifying payout to limit currency issuance.\",\n        \"options\": OFFERS,\n        \"facts\": {\"edition\": edition[\"id\"], \"current_offer\": edition[\"safe_cash\"],\n                  \"shots\": edition[\"shots\"], **stats},\n    }\n\n\n@server.resource(\"studio://review/negative-control\")\ndef negative_control() -> str:\n    return \"offer_65\"\n\n\n@server.tool(structured_output=True)\ndef verify_choice(choice: str) -> dict[str, Any]:\n    edition, stats = load()\n    if choice not in OFFERS:\n        return {\"accepted\": False, \"reason\": \"Unknown offer\"}\n    payout = OFFERS[choice]\n    try:\n        validate({**edition, \"safe_cash\": payout})\n    except ValueError as error:\n        return {\"accepted\": False, \"reason\": str(error)}\n    qualifying = [v for v in OFFERS.values() if stats[\"shot_expected_cash\"] <= v <= stats[\"shot_expected_value\"]]\n    return {\"accepted\": payout == min(qualifying), \"payout\": payout,\n            \"reason\": \"Choose the lowest economy-valid alternative\", **stats}\n\n\nif __name__ == \"__main__\":\n    server.run()\n"
+    },
+    "diagnostics": {
+      "destination": "local SDK receiver",
+      "sentry_envelopes": [
+        {
+          "message": "soccer: verifier rejected offer_65",
+          "level": "info",
+          "release": "1e0699247c9e30ed8c8c5118fb5fea811eb4c1e4"
+        }
+      ],
+      "amplitude_events": [
+        {
+          "event": "game.review_accepted",
+          "properties": {
+            "choice": "offer_84",
+            "model": "qwen",
+            "project": "soccer",
+            "tokens": 227
+          }
+        },
+        {
+          "event": "game.review_accepted",
+          "properties": {
+            "choice": "offer_84",
+            "model": "smol",
+            "project": "soccer",
+            "tokens": 245
+          }
+        }
+      ]
+    },
+    "model": "qwen",
+    "suggestion": "One specific missing edge-case test for the Python game verifier could be:\n\n1. **Invalid Safe Cash Value**: The verifier does not validate the safe cash value of the offer. This could lead to incorrect results if the safe cash value is not within the expected range.\n\nTo fix this, the verifier should include a check to ensure that the safe cash value is within the expected range before validating the offer. This can be done by adding a conditional statement to check if the safe cash value is greater than or equal to the shot's average cash and less than or equal to the shot's average value. If the safe cash value is not within the expected range, the verifier should return an error message indicating that the safe cash must sit between the shot's average cash and average portfolio value.",
+    "tokens": 720,
+    "finish_reason": "stop"
+  }
+}
