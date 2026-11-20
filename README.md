@@ -1,5 +1,7 @@
 # Soccerpoly (Мировой Драфт) • AAA Football Strategy for Roblox
 
+[Технологии игры, AI-инструменты и результаты облачных проверок](docs/TECHNOLOGIES.md)
+
 <div align="center">
 
 ![Soccerpoly Banner](art/promo/game_banner.png)
