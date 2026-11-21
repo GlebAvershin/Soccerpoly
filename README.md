@@ -25,14 +25,19 @@
 
 * ⚽ **[Play on Roblox](https://www.roblox.com/games/114770772027261/Soccerpoly)** — Live published seasonal event (*Continental Cup v10*).
 * 📦 **[Download Roblox Studio Place File](dist/Soccerpoly.rbxl)** — Ready-to-inspect `.rbxl` build.
-* 🎥 **[Watch Gameplay Reel (MP4)](art/design-reel/Game-Editions.mp4)** — Full tournament loop and board mechanics.
+* 🎥 **[Watch Gameplay Reel (In-Browser Player)](#-gameplay-preview)** — Full tournament loop, player figures, and 3D penalty shootout.
 * 📑 **[Engineering & LiveOps Architecture](docs/TECHNOLOGIES.md)** — C++17 odds inspector, 100k economy simulation, and model evaluations.
 * 📱 **[Mobile UX & Screen Breakpoints QA](docs/QA.md)** — Portrait and landscape layout verifications.
 
 ---
 
+## 🎥 Gameplay Preview
+
 <p align="center">
   <img src="art/design-reel/gameplay-preview.gif" alt="Soccerpoly Gameplay Preview" width="85%" style="border-radius: 6px;" />
+</p>
+<p align="center">
+  <sub><i>Full match loop: Lionel Messi, Cristiano Ronaldo, Kylian Mbappé & Lamine Yamal • 3D Continental Cup penalty shootout & goal celebration • Source video: <a href="art/design-reel/Game-Editions.mp4">Game-Editions.mp4</a></i></sub>
 </p>
 
 ---
