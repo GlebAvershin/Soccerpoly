@@ -2,7 +2,7 @@
   "benchmark": "Multi-Agent-LLM-as-a-Judge-Consensus",
   "champions_derby": {
     "event_id": "champions_derby_v1",
-    "playrix_readiness_score": 58.0,
+    "production_readiness_score": 58.0,
     "release_approved": false,
     "panel_verdicts": {
       "economy_auditor": {
@@ -24,7 +24,7 @@
   },
   "continental_cup": {
     "event_id": "continental_cup_v1",
-    "playrix_readiness_score": 52.0,
+    "production_readiness_score": 52.0,
     "release_approved": false,
     "panel_verdicts": {
       "economy_auditor": {

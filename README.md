@@ -34,7 +34,7 @@
 
 **Soccerpoly** is a turn-based multiplayer football board strategy on Roblox. Players buy football clubs, bid in auctions, build stadiums, and participate in high-stakes seasonal cups where every turn presents a critical risk/reward decision: take guaranteed safe payout or take a shot on goal with chance of loss.
 
-For Playrix's **Cross-product** and **Game AI** tracks, Soccerpoly demonstrates an enterprise **LiveOps Event Authoring Pipeline**:
+Soccerpoly demonstrates an end-to-end **LiveOps Event Authoring & AI Balancing Pipeline**:
 1. AI agents draft new seasonal events based on high-level themes (*Champions Derby*).
 2. Deterministic mathematical validators ensure economic fairness before any content touches a game build.
 3. Native C++17 modules independently verify goal probabilities and expected monetary values.
@@ -160,5 +160,5 @@ Soccerpoly/
 ---
 
 <p align="center">
-  <sub>Developed for the Playrix Cross-Product AI & Game AI Engineering tracks.</sub>
+  <sub>Open-source game economy simulation and multi-agent LiveOps balancing pipeline.</sub>
 </p>

@@ -6,7 +6,7 @@ Deploys 3 specialized persona agents to audit seasonal game events:
 2. Player UX Critic (Checks clarity, frustration, goal dopamine)
 3. LiveOps Monetizer (Checks trophy aspiration, re-engagement loop)
 
-Calculates the Playrix Production Readiness Score (PPRS 0-100).
+Calculates the Production Performance Readiness Score (PPRS 0-100).
 """
 from __future__ import annotations
 
@@ -20,7 +20,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 def query_agent_persona(role: str, event_summary: str) -> dict:
     prompt = (
-        f"You are the {role} in the Playrix Production Review Committee. "
+        f"You are the {role} in the Game Production Review Committee. "
         f"Audit this seasonal football event specification:\n{event_summary}\n"
         f"Evaluate on a 0-100 scale and return JSON with keys: 'score' (integer 0-100), "
         f"'verdict' ('APPROVED' or 'NEEDS_REVISION'), 'critique' (2 sentences in Russian)."
@@ -77,14 +77,14 @@ def audit_event(event_file: Path) -> dict:
     ux = query_agent_persona("Player Experience & UX Director", summary)
     monetization = query_agent_persona("LiveOps & Retention Lead", summary)
 
-    # Weighted Playrix Production Readiness Score (PPRS)
+    # Weighted Production Performance Readiness Score (PPRS)
     # 40% Economy, 35% UX, 25% Monetization
     pprs = round(economy["score"] * 0.40 + ux["score"] * 0.35 + monetization["score"] * 0.25, 2)
     ready = pprs >= 85.0 and all(a["verdict"] == "APPROVED" for a in (economy, ux, monetization))
 
     panel_result = {
         "event_id": data["id"],
-        "playrix_readiness_score": pprs,
+        "production_readiness_score": pprs,
         "release_approved": ready,
         "panel_verdicts": {
             "economy_auditor": economy,
@@ -113,8 +113,8 @@ def main():
     with out_file.open("w", encoding="utf-8") as f:
         json.dump(full_report, f, indent=2, ensure_ascii=False)
 
-    print(f"\n[Audit Finished] Champions Derby PPRS: {derby_audit['playrix_readiness_score']} / 100 (Status: {derby_audit['release_approved']})")
-    print(f"[Audit Finished] Continental Cup PPRS: {cup_audit['playrix_readiness_score']} / 100 (Status: {cup_audit['release_approved']})")
+    print(f"\n[Audit Finished] Champions Derby PPRS: {derby_audit['production_readiness_score']} / 100 (Status: {derby_audit['release_approved']})")
+    print(f"[Audit Finished] Continental Cup PPRS: {cup_audit['production_readiness_score']} / 100 (Status: {cup_audit['release_approved']})")
     print(f"[Evidence Saved]: {out_file}")
 
 
