@@ -1,7 +1,9 @@
 # Soccerpoly · Global Draft & LiveOps Football Strategy
 
 <p align="center">
-  <img src="art/promo/game_banner.png" alt="Soccerpoly Game Banner" width="100%" style="border-radius: 8px;" />
+  <a href="https://raw.githubusercontent.com/GlebAvershin/Soccerpoly/main/art/promo/game_banner.png">
+    <img src="https://raw.githubusercontent.com/GlebAvershin/Soccerpoly/main/art/promo/game_banner.png" alt="Soccerpoly Game Banner" width="100%" />
+  </a>
 </p>
 
 <p align="center">

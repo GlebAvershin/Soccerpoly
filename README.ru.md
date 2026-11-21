@@ -1,7 +1,9 @@
 # Soccerpoly · Мировой Драфт & LiveOps Футбольная Стратегия
 
 <p align="center">
-  <img src="art/promo/game_banner.png" alt="Баннер игры Soccerpoly" width="100%" style="border-radius: 8px;" />
+  <a href="https://raw.githubusercontent.com/GlebAvershin/Soccerpoly/main/art/promo/game_banner.png">
+    <img src="https://raw.githubusercontent.com/GlebAvershin/Soccerpoly/main/art/promo/game_banner.png" alt="Баннер игры Soccerpoly" width="100%" />
+  </a>
 </p>
 
 <p align="center">
@@ -25,7 +27,7 @@
 
 * ⚽ **[Открыть игру в Roblox](https://www.roblox.com/games/114770772027261/Soccerpoly)** — Опубликованное сезонное событие (*Continental Cup v10*).
 * 📦 **[Скачать файл места для Roblox Studio](dist/Soccerpoly.rbxl)** — Готовый `.rbxl` билд.
-* 📑 **[Инженерный отчёт и LiveOps архитектура](docs/TECHNOLOGIES.md)** — C++17 инспектор вероятностей, стресс-тест на 100k матчей и оценки моделей.
+* 📑 **[Инженерный отчёт и LiveOps архитектура](docs/TECHNOLOGIES.ru.md)** — C++17 инспектор вероятностей, стресс-тест на 100k матчей и оценки моделей.
 * 📱 **[Тестирование мобильного UX](docs/QA.md)** — Проверки портретной и ландшафтной верстки.
 
 ---
@@ -153,7 +155,7 @@ Soccerpoly/
 ├── src/                    # Клиентский и серверный код Roblox Luau
 ├── tests/                  # Тесты баланса и правил игры
 └── docs/                   # Инженерная документация
-    ├── TECHNOLOGIES.md     # Полный отчёт об архитектуре и исследованиях
+    ├── TECHNOLOGIES.ru.md  # Полный отчёт об архитектуре и исследованиях
     └── evidence/           # Сырые квитанции, стресс-тесты и вердикты совета
 ```
 
