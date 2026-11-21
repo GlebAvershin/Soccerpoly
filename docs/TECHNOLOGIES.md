@@ -22,7 +22,7 @@ Every decision boundary and probability was independently verified against the `
 
 ## ☁️ Cross-Service Verification via Cloud MCP Servers
 
-1. **Amplitude MCP:** Retrieved 8 `game.study_evaluated` events filtered by game ID for November 20, 2026 (UTC), including idempotency re-runs.
+1. **Amplitude MCP:** Retrieved 8 `game.study_evaluated` events filtered by game ID during research evaluation runs, including idempotency re-runs.
 2. **Sentry MCP:** Queried issue **PYTHON-7** by event ID, verifying the `above_best_shot` trigger and `defer_purchase` guardrail decision.
 3. **Databricks MCP (`system.ai.dbsql`):** Executed SQL analytical queries directly in cloud SQL warehouses. All 4 returned rows matched local SQLite calculations byte-for-byte.
 
