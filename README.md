@@ -27,8 +27,15 @@
 
 * ⚽ **[Play on Roblox](https://www.roblox.com/games/114770772027261/Soccerpoly)** — Live published seasonal event (*Continental Cup v10*).
 * 📦 **[Download Roblox Studio Place File](dist/Soccerpoly.rbxl)** — Ready-to-inspect `.rbxl` build.
+* 🎥 **[Watch Gameplay Reel (MP4)](https://raw.githubusercontent.com/GlebAvershin/Soccerpoly/main/art/design-reel/Game-Editions.mp4)** — Full tournament loop and board mechanics.
 * 📑 **[Engineering & LiveOps Architecture](docs/TECHNOLOGIES.md)** — C++17 odds inspector, 100k economy simulation, and model evaluations.
 * 📱 **[Mobile UX & Screen Breakpoints QA](docs/QA.md)** — Portrait and landscape layout verifications.
+
+---
+
+<p align="center">
+  <img src="art/design-reel/gameplay-preview.gif" alt="Soccerpoly Gameplay Preview" width="85%" style="border-radius: 6px;" />
+</p>
 
 ---
 
