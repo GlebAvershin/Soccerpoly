@@ -1,9 +1,7 @@
 # Soccerpoly · Мировой Драфт & LiveOps Футбольная Стратегия
 
 <p align="center">
-  <a href="https://raw.githubusercontent.com/GlebAvershin/Soccerpoly/main/art/promo/game_banner.png">
-    <img src="https://raw.githubusercontent.com/GlebAvershin/Soccerpoly/main/art/promo/game_banner.png" alt="Баннер игры Soccerpoly" width="100%" />
-  </a>
+  <img src="art/promo/game_banner.png" alt="Баннер игры Soccerpoly" width="100%" style="border-radius: 8px;" />
 </p>
 
 <p align="center">
@@ -27,7 +25,7 @@
 
 * ⚽ **[Открыть игру в Roblox](https://www.roblox.com/games/114770772027261/Soccerpoly)** — Опубликованное сезонное событие (*Continental Cup v10*).
 * 📦 **[Скачать файл места для Roblox Studio](dist/Soccerpoly.rbxl)** — Готовый `.rbxl` билд.
-* 🎥 **[Видео игрового процесса (MP4)](https://raw.githubusercontent.com/GlebAvershin/Soccerpoly/main/art/design-reel/Game-Editions.mp4)** — Запись матча, аукционов и бросков.
+* 🎥 **[Видео игрового процесса (MP4)](art/design-reel/Game-Editions.mp4)** — Запись матча, аукционов и бросков.
 * 📑 **[Инженерный отчёт и LiveOps архитектура](docs/TECHNOLOGIES.ru.md)** — C++17 инспектор вероятностей, стресс-тест на 100k матчей и оценки моделей.
 * 📱 **[Тестирование мобильного UX](docs/QA.ru.md)** — Проверки портретной и ландшафтной верстки.
 
