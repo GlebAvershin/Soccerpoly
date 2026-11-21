@@ -1,0 +1,9 @@
+{
+  "event_id": "champions_derby_v1",
+  "goal_chance": 0.5,
+  "expected_cash": 79.16666666666667,
+  "expected_val": 124.16666666666667,
+  "safe_cash": 80,
+  "cards_count": 6,
+  "status": "APPROVED_FOR_RELEASE"
+}

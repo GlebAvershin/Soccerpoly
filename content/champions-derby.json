@@ -1,0 +1,81 @@
+{
+  "schema_version": 1,
+  "id": "champions_derby_v1",
+  "name": "Champions Derby",
+  "ru": "Дерби чемпионов",
+  "trophy_value": 90,
+  "safe_cash": 80,
+  "shots": [
+    {
+      "result": "goal",
+      "cash": 150,
+      "weight": 3
+    },
+    {
+      "result": "save",
+      "cash": 30,
+      "weight": 2
+    },
+    {
+      "result": "offside",
+      "cash": -35,
+      "weight": 1
+    }
+  ],
+  "cards": [
+    {
+      "id": "stadium_sellout",
+      "kind": "bonus",
+      "amount": 130,
+      "title": "Stadium sellout",
+      "ru": "Аншлаг на трибунах",
+      "body": "Record ticket revenue fills the club treasury.",
+      "ruBody": "Рекордные сборы с билетов пополнили казну клуба."
+    },
+    {
+      "id": "derby_winner",
+      "kind": "goal",
+      "amount": 120,
+      "title": "Derby hat-trick",
+      "ru": "Хет-трик в дерби",
+      "body": "The star striker nets a hat-trick in stoppage time.",
+      "ruBody": "Звёздный нападающий оформил хет-трик в добавленное время."
+    },
+    {
+      "id": "tactical_foul",
+      "kind": "penalty",
+      "amount": -40,
+      "title": "Tactical red card",
+      "ru": "Тактический фол последней надежды",
+      "body": "A last-ditch slide prevents a goal but draws a suspension fine.",
+      "ruBody": "Подкат спас ворота, но повлёк дисквалификационный штраф."
+    },
+    {
+      "id": "var_overturn",
+      "kind": "offside",
+      "amount": -30,
+      "title": "VAR review overturn",
+      "ru": "Отмена гола после VAR",
+      "body": "Video referee rules an offside by inches.",
+      "ruBody": "Видеоассистент зафиксировал минимальный офсайд."
+    },
+    {
+      "id": "academy_breakthrough",
+      "kind": "transfer",
+      "amount": 95,
+      "title": "Academy prodigy signing",
+      "ru": "Контракт воспитанника",
+      "body": "A youth star attracts a lucrative development grant.",
+      "ruBody": "Юный талант привлёк солидный грант развития."
+    },
+    {
+      "id": "tactical_rotation",
+      "kind": "bench",
+      "amount": 0,
+      "title": "Squad rotation",
+      "ru": "Ротация состава",
+      "body": "Key players rest before the cup semi-final.",
+      "ruBody": "Лидеры отдыхают перед кубковым полуфиналом."
+    }
+  ]
+}

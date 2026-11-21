@@ -1,0 +1,29 @@
+{
+  "benchmark": "100k-Match-LiveOps-Stress-Test",
+  "continental_cup": {
+    "event_id": "continental_cup_v1",
+    "simulated_matches": 100000,
+    "unique_players": 10000,
+    "trophies_purchased": 66927,
+    "total_faucet_cr": 13228525.0,
+    "total_sink_cr": 12837050.0,
+    "faucet_sink_ratio": 1.0305,
+    "avg_player_purse_end": 139.15,
+    "wealth_gini_coefficient": 0.429,
+    "economy_healthy": true,
+    "guardrail_status": "PASSED"
+  },
+  "champions_derby": {
+    "event_id": "champions_derby_v1",
+    "simulated_matches": 100000,
+    "unique_players": 10000,
+    "trophies_purchased": 69591,
+    "total_faucet_cr": 13958380.0,
+    "total_sink_cr": 13413115.0,
+    "faucet_sink_ratio": 1.0407,
+    "avg_player_purse_end": 154.53,
+    "wealth_gini_coefficient": 0.391,
+    "economy_healthy": true,
+    "guardrail_status": "PASSED"
+  }
+}
