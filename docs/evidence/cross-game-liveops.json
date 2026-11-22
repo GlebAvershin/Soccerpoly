@@ -1,0 +1,31 @@
+{
+  "study_title": "Cross-Game LiveOps & LinUCB Personalized Store Integration",
+  "client_title": "Soccerpoly",
+  "total_simulated_sessions": 2000,
+  "execution_time_seconds": 0.0,
+  "liveops_summary": {
+    "active_season": "Northern Expedition \u00b7 Cross-Game Frontier",
+    "cross_game_contracts_active": 2,
+    "mean_xp_per_session": 366.8,
+    "mean_tokens_per_session": 89.8,
+    "linucb_cosmetic_claim_rate_pct": 23.5
+  },
+  "supported_cosmetics": [
+    {
+      "arm_id": "soccer_golden_ball",
+      "type": "Ball Skin",
+      "rarity": "Legendary",
+      "earned_via": "Battle Pass Tokens"
+    },
+    {
+      "arm_id": "soccer_retro_kit",
+      "type": "Team Kit",
+      "rarity": "Epic",
+      "earned_via": "Battle Pass Tokens"
+    }
+  ],
+  "compliance_notes": [
+    "All seasonal progression is earned organically through gameplay with 0 real-money purchase requirements.",
+    "Client SDK handles network timeouts gracefully with deterministic fallback catalogs."
+  ]
+}

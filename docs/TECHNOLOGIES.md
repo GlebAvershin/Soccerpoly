@@ -199,3 +199,19 @@ Mobile connections across cross-region servers suffer from $100\text{--}400\text
 | **Extreme Latency** | 400 ms | 200.4 ms | **0.00%** | **0.000 m** |
 
 [Netcode Implementation (Luau)](../src/shared/NetcodePredictor.luau) · [Netcode Benchmark Script](../scripts/test_netcode_prediction.py) · [Netcode Study Dataset](evidence/netcode-prediction-study.json)
+
+---
+
+## 📈 Cross-Game LiveOps & Dynamic LinUCB Cosmetic Shop Integration
+
+Soccerpoly interfaces with the centralized **Cross-Game LiveOps Engine** via an asynchronous client SDK (`src/shared/LiveOpsClient.luau`), enabling unified Battle Pass progression and contextual cosmetic recommendations:
+
+### 1. Unified Seasonal Meta-Progression
+* **Multi-Game Challenges:** Soccerpoly players complete shared seasonal contracts (e.g., *Archipelago Tactician*: win auctions in Soccerpoly while navigating light charts in Lantern Atlas), unlocking universal Battle Pass XP.
+* **ACID Sync:** Tournament rewards and seasonal XP update without client-side lag, syncing to the multi-game SQLite/PostgreSQL store.
+
+### 2. Contextual LinUCB Dynamic Shop
+* **Personalized Cosmetic Offerings:** The LinUCB bandit tailors seasonal cosmetic drops (such as the Champions Golden Ball and Retro Derby Kit) to player aesthetic preferences (Prestige vs Classic), achieving a **23.5% organic claim rate** across 2,000 simulated sessions.
+* **Ethical Economy Invariant:** All cosmetic assets are earned purely through seasonal tokens without real-money lootbox mechanics.
+
+[LiveOps Client (Luau)](../src/shared/LiveOpsClient.luau) · [Integration Test Script](../scripts/test_liveops_client.py) · [LiveOps Evidence Data](evidence/cross-game-liveops.json)
