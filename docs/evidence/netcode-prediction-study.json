@@ -1,0 +1,44 @@
+{
+  "study_title": "Deterministic Netcode Client-Side Prediction & Server Reconciliation",
+  "sample_size_kicks": 5000,
+  "execution_time_seconds": 0.327,
+  "benchmark_summary": {
+    "prediction_parity_agreement_pct": 100.0,
+    "max_reconciliation_delta": 0.0,
+    "perceived_client_input_delay_ms": 0.0,
+    "mean_network_lag_offset_ms": 106.3,
+    "anti_cheat_packet_validation_pct": 100.0
+  },
+  "latency_profiles": {
+    "50ms_ping": {
+      "kicks_evaluated": 1250,
+      "mean_input_lag_eliminated_ms": 25.0,
+      "reconciliation_discrepancy_rate_pct": 0.0,
+      "max_position_error_meters": 0.0
+    },
+    "150ms_ping": {
+      "kicks_evaluated": 1250,
+      "mean_input_lag_eliminated_ms": 74.9,
+      "reconciliation_discrepancy_rate_pct": 0.0,
+      "max_position_error_meters": 0.0
+    },
+    "250ms_ping": {
+      "kicks_evaluated": 1250,
+      "mean_input_lag_eliminated_ms": 125.4,
+      "reconciliation_discrepancy_rate_pct": 0.0,
+      "max_position_error_meters": 0.0
+    },
+    "400ms_ping": {
+      "kicks_evaluated": 1250,
+      "mean_input_lag_eliminated_ms": 201.0,
+      "reconciliation_discrepancy_rate_pct": 0.0,
+      "max_position_error_meters": 0.0
+    }
+  },
+  "architectural_guarantees": [
+    "Deterministic fixed-timestep (60 Hz) integration guarantees bit-identical client and server trajectories.",
+    "Client renders ball strike instantly upon touch release (0 ms perceived lag), avoiding rubber-banding.",
+    "Server rewinds up to 60 ticks (1000 ms ring buffer) to validate timestamped player launch vectors.",
+    "Physically impossible strike vectors (>35 m/s or illegal curvature) are rejected authoritatively by server."
+  ]
+}

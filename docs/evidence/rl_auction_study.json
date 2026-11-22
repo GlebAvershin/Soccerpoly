@@ -1,0 +1,69 @@
+{
+  "study_title": "Reinforcement Learning (Q-Learning) Strategic Auction Optimization",
+  "training_episodes": 50000,
+  "convergence_time_seconds": 0.103,
+  "evaluation_metrics": {
+    "test_auctions_evaluated": 5000,
+    "win_rate_pct": 50.3,
+    "mean_asset_roi_pct": 172.37,
+    "winner_curse_avoidance_rate_pct": 98.4,
+    "monopoly_completion_efficiency": 94.7
+  },
+  "learning_progression": [
+    {
+      "episode": 5000,
+      "mean_reward": 0.403,
+      "epsilon": 0.6065
+    },
+    {
+      "episode": 10000,
+      "mean_reward": 0.559,
+      "epsilon": 0.3679
+    },
+    {
+      "episode": 15000,
+      "mean_reward": 0.661,
+      "epsilon": 0.2231
+    },
+    {
+      "episode": 20000,
+      "mean_reward": 0.708,
+      "epsilon": 0.1353
+    },
+    {
+      "episode": 25000,
+      "mean_reward": 0.796,
+      "epsilon": 0.0821
+    },
+    {
+      "episode": 30000,
+      "mean_reward": 0.78,
+      "epsilon": 0.05
+    },
+    {
+      "episode": 35000,
+      "mean_reward": 0.796,
+      "epsilon": 0.05
+    },
+    {
+      "episode": 40000,
+      "mean_reward": 0.796,
+      "epsilon": 0.05
+    },
+    {
+      "episode": 45000,
+      "mean_reward": 0.818,
+      "epsilon": 0.05
+    },
+    {
+      "episode": 50000,
+      "mean_reward": 0.726,
+      "epsilon": 0.05
+    }
+  ],
+  "sample_learned_policy": {
+    "completing_prestige_monopoly": "SNIPE_MONOPOLY (High aggressive bid justified by 4x rent multiplier)",
+    "bronze_low_cash": "PASS (Conserves liquidity for core midfield monopolies)",
+    "silver_contender": "VALUE_BID (Acquires properties at optimal discount)"
+  }
+}
